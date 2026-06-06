@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Name=资料收藏夹
+Comment=个人资料收藏与管理工具
+# The Exec line includes %u to pass the URL to the application
+Exec=/usr/local/bin/collections %u
+Terminal=false
+Type=Application
+Icon=collections
+Categories=Utility;
+StartupWMClass=collections
+
+ 

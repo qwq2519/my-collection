@@ -1,0 +1,15 @@
+{
+	"fixed": {
+		"file_version": "0.1.0"
+	},
+	"info": {
+		"0000": {
+			"ProductVersion": "0.1.0",
+			"CompanyName": "Personal",
+			"FileDescription": "个人资料收藏与管理工具",
+			"LegalCopyright": "(c) 2026, Personal",
+			"ProductName": "资料收藏夹",
+			"Comments": "Personal resource collection tool"
+		}
+	}
+}

@@ -1,0 +1,44 @@
+# Local assistant/runtime files
+.codex
+
+# Wails / Task
+.task/
+bin/
+*.syso
+
+# Frontend dependencies and build output
+frontend/node_modules/
+frontend/dist/
+
+# Wails packaging downloads and generated build folders
+build/linux/appimage/build/
+build/windows/nsis/MicrosoftEdgeWebview2Setup.exe
+build/windows/nsis/*.exe
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Test / coverage output
+coverage/
+*.coverprofile
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+
