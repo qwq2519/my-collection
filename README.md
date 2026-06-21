@@ -2,6 +2,8 @@
 
 资料收藏夹是一个使用 Wails v3、Go、React、TypeScript、Vite 和 SWC 开发的 Windows 桌面小工具。
 
+[wails 框架官方文档](https://v3.wails.io/quick-start/installation/)
+
 ## 项目定位
 
 - 收集、整理和检索个人资料链接与本地资料记录。
