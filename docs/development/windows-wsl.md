@@ -98,5 +98,5 @@ wails3 build
 
 ## 相关文档
 
-- [开发文档](./README.md)
+- [文档索引](../INDEX.md)
 - [文档中心](../README.md)

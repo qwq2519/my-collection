@@ -1,0 +1,50 @@
+# 文档索引
+
+快速定位本项目所有文档。
+
+## 文档一览
+
+| 文档 | 路径 | 说明 |
+|------|------|------|
+| 项目概览 | [`../README.md`](../README.md) | 项目定位、技术栈、结构概览 |
+| 文档中心 | [`README.md`](./README.md) | 文档分类规则、写作规范、未来规划 |
+| WSL 开发指南 | [`development/windows-wsl.md`](./development/windows-wsl.md) | WSL + Windows 工具链开发与构建流程 |
+
+## 按主题查找
+
+### 开发环境与工具链
+
+| 问题 | 去哪里看 |
+|------|----------|
+| 怎么启动开发模式？ | [windows-wsl.md § 开发命令](./development/windows-wsl.md#开发命令) |
+| 怎么构建 exe？ | [windows-wsl.md § 构建命令](./development/windows-wsl.md#构建命令) |
+| Windows 侧需要装什么？ | [windows-wsl.md § Windows 侧环境要求](./development/windows-wsl.md#windows-侧环境要求) |
+| WSL 和 Windows 路径怎么对应？ | [windows-wsl.md § 路径关系](./development/windows-wsl.md#路径关系) |
+| 为什么不能在 WSL 里直接 wails3？ | [windows-wsl.md § 不推荐方式](./development/windows-wsl.md#不推荐方式) |
+
+### 项目配置
+
+| 问题 | 去哪里看 |
+|------|----------|
+| 项目技术栈是什么？ | [README.md](../README.md) |
+| Wails 构建配置在哪？ | [`build/config.yml`](../build/config.yml) |
+| Task 命令有哪些？ | [`Taskfile.yml`](../Taskfile.yml) |
+| 前端依赖和脚本？ | [`frontend/package.json`](../frontend/package.json) |
+
+### 文档贡献
+
+| 问题 | 去哪里看 |
+|------|----------|
+| 怎么写新文档？ | [文档中心 § 新增文档](./README.md#新增文档) |
+| 文档放在哪个目录？ | [文档中心 § 文档分类](./README.md#文档分类) |
+
+## 规划中的文档
+
+以下文档尚未编写，待项目推进时逐步补充：
+
+- `docs/product/vision.md` — 产品目标与边界
+- `docs/product/features.md` — 功能清单与优先级
+- `docs/architecture/overview.md` — 整体架构设计
+- `docs/architecture/data-model.md` — 数据模型设计
+- `docs/operations/release.md` — 发布流程
+- `docs/operations/packaging.md` — Windows 安装包说明
