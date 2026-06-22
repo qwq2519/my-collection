@@ -8,9 +8,19 @@
 |------|------|------|
 | 项目概览 | [`../README.md`](../README.md) | 项目定位、技术栈、结构概览 |
 | 文档中心 | [`README.md`](./README.md) | 文档分类规则、写作规范、未来规划 |
+| 存储技术栈决策 | [`architecture/storage-decision.md`](./architecture/storage-decision.md) | BuntDB + Bleve 选型理由与开发注意事项 |
 | WSL 开发指南 | [`development/windows-wsl.md`](./development/windows-wsl.md) | WSL + Windows 工具链开发与构建流程 |
 
 ## 按主题查找
+
+### 架构与存储
+
+| 问题 | 去哪里看 |
+|------|----------|
+| 用什么存储方案？为什么？ | [storage-decision.md](./architecture/storage-decision.md#结论) |
+| 为什么不用 SQLite？ | [storage-decision.md § 为什么不选 SQLite](./architecture/storage-decision.md#为什么不选-sqlite) |
+| KV 和关系型数据库有什么区别？ | [storage-decision.md § 开发差异](./architecture/storage-decision.md#kvjson-vs-关系型开发差异) |
+| 查询走哪个组件？ | [storage-decision.md § 职责分工](./architecture/storage-decision.md#职责分工) |
 
 ### 开发环境与工具链
 
@@ -45,6 +55,6 @@
 - `docs/product/vision.md` — 产品目标与边界
 - `docs/product/features.md` — 功能清单与优先级
 - `docs/architecture/overview.md` — 整体架构设计
-- `docs/architecture/data-model.md` — 数据模型设计
+- `docs/architecture/data-model.md` — Key 结构与数据模型设计
 - `docs/operations/release.md` — 发布流程
 - `docs/operations/packaging.md` — Windows 安装包说明

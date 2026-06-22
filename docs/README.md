@@ -15,6 +15,7 @@
 
 ## 现有文档
 
+- [存储技术栈决策](./architecture/storage-decision.md)
 - [WSL + Windows 开发与构建](./development/windows-wsl.md)
 
 ## 新增文档
