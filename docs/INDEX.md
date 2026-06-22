@@ -8,10 +8,24 @@
 |------|------|------|
 | 项目概览 | [`../README.md`](../README.md) | 项目定位、技术栈、结构概览 |
 | 文档中心 | [`README.md`](./README.md) | 文档分类规则、写作规范、未来规划 |
+| 功能需求 | [`product/requirements.md`](./product/requirements.md) | 功能定义、数据规模、行为规则 |
+| UI 界面设计 | [`product/ui-design.md`](./product/ui-design.md) | 布局、导航、交互模式 |
 | 存储技术栈决策 | [`architecture/storage-decision.md`](./architecture/storage-decision.md) | BuntDB + Bleve 选型理由与开发注意事项 |
 | WSL 开发指南 | [`development/windows-wsl.md`](./development/windows-wsl.md) | WSL + Windows 工具链开发与构建流程 |
 
 ## 按主题查找
+
+### 产品与需求
+
+| 问题 | 去哪里看 |
+|------|----------|
+| 三大功能模块是什么？ | [requirements.md](./product/requirements.md#三大功能模块) |
+| 图片管理怎么做？ | [requirements.md § 图片管理](./product/requirements.md#3-图片管理) |
+| 搜索能力？ | [requirements.md § 搜索能力](./product/requirements.md#搜索能力) |
+| 标签系统规则？ | [requirements.md § 标签系统](./product/requirements.md#标签系统) |
+| 备份怎么做？ | [requirements.md § 数据持久化与备份](./product/requirements.md#数据持久化与备份) |
+| 界面布局？ | [ui-design.md](./product/ui-design.md#整体布局) |
+| 侧边栏设计？ | [ui-design.md § 侧边栏](./product/ui-design.md#侧边栏) |
 
 ### 架构与存储
 
