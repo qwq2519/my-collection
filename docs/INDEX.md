@@ -20,6 +20,8 @@
 | 问题 | 去哪里看 |
 |------|----------|
 | 三大功能模块是什么？ | [requirements.md](./product/requirements.md#三大功能模块) |
+| URL 待归组队列？ | [requirements.md § 待归组队列](./product/requirements.md#待归组队列) |
+| 删除站点/URL？ | [requirements.md § 删除](./product/requirements.md#删除) |
 | 图片管理怎么做？ | [requirements.md § 图片管理](./product/requirements.md#3-图片管理) |
 | 搜索能力？ | [requirements.md § 搜索能力](./product/requirements.md#搜索能力) |
 | 标签系统规则？ | [requirements.md § 标签系统](./product/requirements.md#标签系统) |
@@ -34,6 +36,7 @@
 | 用什么存储方案？为什么？ | [storage-decision.md](./architecture/storage-decision.md#结论) |
 | 为什么不用 SQLite？ | [storage-decision.md § 为什么不选 SQLite](./architecture/storage-decision.md#为什么不选-sqlite) |
 | KV 和关系型数据库有什么区别？ | [storage-decision.md § 开发差异](./architecture/storage-decision.md#kvjson-vs-关系型开发差异) |
+| 写入事务怎么保证一致性？ | [storage-decision.md § 写入事务策略](./architecture/storage-decision.md#写入事务策略) |
 | 查询走哪个组件？ | [storage-decision.md § 职责分工](./architecture/storage-decision.md#职责分工) |
 
 ### 开发环境与工具链
