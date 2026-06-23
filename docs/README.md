@@ -17,6 +17,7 @@
 | 文档 | 说明 |
 |------|------|
 | [技术栈与存储](./global/tech-stack.md) | Wails + BuntDB + Bleve 选型、persist 目录、事务策略、备份 |
+| [数据结构](./global/data-structures.md) | BuntDB Key Schema、JSON 格式、Bleve 索引、persist 目录结构 |
 | [整体布局](./global/ui-layout.md) | 侧边栏、导航、搜索框、列表排序 |
 | [标签系统](./global/tag-system.md) | `::` 层级规则、生命周期、管理页面 |
 | [开发指南](./global/dev-guide.md) | WSL + Windows 开发环境与构建流程 |

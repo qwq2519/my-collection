@@ -4,28 +4,13 @@
 
 ## 待讨论
 
-### 1. 标签系统完善
+### ~~1. 标签系统完善~~ → 已完成
 
-当前 `global/tag-system.md` 定义了基本规则，以下细节待讨论：
+已重写 [global/tag-system.md](./global/tag-system.md)，补充 [global/data-structures.md](./global/data-structures.md) 中的 `url_tag` / `img_tag` 注册表结构。
 
-- **层级前缀级联重命名**：重命名 `前端` 为 `Frontend` 时，是否同时将 `前端::React` 更新为 `Frontend::React`？
-- **合并操作的具体语义**：将标签 A 合并到标签 B（A 消失，所有关联转移到 B）？还是合并为新标签 C？
-- **标签去重与冲突**：用户输入已存在的标签名时如何处理？大小写是否敏感？
-- **标签排序**：管理页面中标签按什么排序？字母序 / 关联数量 / 创建时间？
-- **标签上限**：千级上限达到后的处理方式（拒绝创建？提示清理？）
+### ~~2. 数据结构文档~~ → 已完成
 
-### 2. 数据结构文档
-
-计划新建 `global/data-structures.md`，集中描述：
-
-- **BuntDB Key Schema**：所有实体的 key 格式与 value JSON 结构
-  - site / bookmark / queue / note / folder / meta 等
-- **images.json 完整格式定义**
-- **tree.json（Merkle Tree）格式定义**
-- **Bleve 文档结构**：每种实体索引了哪些字段
-- **persist 目录的完整结构**
-
-统一放在一处便于对比和维护。
+已创建 [global/data-structures.md](./global/data-structures.md)。
 
 ### 3. URL 元数据获取方式
 

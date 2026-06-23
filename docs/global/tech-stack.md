@@ -113,10 +113,10 @@ persist/
 | 待归组队列读写 | BuntDB |
 | 批量删除 URL | BuntDB 事务 + 清理 Bleve |
 | 按 ID 精确查询 | BuntDB |
-| 按标签精确/前缀匹配（URL） | BuntDB 自定义索引 |
-| 标签模糊搜索、多标签组合 | Bleve |
+| 标签筛选（多选精确匹配） | Bleve keyword 精确匹配 |
+| 标签注册表（列表、count） | BuntDB 前缀扫描 `url_tag:*` / `img_tag:*` |
 | 笔记全文搜索 | Bleve |
-| 按站点列出所有收藏 | BuntDB 前缀扫描 |
+| 按站点列出所有收藏 | BuntDB 自定义索引 `idx:bm_site` |
 | 文件夹注册表 | BuntDB |
 | 图片元数据增删改 | 每文件夹 images.json → 同步更新 Bleve |
 | 图片标签搜索 | Bleve |
