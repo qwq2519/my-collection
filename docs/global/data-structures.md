@@ -10,6 +10,8 @@
 persist/
 ├── main.db                    ← BuntDB 主存储（单文件）
 ├── search.bleve/              ← Bleve 搜索索引目录（可重建）
+├── icons/                     ← 站点/书签图标（按域名命名，可重新抓取）
+│   └── {domain}.{ext}
 ├── note-images/               ← 笔记中粘贴的图片
 │   └── {note_id}/
 │       └── {hash}.{ext}
@@ -23,6 +25,7 @@ persist/
 
 - `main.db` + `image-folders/*/images_meta.json` 是核心数据，丢失不可恢复
 - `search.bleve/` 可从 main.db + images_meta.json 全量重建
+- `icons/` 可通过重新抓取恢复
 - `thumbnails/` 可从源图片重新生成
 - `note-images/` 是笔记引用的图片实体，删除则笔记中图片丢失
 
@@ -59,7 +62,7 @@ Key:   site:{site_id}
   "id": "a1b2c3d4-...",
   "title": "GitHub",
   "domain": "github.com",
-  "icon": "github.png",
+  "icon": "github.com.png",
   "description": "代码托管平台",
   "tags": ["开发", "工具::代码托管"],
   "created_at": "2026-06-22T10:00:00Z",
@@ -72,7 +75,7 @@ Key:   site:{site_id}
 | id | string | 是 | UUID，同 key 中的 `{site_id}` |
 | title | string | 是 | 显示名称 |
 | domain | string | 是 | 归一化后的完整域名（去 www），用于自动归组 |
-| icon | string | 否 | 图标文件名（存储方式待定） |
+| icon | string | 否 | 图标文件名，存储在 `persist/icons/`，以域名命名（如 `github.com.png`） |
 | description | string | 否 | 站点描述 |
 | tags | string[] | 否 | 标签列表，与书签共享同一套 URL 标签体系 |
 | created_at | string | 是 | ISO 8601 |
@@ -115,7 +118,7 @@ Key:   bm:{bm_id}
 | domain | string | 是 | 从 URL 提取并归一化的域名 |
 | site_id | string | 否 | 所属站点 ID；**空字符串表示在待归组队列中** |
 | title | string | 是 | 页面标题 |
-| icon | string | 否 | 页面图标 |
+| icon | string | 否 | 图标文件名，与站点共享 `persist/icons/{domain}.{ext}` |
 | description | string | 否 | 页面描述 |
 | tags | string[] | 否 | 标签列表，独立于站点 |
 | status | string | 否 | `"alive"` / `"dead"`，默认 `"alive"` |
@@ -128,8 +131,8 @@ Key:   bm:{bm_id}
 - 按站点列出书签：BuntDB 自定义索引 `idx:bm_site`，索引 `site_id` 字段
 - 按域名查找书签：BuntDB 自定义索引 `idx:bm_domain`，索引 `domain` 字段
 - 待归组队列：查询 `site_id == ""` 的书签（通过索引 `idx:bm_site` 扫描空值）
-- 标签精确/前缀匹配：BuntDB 自定义索引 `idx:bm_tags`
-- 全文搜索 / 多标签组合：走 Bleve
+- 标签筛选（单标签 / 多标签组合）：走 Bleve keyword 精确匹配（tags 为数组，BuntDB 不支持数组字段索引）
+- 全文搜索：走 Bleve
 
 **待归组队列说明：**
 
@@ -212,8 +215,10 @@ Key:   url_tag:{name}
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | name | string | 是 | 标签字符串（小写），同 key 中的 `{name}` |
-| count | int | 是 | 关联书签数量，增删标签时同步维护 |
+| count | int | 是 | 关联实体数量（站点 + 书签），增删标签时同步维护 |
 | created_at | string | 是 | ISO 8601，首次使用时自动创建 |
+
+站点和书签共享同一套 URL 标签体系，对 count 的贡献相同（各计 1）。
 
 **查询模式：**
 

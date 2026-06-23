@@ -92,6 +92,7 @@
 
 - `main.db` + `image-folders/*/images_meta.json` 是核心数据
 - `search.bleve/` 可从上述数据重建
+- `icons/` 可通过重新抓取恢复
 - `thumbnails/` 可通过重新扫描重建
 
 ## 职责分工
