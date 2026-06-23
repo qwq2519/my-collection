@@ -55,9 +55,9 @@ Go 后端涉及的异步操作需明确：
 - images_meta.json 已有 `schema_version`，BuntDB 数据也需要版本管理
 - 应用升级后数据格式变化的迁移机制
 
-### 9. 前端状态管理选型
+### ~~9. 前端状态管理选型~~ → 已完成
 
-React 应用需要选定状态管理方案，影响模块间数据流和搜索状态保留等行为。待选型后补充到 tech-stack.md。
+已选定 Zustand，写入 [tech-stack.md](./global/tech-stack.md#技术选型)。每模块独立 store，职责隔离。
 
 ### 10. Service 接口概览
 

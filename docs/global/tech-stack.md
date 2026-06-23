@@ -7,6 +7,7 @@
 | 框架 | Wails v3 | Go + Web 前端，桌面应用，纯 Go 无 CGO |
 | 后端 | Go 1.25 | 高性能、编译简单、单二进制部署 |
 | 前端 | React + TypeScript + Vite | 生态成熟、类型安全、构建快 |
+| 前端状态管理 | Zustand | 极轻量（~1KB），API 简单，每模块独立 store |
 | 主存储 | BuntDB | 内存 KV，自动持久化，纯 Go |
 | 搜索 | Bleve v2 | 全文搜索引擎，倒排索引，纯 Go |
 | 目标平台 | Windows 桌面 | 纯本地单机，不考虑多设备同步 |
