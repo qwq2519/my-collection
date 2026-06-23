@@ -8,7 +8,7 @@
 
 ## 快速开始
 
-本项目可在 WSL 中编辑代码，通过 Windows 工具链构建。详见 [WSL 开发指南](./docs/development/windows-wsl.md)。
+本项目可在 WSL 中编辑代码，通过 Windows 工具链构建。详见 [开发指南](./docs/global/dev-guide.md)。
 
 ```bash
 cmd.exe /C "wails3 dev"       # 开发模式
@@ -29,6 +29,5 @@ docs/                项目文档
 
 ## 文档
 
-- [文档索引](./docs/INDEX.md) — 按问题快速定位
-- [文档中心](./docs/README.md) — 分类规则与写作规范
-- [WSL 开发指南](./docs/development/windows-wsl.md) — 环境配置与构建流程
+- [文档导航](./docs/README.md) — 所有文档入口
+- [开发指南](./docs/global/dev-guide.md) — WSL + Windows 环境与构建
