@@ -166,4 +166,3 @@ ImageStore.Update(folder_id, changes):
 - 浏览器书签导入/导出
 - 全局快捷键唤起
 - 多设备同步
-- 批量操作（批量打 tag、批量删除）
