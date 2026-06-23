@@ -12,13 +12,9 @@
 
 已创建 [global/data-structures.md](./global/data-structures.md)。
 
-### 3. URL 元数据获取方式
+### ~~3. URL 元数据获取方式~~ → 已完成
 
-`url-bookmarks.md` 提到 icon、title、description 作为元数据，但未定义来源：
-
-- 用户手动填写？
-- 自动抓取（Open Graph / meta 标签）？
-- 自动抓取失败时的降级策略？
+已写入 [features/url-bookmarks.md](./features/url-bookmarks.md#元数据获取)。方案：表单旁"抓取"按钮，后端解析 HTML 返回 JSON，用户手动选择字段填入。
 
 ## 待补充（已有结论，需写入文档）
 

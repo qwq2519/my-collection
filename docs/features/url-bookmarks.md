@@ -7,26 +7,29 @@
 - **站点（Site）**：手动收藏，代表一个网站
 - **网址（Bookmark）**：具体 URL，系统按域名自动归组到对应站点下
 
+站点和书签功能类似，都有 title、icon、description、tags。区别在于展示时书签按 domain 归组到站点下。
+
 **站点元数据：**
 
 - title（显示名称，如"GitHub"）
 - domain（完整域名，含子域名，用于自动归组）
 - icon（站点图标）
 - description（站点描述）
+- tags（标签列表）
 
 **Bookmark 元数据：**
 
 - icon（页面图标）
 - title（标题）
 - description（描述）
-- tags（标签列表，独立于站点）
+- tags（标签列表）
 
 ### 行为规则
 
 - 用户先收藏一个站点
 - 后续添加的 URL 由系统按域名自动归组到对应站点
 - **添加 URL 时，若域名无对应站点则进入待归组队列**
-- 每条 URL 独立打 tag，不继承站点标签
+- 站点和书签各自独立打 tag，互不继承
 - 检索支持：title、域名、tag
 
 ### 待归组队列
@@ -70,6 +73,34 @@
 ### 存储
 
 URL 和站点数据存储在 BuntDB 中，tag 搜索走 Bleve 索引。详见 [技术栈与存储](../global/tech-stack.md)。
+
+### 元数据获取
+
+添加/编辑站点或书签时，表单旁提供**"抓取"按钮**，输入 URL 后可抓取页面元数据作为填写参考。
+
+**抓取流程：**
+
+1. 用户在表单中输入 URL，点击"抓取"
+2. 后端发 HTTP GET 请求，解析 HTML 返回结构化 JSON
+3. 抓取结果展示在表单旁边，用户手动选择需要的字段复制到表单中
+4. 抓取失败（超时/反爬/网络异常）时提示用户手动填写
+
+**抓取字段（后端可扩展）：**
+
+| 字段 | 来源 | 说明 |
+|------|------|------|
+| title | `<title>` 或 `og:title` | 页面标题 |
+| description | `<meta name="description">` 或 `og:description` | 页面描述 |
+| icon | `<link rel="icon">` 或 `{domain}/favicon.ico` | 页面图标 |
+| og_image | `og:image` | Open Graph 封面图 |
+
+后续可按需扩展更多 meta 标签（keywords、author、canonical 等）。
+
+**设计原则：**
+
+- 抓取是**辅助工具**，不自动填充表单，由用户决定使用哪些字段
+- 超时上限 10 秒，不阻塞 UI（异步请求）
+- 不缓存抓取结果，每次重新请求
 
 ## UI
 

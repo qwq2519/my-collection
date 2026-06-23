@@ -61,6 +61,7 @@ Key:   site:{site_id}
   "domain": "github.com",
   "icon": "github.png",
   "description": "代码托管平台",
+  "tags": ["开发", "工具::代码托管"],
   "created_at": "2026-06-22T10:00:00Z",
   "updated_at": "2026-06-22T10:00:00Z"
 }
@@ -73,6 +74,7 @@ Key:   site:{site_id}
 | domain | string | 是 | 归一化后的完整域名（去 www），用于自动归组 |
 | icon | string | 否 | 图标文件名（存储方式待定） |
 | description | string | 否 | 站点描述 |
+| tags | string[] | 否 | 标签列表，与书签共享同一套 URL 标签体系 |
 | created_at | string | 是 | ISO 8601 |
 | updated_at | string | 是 | ISO 8601 |
 
@@ -373,6 +375,17 @@ Bleve 索引目录：`persist/search.bleve/`
 所有实体共用一个 Bleve 索引，通过 `_type` 字段区分实体类型。
 
 ### 文档结构
+
+**站点（Site）：**
+
+| Bleve 字段 | 来源 | 索引方式 |
+|-----------|------|---------|
+| `_id` | `"site:{site_id}"` | — |
+| `_type` | `"site"` | keyword |
+| `title` | site.title | text（分词） |
+| `description` | site.description | text（分词） |
+| `domain` | site.domain | keyword |
+| `tags` | site.tags | keyword（多值） |
 
 **书签（Bookmark）：**
 
