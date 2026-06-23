@@ -59,6 +59,6 @@ Go 后端涉及的异步操作需明确：
 
 已选定 Zustand，写入 [tech-stack.md](./global/tech-stack.md#技术选型)。每模块独立 store，职责隔离。
 
-### 10. Service 接口概览
+### ~~10. Service 接口概览~~ → 已完成
 
-各 Service 的方法列表和大致职责，后续在实现过程中补充。约定见 [tech-stack.md - 接口约定](./global/tech-stack.md#接口约定)。
+已写入 [tech-stack.md - 接口约定](./global/tech-stack.md#接口约定)。包含 Service 列表、返回模式、分页结构、Events 事件、HTTP 扩展方案。

@@ -159,17 +159,93 @@ ImageStore.Update(folder_id, changes):
 
 ## 接口约定
 
-Wails 将 Go 结构体的公开方法直接暴露给前端调用，无需手写 REST API。接口文档以 **Go 函数注释**为主，不单独维护接口文档文件。
+Wails 将 Go 结构体的公开方法直接暴露给前端调用，无需手写 REST API。接口文档以 **Go 函数注释**为主，不单独维护接口文档文件（Go 注释会自动生成 TypeScript JSDoc）。
 
-**约定：**
+### Service 层
 
-- 每个 Service 结构体对应一个功能模块（如 `URLService`、`NoteService`、`ImageService`）
-- 公开方法即前端可调用的接口，方法签名 = 接口契约
+每个 Service 结构体对应一个功能模块，公开方法即前端可调用的接口：
+
+| Service | 职责 |
+|---------|------|
+| `URLService` | 站点/书签/待归组队列的增删改查 |
+| `NoteService` | 笔记的增删改查、图片管理 |
+| `ImageService` | 图片文件夹管理、扫描、标签 |
+| `TagService` | 标签管理（重命名/合并/删除/重算 count） |
+| `SettingService` | 应用设置、索引重建 |
+
+### 方法签名约定
+
 - 方法上方的 Go 注释说明：用途、参数含义、返回值、可能的错误
-- 入参和返回值统一使用 struct（非多返回值基础类型），便于 Wails 生成 TypeScript 类型绑定
+- 入参和返回值统一使用 struct，便于 Wails 生成 TypeScript 类型绑定
 - 错误通过 `error` 返回，前端侧为 rejected Promise
+- 指针字段表示可选（`*T` → TypeScript `T | null`）
 
-后续补充一份接口概览文档，梳理各 Service 的方法列表和大致职责，但不逐个方法写详细文档。
+**返回模式：**
+
+| 操作类型 | 返回签名 | 示例 |
+|---------|---------|------|
+| 单条查询 | `(*Entity, error)` | `GetBookmark(id string) (*Bookmark, error)` |
+| 分页列表 | `(*XxxListResult, error)` | `ListBookmarks(req BookmarkListReq) (*BookmarkListResult, error)` |
+| 创建/更新 | `(*Entity, error)` | `CreateBookmark(req CreateBookmarkReq) (*Bookmark, error)` |
+| 删除 | `error` | `DeleteBookmark(id string) error` |
+
+**分页请求/响应结构：**
+
+```go
+// 请求 — 每种实体各定义一个，包含该实体特有的筛选字段
+type BookmarkListReq struct {
+    Page     int      `json:"page"`
+    PageSize int      `json:"page_size"`
+    Search   string   `json:"search,omitempty"`
+    Tags     []string `json:"tags,omitempty"`
+    SiteID   string   `json:"site_id,omitempty"`
+    SortBy   string   `json:"sort_by,omitempty"`
+    SortDesc bool     `json:"sort_desc,omitempty"`
+}
+
+// 响应 — 每种实体各定义一个 ListResult
+type BookmarkListResult struct {
+    Items   []Bookmark `json:"items"`
+    Total   int        `json:"total"`
+    HasMore bool       `json:"has_more"`
+}
+```
+
+### 异步通知（Events）
+
+Service 方法用于请求-响应式调用。异步通知走 Wails Events 推送：
+
+| 事件名 | 时机 | 数据 |
+|--------|------|------|
+| `index:warning` | Bleve 写入失败 | 错误信息字符串 |
+| `image:scan-progress` | 图片扫描进行中 | `{ folder_id, scanned, total }` |
+| `image:scan-complete` | 图片扫描完成 | `{ folder_id, added, removed, modified }` |
+
+前端通过 `Events.On("event-name", callback)` 订阅。
+
+### 后续 HTTP 接口
+
+后续如需开放少量 HTTP 接口（如手机 share URL 到本机），不改动 Service 层，加一个 HTTP 薄壳：
+
+```text
+┌──────────────────────────────────┐
+│        前端 (Wails Bridge)        │
+└──────────────┬───────────────────┘
+               │
+┌──────────────▼───────────────────┐
+│          Service 层               │  ← 核心逻辑，唯一实现
+└──────────────▲───────────────────┘
+               │
+┌──────────────┴───────────────────┐
+│    HTTP Handler（标准库 net/http） │  ← 薄壳，仅解析请求 + 序列化响应
+│    监听 127.0.0.1:端口            │
+└──────────────────────────────────┘
+```
+
+- HTTP handler 直接调用 Service 方法，无需重复业务逻辑
+- 响应格式：直接 JSON 序列化 Service 返回的 struct，error 映射为 HTTP status code
+- 接口数量少，用标准库即可，不引入框架
+- 默认只监听本机（`127.0.0.1`），后续需局域网访问再开放
 
 ## 部署与扩展
 
