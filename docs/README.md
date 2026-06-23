@@ -1,44 +1,28 @@
-# 文档中心
+# 文档导航
 
-"资料收藏夹"项目文档。根目录 `README.md` 保留项目概览；详细说明统一放在 `docs/` 下。
+## 功能文档
 
-> 快速查找文档？看 [文档索引](./INDEX.md)。
+每个功能一个文件，从需求到方案到实现自包含。
 
-## 文档分类
-
-| 目录 | 职责 |
+| 文档 | 说明 |
 |------|------|
-| `development/` | 开发环境、本地调试、工具链、编码约定 |
-| `product/` | 产品目标、功能设计、用户流程（待补充） |
-| `architecture/` | 系统架构、数据模型、技术决策（待补充） |
-| `operations/` | 构建发布、安装包、版本管理（待补充） |
+| [URL 收藏](./features/url-bookmarks.md) | 站点、书签、待归组队列、域名匹配、存活检测 |
+| [笔记](./features/notes.md) | Markdown 短笔记 |
+| [图片管理](./features/image-manager.md) | 文件夹扫描、Merkle Tree、元数据、缩略图 |
 
-## 现有文档
+## 全局文档
 
-- [功能需求](./product/requirements.md)
-- [UI 界面设计](./product/ui-design.md)
-- [存储技术栈决策](./architecture/storage-decision.md)
-- [图片存储架构](./architecture/image-storage.md)
-- [WSL + Windows 开发与构建](./development/windows-wsl.md)
+跨功能的选型、架构和约定。
 
-## 新增文档
+| 文档 | 说明 |
+|------|------|
+| [技术栈与存储](./global/tech-stack.md) | Wails + BuntDB + Bleve 选型、persist 目录、事务策略、备份 |
+| [整体布局](./global/ui-layout.md) | 侧边栏、导航、搜索框、列表排序 |
+| [标签系统](./global/tag-system.md) | `::` 层级规则、生命周期、管理页面 |
+| [开发指南](./global/dev-guide.md) | WSL + Windows 开发环境与构建流程 |
 
-新文档放到对应分类目录，并更新本文件和 [INDEX.md](./INDEX.md)。
+## 约定
 
-每篇文档建议包含以下结构：
-
-```markdown
-# 标题
-
-## 目的
-说明这篇文档要解决的问题。
-
-## 读者
-谁应该阅读这篇文档。
-
-## 内容
-具体方案、步骤或约定。
-
-## 相关文档
-- [文档索引](../INDEX.md)
-```
+- 功能文档统一结构：需求 → 设计决策 → 实现方案 → UI
+- 新增功能直接在 `features/` 下创建新文件
+- 跨功能的全局决策放 `global/`
