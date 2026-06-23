@@ -29,5 +29,5 @@ docs/                项目文档
 
 ## 文档
 
-- [文档导航](./docs/README.md) — 所有文档入口
+- [文档导航](./docs/doc-index.md) — 所有文档入口
 - [开发指南](./docs/global/dev-guide.md) — WSL + Windows 环境与构建
