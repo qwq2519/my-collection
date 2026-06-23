@@ -156,6 +156,20 @@ ImageStore.Update(folder_id, changes):
 5. **数据格式 JSON**：统一使用 JSON，便于调试和导出
 6. **图片数据隔离**：按文件夹独立存储，不与 URL/笔记耦合
 
+## 接口约定
+
+Wails 将 Go 结构体的公开方法直接暴露给前端调用，无需手写 REST API。接口文档以 **Go 函数注释**为主，不单独维护接口文档文件。
+
+**约定：**
+
+- 每个 Service 结构体对应一个功能模块（如 `URLService`、`NoteService`、`ImageService`）
+- 公开方法即前端可调用的接口，方法签名 = 接口契约
+- 方法上方的 Go 注释说明：用途、参数含义、返回值、可能的错误
+- 入参和返回值统一使用 struct（非多返回值基础类型），便于 Wails 生成 TypeScript 类型绑定
+- 错误通过 `error` 返回，前端侧为 rejected Promise
+
+后续补充一份接口概览文档，梳理各 Service 的方法列表和大致职责，但不逐个方法写详细文档。
+
 ## 部署与扩展
 
 - **纯本地单机**桌面应用
