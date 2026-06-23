@@ -15,18 +15,18 @@ persist/
 ├── note-images/               ← 笔记中粘贴的图片
 │   └── {note_id}/
 │       └── {hash}.{ext}
-└── image-folders/                   ← 图片管理数据（每文件夹独立）
+└── media-folders/                   ← 媒体管理数据（每文件夹独立）
     └── {folder_id}/
-        ├── images_meta.json        ← 图片元数据
+        ├── media_meta.json         ← 媒体元数据（图片+视频）
         ├── tree_hash.json          ← Merkle Tree 快照
-        └── thumbnails/        ← 缩略图文件
-            └── {hash}.{ext}
+        └── thumbnails/             ← 缩略图文件
+            └── {hash}.jpg
 ```
 
-- `main.db` + `image-folders/*/images_meta.json` 是核心数据，丢失不可恢复
-- `search.bleve/` 可从 main.db + images_meta.json 全量重建
+- `main.db` + `media-folders/*/media_meta.json` 是核心数据，丢失不可恢复
+- `search.bleve/` 可从 main.db + media_meta.json 全量重建
 - `icons/` 可通过重新抓取恢复
-- `thumbnails/` 可从源图片重新生成
+- `thumbnails/` 可从源文件重新生成
 - `note-images/` 是笔记引用的图片实体，删除则笔记中图片丢失
 
 ## BuntDB Key Schema
@@ -40,9 +40,9 @@ BuntDB 以 `前缀:id` 作为 key，value 为 JSON 字符串。
 | `site:{id}` | 站点 | 手动创建的网站 |
 | `bm:{id}` | 书签 | 具体 URL，通过 `site_id` 字段关联站点 |
 | `note:{id}` | 笔记 | Markdown 短笔记 |
-| `folder:{id}` | 图片文件夹 | 注册表，实际图片数据在 JSON 文件中 |
+| `folder:{id}` | 媒体文件夹 | 注册表，实际媒体数据在 JSON 文件中 |
 | `url_tag:{name}` | URL 标签 | 标签注册表，`{name}` 为小写标签字符串 |
-| `img_tag:{name}` | 图片标签 | 标签注册表，`{name}` 为小写标签字符串 |
+| `media_tag:{name}` | 媒体标签 | 标签注册表，`{name}` 为小写标签字符串 |
 | `meta:{key}` | 元信息 | 应用级标志位 |
 
 ### ID 生成规则
@@ -172,7 +172,7 @@ Key:   note:{note_id}
 
 ---
 
-### folder — 图片文件夹注册表
+### folder — 媒体文件夹注册表
 
 ```text
 Key:   folder:{folder_id}
@@ -194,7 +194,7 @@ Key:   folder:{folder_id}
 | name | string | 是 | 显示名称 |
 | added_at | string | 是 | ISO 8601 |
 
-实际图片数据存储在 `persist/image-folders/{folder_id}/` 下的 JSON 文件中，不在 BuntDB 内。
+实际媒体数据存储在 `persist/media-folders/{folder_id}/` 下的 JSON 文件中，不在 BuntDB 内。
 
 ---
 
@@ -227,10 +227,10 @@ Key:   url_tag:{name}
 
 ---
 
-### img_tag — 图片标签注册表
+### media_tag — 媒体标签注册表
 
 ```text
-Key:   img_tag:{name}
+Key:   media_tag:{name}
 ```
 
 ```json
@@ -244,13 +244,13 @@ Key:   img_tag:{name}
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | name | string | 是 | 标签字符串（小写），同 key 中的 `{name}` |
-| count | int | 是 | 关联图片数量，增删标签时同步维护 |
+| count | int | 是 | 关联媒体文件数量，增删标签时同步维护 |
 | created_at | string | 是 | ISO 8601，首次使用时自动创建 |
 
 **查询模式：**
 
-- 列出所有图片标签：前缀扫描 `img_tag:*`
-- 按名称查找：`img_tag:{name}`
+- 列出所有媒体标签：前缀扫描 `media_tag:*`
+- 按名称查找：`media_tag:{name}`
 
 **标签规则**：大小写不敏感，存储时统一转小写。`::` 为逻辑层级分隔符，后端不解析层级关系。详见 [标签系统](./tag-system.md)。
 
@@ -285,28 +285,31 @@ BuntDB 支持基于 JSON 字段创建自定义索引，用于加速非主键查�
 
 ## 每文件夹 JSON 文件
 
-图片管理的元数据和变化检测快照以 JSON 文件存储在 `persist/image-folders/{folder_id}/` 下，独立于 BuntDB。
+媒体管理的元数据和变化检测快照以 JSON 文件存储在 `persist/media-folders/{folder_id}/` 下，独立于 BuntDB。
 
-### images_meta.json — 图片元数据
+### media_meta.json — 媒体元数据
 
 ```json
 {
   "schema_version": 1,
   "folder_id": "550e8400-e29b-41d4-a716-446655440000",
-  "images": {
+  "files": {
     "photo1.jpg": {
+      "media_type": "image",
       "tags": ["风景", "2026"],
       "thumbnail": "a3f2b8c1e5d7f9ab.jpg",
       "added_at": "2026-06-22T10:00:00Z",
       "file_size": 2048576,
       "dimensions": [1920, 1080]
     },
-    "子目录A/img1.jpg": {
-      "tags": ["人物::家人"],
-      "thumbnail": "7e4d9f02ab31c8e5.jpg",
-      "added_at": "2026-06-20T08:00:00Z",
-      "file_size": 3145728,
-      "dimensions": [4032, 3024]
+    "子目录A/trip.mp4": {
+      "media_type": "video",
+      "tags": ["旅行::日本"],
+      "thumbnail": "9c1d4e7f20a3b6d8.jpg",
+      "added_at": "2026-06-21T14:00:00Z",
+      "file_size": 104857600,
+      "dimensions": [1920, 1080],
+      "duration": 182.5
     }
   }
 }
@@ -316,12 +319,14 @@ BuntDB 支持基于 JSON 字段创建自定义索引，用于加速非主键查�
 |------|------|
 | `schema_version` | 格式版本号，用于后续迁移 |
 | `folder_id` | 冗余记录，与目录名一致 |
-| `images` | Map，key 为相对路径，value 为图片元数据 |
-| `images[*].tags` | 标签数组 |
-| `images[*].thumbnail` | 缩略图文件名（`sha256(folder_id/rel_path)[:16].ext`） |
-| `images[*].added_at` | 首次扫描发现的时间 |
-| `images[*].file_size` | 文件大小（字节） |
-| `images[*].dimensions` | `[width, height]` |
+| `files` | Map，key 为相对路径，value 为媒体元数据 |
+| `files[*].media_type` | `"image"` 或 `"video"` |
+| `files[*].tags` | 标签数组 |
+| `files[*].thumbnail` | 缩略图文件名（`sha256(folder_id/rel_path)[:16].jpg`） |
+| `files[*].added_at` | 首次扫描发现的时间 |
+| `files[*].file_size` | 文件大小（字节） |
+| `files[*].dimensions` | `[width, height]` |
+| `files[*].duration` | 仅视频，时长（秒），ffmpeg 不可用时为 null |
 
 写入策略：写临时文件 → rename 原子替换。
 
@@ -369,7 +374,7 @@ BuntDB 支持基于 JSON 字段创建自定义索引，用于加速非主键查�
 | `*.size` | 仅文件节点，文件大小 |
 | `*.children` | 仅目录节点，Map，key 为文件/目录名 |
 
-扫描时对比新旧 tree_hash.json 生成 diff，详见 [图片管理 - Merkle Tree 变化检测](../features/image-manager.md#merkle-tree-变化检测)。
+扫描时对比新旧 tree_hash.json 生成 diff，详见 [媒体管理 - Merkle Tree 变化检测](../features/media-manager.md#merkle-tree-变化检测)。
 
 ---
 
@@ -413,18 +418,19 @@ Bleve 索引目录：`persist/search.bleve/`
 | `title` | note.title | text（分词） |
 | `body` | note.body | text（分词，全文搜索） |
 
-**图片（Image）：**
+**媒体（Media）：**
 
 | Bleve 字段 | 来源 | 索引方式 |
 |-----------|------|---------|
 | `_id` | `"{folder_id}/{relative_path}"` | — |
-| `_type` | `"image"` | keyword |
+| `_type` | `"media"` | keyword |
+| `media_type` | `"image"` 或 `"video"` | keyword |
 | `filename` | 从 relative_path 提取文件名 | text（分词） |
-| `tags` | image.tags | keyword（多值） |
+| `tags` | file.tags | keyword（多值） |
 
 **标签筛选方式**：用户多选标签进行筛选时，查询走 Bleve keyword 精确匹配（AND 语义）。不支持 `前端::*` 前缀模糊查询。
 
-**重建来源**：Bleve 索引可从 BuntDB (main.db) + 各 images_meta.json 全量重建，不含不可恢复的数据。
+**重建来源**：Bleve 索引可从 BuntDB (main.db) + 各 media_meta.json 全量重建，不含不可恢复的数据。
 
 ---
 
@@ -434,11 +440,11 @@ Bleve 索引目录：`persist/search.bleve/`
 Site 1 ←——→ N Bookmark        (通过 bookmark.site_id 关联)
 Bookmark (site_id="") = 待归组队列
 
-Folder 1 ←——→ N Image         (通过 images_meta.json 内的 key)
+Folder 1 ←——→ N Media         (通过 media_meta.json 内的 key)
 
 Note                           (独立，无关联)
 
-url_tag  ←——→ N Bookmark      (标签名内嵌于 bookmark.tags 数组，注册表独立存储)
-img_tag  ←——→ N Image         (标签名内嵌于 image.tags 数组，注册表独立存储)
-URL 标签与图片标签完全独立，互不影响
+url_tag   ←——→ N Site/Bookmark (标签名内嵌于 tags 数组，注册表独立存储)
+media_tag ←——→ N Media         (标签名内嵌于 file.tags 数组，注册表独立存储)
+URL 标签与媒体标签完全独立，互不影响
 ```

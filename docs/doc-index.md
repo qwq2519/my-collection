@@ -8,7 +8,7 @@
 |------|------|
 | [URL 收藏](./features/url-bookmarks.md) | 站点、书签、待归组队列、域名匹配、存活检测 |
 | [笔记](./features/notes.md) | Markdown 短笔记 |
-| [图片管理](./features/image-manager.md) | 文件夹扫描、Merkle Tree、元数据、缩略图 |
+| [媒体管理](./features/media-manager.md) | 图片+视频、文件夹扫描、Merkle Tree、元数据、缩略图、ffmpeg |
 
 ## 全局文档
 

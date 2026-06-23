@@ -20,12 +20,12 @@
 ├─────────────────────────────────────────────────────────┤
 │                                                         │
 │  BuntDB (main.db)          每文件夹 JSON         Bleve  │
-│  - URL/笔记/站点/队列     - 图片标签与元数据    - 搜索索引│
+│  - URL/笔记/站点/队列     - 媒体标签与元数据    - 搜索索引│
 │  - 文件夹注册表           - Merkle Tree 快照    - 可重建  │
 │  - 内存常驻               - 启动时全量加载               │
 │  - 自动持久化到单文件      - 原子写入 JSON 文件           │
 │                                                         │
-│  persist/main.db     persist/image-folders/{id}/  search.bleve/│
+│  persist/main.db     persist/media-folders/{id}/  search.bleve/│
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -45,7 +45,7 @@
 | 高性能读 | 收藏查询、标签检索需要毫秒级响应 |
 | 减少磁盘 IO | 避免频繁读写磁盘，尽量内存操作 |
 | 标签前缀匹配 | `前端::React` 查询时能匹配所有 `前端::*` |
-| 灵活搜索 | 图片标签细粒度，接近全文检索 |
+| 灵活搜索 | 媒体标签细粒度，接近全文检索 |
 | 笔记内容搜索 | 支持对 note 正文全文搜索 |
 | 部署简单 | 桌面应用，不依赖外部服务 |
 
@@ -91,10 +91,10 @@
 
 **备份方式**：直接拷贝整个 `persist/` 文件夹。
 
-- `main.db` + `image-folders/*/images_meta.json` 是核心数据
+- `main.db` + `media-folders/*/media_meta.json` 是核心数据
 - `search.bleve/` 可从上述数据重建
 - `icons/` 可通过重新抓取恢复
-- `thumbnails/` 可通过重新扫描重建
+- `thumbnails/` 可从源文件重新生成
 
 ## 职责分工
 
@@ -105,13 +105,13 @@
 | 批量删除 URL | BuntDB 事务 + 清理 Bleve |
 | 按 ID 精确查询 | BuntDB |
 | 标签筛选（多选精确匹配） | Bleve keyword 精确匹配 |
-| 标签注册表（列表、count） | BuntDB 前缀扫描 `url_tag:*` / `img_tag:*` |
+| 标签注册表（列表、count） | BuntDB 前缀扫描 `url_tag:*` / `media_tag:*` |
 | 笔记全文搜索 | Bleve |
 | 按站点列出所有收藏 | BuntDB 自定义索引 `idx:bm_site` |
 | 文件夹注册表 | BuntDB |
-| 图片元数据增删改 | 每文件夹 images_meta.json → 同步更新 Bleve |
-| 图片标签搜索 | Bleve |
-| 图片文件变化检测 | 每文件夹 tree_hash.json |
+| 媒体元数据增删改 | 每文件夹 media_meta.json → 同步更新 Bleve |
+| 媒体标签搜索 | Bleve |
+| 媒体文件变化检测 | 每文件夹 tree_hash.json |
 
 ## 写入事务策略
 
@@ -138,24 +138,24 @@ Store.Create(entity):
 - 用户可在设置页手动触发重建；应用启动时若检测到该标志也自动重建
 - 重建完成后清除标志
 
-**图片元数据写入**（独立于 BuntDB 事务）：
+**媒体元数据写入**（独立于 BuntDB 事务）：
 
 ```text
-ImageStore.Update(folder_id, changes):
-  1. 更新内存中的 images 数据
-  2. 原子写入 images_meta.json (write tmp → rename)
+MediaStore.Update(folder_id, changes):
+  1. 更新内存中的 files 数据
+  2. 原子写入 media_meta.json (write tmp → rename)
   3. Bleve.Index(docs) → 更新索引
-  4. 若 Bleve 失败 → images_meta.json 已持久化，标记 index_dirty
+  4. 若 Bleve 失败 → media_meta.json 已持久化，标记 index_dirty
 ```
 
 ## 架构约束
 
 1. **Store 层封装写入**：每次写入先完成 BuntDB 持久化，再同步更新 Bleve；Bleve 失败不阻塞写入
 2. **Repository 接口隔离**：上层不直接依赖 BuntDB/Bleve API
-3. **Bleve 可重建**：从 main.db + images_meta.json 全量灌入，启动时自动检测 `index_dirty` 触发重建
+3. **Bleve 可重建**：从 main.db + media_meta.json 全量灌入，启动时自动检测 `index_dirty` 触发重建
 4. **索引状态可观测**：`index_dirty` 标志暴露给前端，用户可感知并手动触发重建
 5. **数据格式 JSON**：统一使用 JSON，便于调试和导出
-6. **图片数据隔离**：按文件夹独立存储，不与 URL/笔记耦合
+6. **媒体数据隔离**：按文件夹独立存储，不与 URL/笔记耦合
 
 ## 接口约定
 
@@ -169,7 +169,7 @@ Wails 将 Go 结构体的公开方法直接暴露给前端调用，无需手写 
 |---------|------|
 | `URLService` | 站点/书签/待归组队列的增删改查 |
 | `NoteService` | 笔记的增删改查、图片管理 |
-| `ImageService` | 图片文件夹管理、扫描、标签 |
+| `MediaService` | 媒体文件夹管理、扫描、缩略图、标签 |
 | `TagService` | 标签管理（重命名/合并/删除/重算 count） |
 | `SettingService` | 应用设置、索引重建 |
 
@@ -218,8 +218,8 @@ Service 方法用于请求-响应式调用。异步通知走 Wails Events 推送
 | 事件名 | 时机 | 数据 |
 |--------|------|------|
 | `index:warning` | Bleve 写入失败 | 错误信息字符串 |
-| `image:scan-progress` | 图片扫描进行中 | `{ folder_id, scanned, total }` |
-| `image:scan-complete` | 图片扫描完成 | `{ folder_id, added, removed, modified }` |
+| `media:scan-progress` | 媒体扫描进行中 | `{ folder_id, scanned, total }` |
+| `media:scan-complete` | 媒体扫描完成 | `{ folder_id, added, removed, modified }` |
 
 前端通过 `Events.On("event-name", callback)` 订阅。
 

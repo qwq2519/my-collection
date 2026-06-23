@@ -6,7 +6,7 @@
 
 ### ~~1. 标签系统完善~~ → 已完成
 
-已重写 [global/tag-system.md](./global/tag-system.md)，补充 [global/data-structures.md](./global/data-structures.md) 中的 `url_tag` / `img_tag` 注册表结构。
+已重写 [global/tag-system.md](./global/tag-system.md)，补充 [global/data-structures.md](./global/data-structures.md) 中的 `url_tag` / `media_tag` 注册表结构。
 
 ### ~~2. 数据结构文档~~ → 已完成
 
@@ -24,8 +24,8 @@
 
 - BuntDB 加载
 - 检测 `index_dirty` 标志，按需重建 Bleve
-- images_meta.json 全量加载到内存
-- 是否自动触发图片文件夹扫描
+- media_meta.json 全量加载到内存
+- 是否自动触发媒体文件夹扫描
 - 异常恢复策略
 
 ### ~~5. 编辑功能~~ → 已完成
@@ -37,7 +37,7 @@
 
 ### 6. 错误处理与空状态 UX
 
-- 图片文件夹不可访问时的提示
+- 媒体文件夹不可访问时的提示
 - 搜索无结果的空状态
 - 首次使用的引导
 - 加载中状态
@@ -46,13 +46,13 @@
 
 Go 后端涉及的异步操作需明确：
 
-- 图片扫描、缩略图生成、URL 存活检测的并发策略
+- 媒体扫描、缩略图生成、URL 存活检测的并发策略
 - goroutine 并发数限制
 - 扫描进行中的读写竞态处理
 
 ### 8. 数据迁移策略
 
-- images_meta.json 已有 `schema_version`，BuntDB 数据也需要版本管理
+- media_meta.json 已有 `schema_version`，BuntDB 数据也需要版本管理
 - 应用升级后数据格式变化的迁移机制
 
 ### ~~9. 前端状态管理选型~~ → 已完成
