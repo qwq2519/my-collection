@@ -38,8 +38,10 @@
 
 ### 删除
 
-- 不支持删除整个站点：必须先手动删除站点下所有 URL
+- **不支持站点级联删除**：不能一键删除站点及其下所有 URL
+- 站点下无 URL 时可删除空站点
 - 支持删除单条 URL
+- 支持**批量选择删除**：列表中多选 URL 后批量删除
 - 删除操作需二次确认
 
 ### URL 存活检测
@@ -61,6 +63,9 @@
 
 - `github.com`、`gist.github.com`、`docs.github.com` 视为不同站点
 - `www.example.com` 和 `example.com` 视为同一站点（归一化后都是 `example.com`）
+- **不区分协议**：`http://` 和 `https://` 视为同一站点，统一以域名为准
+- **路径不参与站点划分**：如 `notion.site/userA` 和 `notion.site/userB` 均归入 `notion.site` 站点
+- **拒绝 localhost 和 IP 地址**：`localhost`、`127.0.0.1`、`192.168.x.x` 等地址不允许作为收藏，添加时直接拒绝并提示
 
 ### 存储
 

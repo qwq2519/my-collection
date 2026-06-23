@@ -111,7 +111,7 @@ persist/
 |------|-----------|
 | 增删改收藏/笔记 | BuntDB → 同步更新 Bleve |
 | 待归组队列读写 | BuntDB |
-| 删除站点（级联删除 URL） | BuntDB 事务 + 清理 Bleve |
+| 批量删除 URL | BuntDB 事务 + 清理 Bleve |
 | 按 ID 精确查询 | BuntDB |
 | 按标签精确/前缀匹配（URL） | BuntDB 自定义索引 |
 | 标签模糊搜索、多标签组合 | Bleve |
@@ -124,20 +124,28 @@ persist/
 
 ## 写入事务策略
 
-同步事务，任一步骤失败则整体回滚，用户重新提交：
+BuntDB 和 Bleve 不具备跨组件原子性。策略：**BuntDB 先写先提交，Bleve 后写；Bleve 失败时不回滚 BuntDB，而是标记索引脏并通知前端。**
 
 ```text
 Store.Create(entity):
-  1. BuntDB.Update(tx) → 写入 KV
+  1. BuntDB.Update(tx) → 写入 KV（提交）
   2. Bleve.Index(doc)  → 更新索引
-  3. 任一失败 → 回滚 BuntDB 事务，返回错误
+  3. 若 Bleve 失败 → BuntDB 数据已持久化，标记 index_dirty，返回结果 + 索引异常警告
 ```
 
 | 场景 | 处理 |
 |------|------|
 | BuntDB 写入失败 | 事务回滚，Bleve 不执行，返回错误 |
-| BuntDB 成功、Bleve 失败 | 回滚 BuntDB 事务，返回错误，用户重试 |
-| 应用崩溃 | BuntDB AOF 保证持久化，Bleve 可重建 |
+| BuntDB 成功、Bleve 失败 | 数据已写入，标记 `index_dirty`，返回成功 + 索引异常警告；前端展示"索引异常"状态 |
+| 应用崩溃 | BuntDB AOF 保证持久化，启动时检测 `index_dirty` 标志自动重建 Bleve |
+
+**索引脏标志（`index_dirty`）**：
+
+- 存储在 BuntDB 中：`meta:index_dirty → true`
+- Bleve 写入失败时置为 `true`
+- 前端可查询该标志，在 UI 顶部展示"搜索索引异常，建议重建"提示
+- 用户可在设置页手动触发重建；应用启动时若检测到该标志也自动重建
+- 重建完成后清除标志
 
 **图片元数据写入**（独立于 BuntDB 事务）：
 
@@ -146,16 +154,17 @@ ImageStore.Update(folder_id, changes):
   1. 更新内存中的 images 数据
   2. 原子写入 images.json (write tmp → rename)
   3. Bleve.Index(docs) → 更新索引
-  4. 若 Bleve 失败 → images.json 已持久化，标记需重建索引
+  4. 若 Bleve 失败 → images.json 已持久化，标记 index_dirty
 ```
 
 ## 架构约束
 
-1. **Store 层封装事务**：每次写入同步完成主存储 + Bleve 更新
+1. **Store 层封装写入**：每次写入先完成 BuntDB 持久化，再同步更新 Bleve；Bleve 失败不阻塞写入
 2. **Repository 接口隔离**：上层不直接依赖 BuntDB/Bleve API
-3. **Bleve 可重建**：从 main.db + images.json 全量灌入
-4. **数据格式 JSON**：统一使用 JSON，便于调试和导出
-5. **图片数据隔离**：按文件夹独立存储，不与 URL/笔记耦合
+3. **Bleve 可重建**：从 main.db + images.json 全量灌入，启动时自动检测 `index_dirty` 触发重建
+4. **索引状态可观测**：`index_dirty` 标志暴露给前端，用户可感知并手动触发重建
+5. **数据格式 JSON**：统一使用 JSON，便于调试和导出
+6. **图片数据隔离**：按文件夹独立存储，不与 URL/笔记耦合
 
 ## 部署与扩展
 
