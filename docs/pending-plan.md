@@ -28,7 +28,7 @@
 
 - BuntDB 加载
 - 检测 `index_dirty` 标志，按需重建 Bleve
-- images.json 全量加载到内存
+- images_meta.json 全量加载到内存
 - 是否自动触发图片文件夹扫描
 - 异常恢复策略
 
@@ -58,5 +58,5 @@ Go 后端涉及的异步操作需明确：
 
 ### 8. 数据迁移策略
 
-- images.json 已有 `schema_version`，BuntDB 数据也需要版本管理
+- images_meta.json 已有 `schema_version`，BuntDB 数据也需要版本管理
 - 应用升级后数据格式变化的迁移机制

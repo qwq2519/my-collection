@@ -24,7 +24,7 @@
 │  - 内存常驻               - 启动时全量加载               │
 │  - 自动持久化到单文件      - 原子写入 JSON 文件           │
 │                                                         │
-│  persist/main.db     persist/folders/{id}/  search.bleve/│
+│  persist/main.db     persist/image-folders/{id}/  search.bleve/│
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -86,22 +86,11 @@
 
 ## persist 目录
 
-所有持久化数据集中存放，是唯一需要备份的目录：
-
-```text
-persist/
-├── main.db              ← BuntDB（URL、笔记、文件夹注册表）
-├── search.bleve/        ← Bleve 搜索索引（可重建）
-└── folders/             ← 图片数据（每文件夹独立）
-    └── {folder_id}/
-        ├── images.json  ← 图片元数据（标签等）
-        ├── tree.json    ← Merkle Tree 快照
-        └── thumbnails/  ← 缩略图
-```
+所有持久化数据集中存放，是唯一需要备份的目录。完整目录结构和各文件格式详见 [数据结构](./data-structures.md#persist-目录结构)。
 
 **备份方式**：直接拷贝整个 `persist/` 文件夹。
 
-- `main.db` + `folders/*/images.json` 是核心数据
+- `main.db` + `image-folders/*/images_meta.json` 是核心数据
 - `search.bleve/` 可从上述数据重建
 - `thumbnails/` 可通过重新扫描重建
 
@@ -118,9 +107,9 @@ persist/
 | 笔记全文搜索 | Bleve |
 | 按站点列出所有收藏 | BuntDB 自定义索引 `idx:bm_site` |
 | 文件夹注册表 | BuntDB |
-| 图片元数据增删改 | 每文件夹 images.json → 同步更新 Bleve |
+| 图片元数据增删改 | 每文件夹 images_meta.json → 同步更新 Bleve |
 | 图片标签搜索 | Bleve |
-| 图片文件变化检测 | 每文件夹 tree.json |
+| 图片文件变化检测 | 每文件夹 tree_hash.json |
 
 ## 写入事务策略
 
@@ -152,16 +141,16 @@ Store.Create(entity):
 ```text
 ImageStore.Update(folder_id, changes):
   1. 更新内存中的 images 数据
-  2. 原子写入 images.json (write tmp → rename)
+  2. 原子写入 images_meta.json (write tmp → rename)
   3. Bleve.Index(docs) → 更新索引
-  4. 若 Bleve 失败 → images.json 已持久化，标记 index_dirty
+  4. 若 Bleve 失败 → images_meta.json 已持久化，标记 index_dirty
 ```
 
 ## 架构约束
 
 1. **Store 层封装写入**：每次写入先完成 BuntDB 持久化，再同步更新 Bleve；Bleve 失败不阻塞写入
 2. **Repository 接口隔离**：上层不直接依赖 BuntDB/Bleve API
-3. **Bleve 可重建**：从 main.db + images.json 全量灌入，启动时自动检测 `index_dirty` 触发重建
+3. **Bleve 可重建**：从 main.db + images_meta.json 全量灌入，启动时自动检测 `index_dirty` 触发重建
 4. **索引状态可观测**：`index_dirty` 标志暴露给前端，用户可感知并手动触发重建
 5. **数据格式 JSON**：统一使用 JSON，便于调试和导出
 6. **图片数据隔离**：按文件夹独立存储，不与 URL/笔记耦合

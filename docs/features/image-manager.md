@@ -56,19 +56,7 @@ JPG/JPEG、PNG、GIF、WebP、BMP。
 
 ### 存储结构
 
-```text
-persist/folders/
-└── {folder_id}/
-    ├── images.json      ← 该文件夹所有图片的元数据
-    ├── tree.json        ← Merkle Tree 快照
-    └── thumbnails/      ← 缩略图
-```
-
-BuntDB 只存文件夹注册表：
-
-```text
-folder:{folder_id} → { "path": "D:\\Photos", "name": "照片", "added_at": "..." }
-```
+每文件夹独立存储在 `persist/image-folders/{folder_id}/` 下，BuntDB 只存文件夹注册表。完整目录结构和 KV/JSON 格式详见 [数据结构](../global/data-structures.md#persist-目录结构)。
 
 ### 核心设计：folder_id + 相对路径
 
@@ -82,34 +70,13 @@ relative_path = 从文件夹根目录算起的相对路径（如 "子目录A/img
 
 文件夹移动时只需更新 BuntDB 中一条注册表记录，所有元数据文件无需改动。
 
-### images.json 格式
+### images_meta.json 格式
 
-```json
-{
-  "schema_version": 1,
-  "folder_id": "550e8400-e29b-41d4-a716-446655440000",
-  "images": {
-    "photo1.jpg": {
-      "tags": ["风景", "2026"],
-      "thumbnail": "a3f2b8c1e5d7f9ab.jpg",
-      "added_at": "2026-06-22T10:00:00Z",
-      "file_size": 2048576,
-      "dimensions": [1920, 1080]
-    },
-    "子目录A/img1.jpg": {
-      "tags": ["人物::家人"],
-      "thumbnail": "7e4d9f02ab31c8e5.jpg",
-      "added_at": "2026-06-20T08:00:00Z",
-      "file_size": 3145728,
-      "dimensions": [4032, 3024]
-    }
-  }
-}
-```
+完整字段定义详见 [数据结构 - images_meta.json](../global/data-structures.md#images_metajson--图片元数据)。
 
 写入策略："写临时文件 → rename"原子写入。内存策略：启动时全量加载。
 
-> **扩展性备注**：当前方案下，单文件夹图片量过大（数千张以上）时 images.json 文件会较大，每次修改需重写整个文件。当前数据规模可接受，后续若出现性能瓶颈再考虑分片或增量写入策略。
+> **扩展性备注**：当前方案下，单文件夹图片量过大（数千张以上）时 images_meta.json 文件会较大，每次修改需重写整个文件。当前数据规模可接受，后续若出现性能瓶颈再考虑分片或增量写入策略。
 
 ### 缩略图
 
@@ -117,10 +84,10 @@ relative_path = 从文件夹根目录算起的相对路径（如 "子目录A/img
 
 ```text
 示例：sha256("550e8400.../子目录A/img1.jpg")[:16] = "7e4d9f02ab31c8e5"
-文件：persist/folders/{folder_id}/thumbnails/7e4d9f02ab31c8e5.jpg
+文件：persist/image-folders/{folder_id}/thumbnails/7e4d9f02ab31c8e5.jpg
 ```
 
-images.json 中保存缩略图文件名用于前端展示，原始相对路径作为 key 用于定位源文件。
+images_meta.json 中保存缩略图文件名用于前端展示，原始相对路径作为 key 用于定位源文件。
 
 生成时机：首次扫描 / 文件修改时重新生成 / 文件删除时同步删除。
 
@@ -167,16 +134,16 @@ scan(dir_path, cached_node):
 
 | 变更类型 | 判定 | 处理 |
 |---------|------|------|
-| 新增 | 新树有、旧树无 | 生成缩略图 + 写 images.json + 更新 Bleve |
-| 删除 | 旧树有、新树无 | 删缩略图 + 从 images.json 移除 + 更新 Bleve |
-| 修改 | hash 不同 | 重新生成缩略图 + 更新 images.json |
+| 新增 | 新树有、旧树无 | 生成缩略图 + 写 images_meta.json + 更新 Bleve |
+| 删除 | 旧树有、新树无 | 删缩略图 + 从 images_meta.json 移除 + 更新 Bleve |
+| 修改 | hash 不同 | 重新生成缩略图 + 更新 images_meta.json |
 | 子目录重命名 | "A 消失 + B 出现"且 hash 相同 | 批量更新 relative_path + 重算缩略图名 |
 
 **扁平目录分桶**（可选）：目录下 > 500 文件时按 100 个一组分桶，首版可不做。
 
 ### 搜索索引
 
-Bleve 文档 ID = `{folder_id}/{relative_path}`，索引 tags 和 filename。可从 images.json 全量重建。
+Bleve 文档 ID = `{folder_id}/{relative_path}`，索引 tags 和 filename。可从 images_meta.json 全量重建。
 
 ### 文件夹生命周期
 
@@ -186,7 +153,7 @@ Bleve 文档 ID = `{folder_id}/{relative_path}`，索引 tags 和 filename。可
 1. 验证路径存在、可读、不与已有文件夹嵌套
 2. 生成 folder_id (UUID)
 3. 写入 main.db: folder:{folder_id}
-4. 创建 persist/folders/{folder_id}/
+4. 创建 persist/image-folders/{folder_id}/
 5. 触发全量扫描
 ```
 
@@ -195,7 +162,7 @@ Bleve 文档 ID = `{folder_id}/{relative_path}`，索引 tags 和 filename。可
 ```text
 1. 从 main.db 删除 folder:{folder_id}
 2. 从 Bleve 删除该 folder_id 下所有文档
-3. 删除 persist/folders/{folder_id}/ 整个目录
+3. 删除 persist/image-folders/{folder_id}/ 整个目录
 4. 释放内存
 ```
 
@@ -211,11 +178,11 @@ Bleve 文档 ID = `{folder_id}/{relative_path}`，索引 tags 和 filename。可
 
 | 场景 | 处理 |
 |------|------|
-| tree.json 不存在/损坏 | 全量扫描重建 |
-| images.json 不存在/损坏 | 全量扫描重建（标签数据丢失） |
+| tree_hash.json 不存在/损坏 | 全量扫描重建 |
+| images_meta.json 不存在/损坏 | 全量扫描重建（标签数据丢失） |
 | thumbnails/ 缺失 | 从源图片重新生成 |
 | schema_version 不匹配 | 格式迁移或全量重建 |
-| 用户"强制重建" | 删除 `folders/{id}/` 目录后重新扫描 |
+| 用户"强制重建" | 删除 `image-folders/{id}/` 目录后重新扫描 |
 
 ---
 
