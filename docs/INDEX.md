@@ -11,6 +11,7 @@
 | 功能需求 | [`product/requirements.md`](./product/requirements.md) | 功能定义、数据规模、行为规则 |
 | UI 界面设计 | [`product/ui-design.md`](./product/ui-design.md) | 布局、导航、交互模式 |
 | 存储技术栈决策 | [`architecture/storage-decision.md`](./architecture/storage-decision.md) | BuntDB + Bleve 选型理由与开发注意事项 |
+| 图片存储架构 | [`architecture/image-storage.md`](./architecture/image-storage.md) | 图片元数据管理、Merkle Tree 变化检测、文件夹生命周期 |
 | WSL 开发指南 | [`development/windows-wsl.md`](./development/windows-wsl.md) | WSL + Windows 工具链开发与构建流程 |
 
 ## 按主题查找
@@ -38,6 +39,11 @@
 | KV 和关系型数据库有什么区别？ | [storage-decision.md § 开发差异](./architecture/storage-decision.md#kvjson-vs-关系型开发差异) |
 | 写入事务怎么保证一致性？ | [storage-decision.md § 写入事务策略](./architecture/storage-decision.md#写入事务策略) |
 | 查询走哪个组件？ | [storage-decision.md § 职责分工](./architecture/storage-decision.md#职责分工) |
+| 图片元数据存在哪？ | [image-storage.md § 存储结构](./architecture/image-storage.md#存储结构) |
+| 图片文件夹变化怎么检测？ | [image-storage.md § Merkle Tree](./architecture/image-storage.md#文件变化检测merkle-tree) |
+| 文件夹移动了怎么办？ | [image-storage.md § 文件夹移动处理](./architecture/image-storage.md#文件夹移动处理) |
+| 缩略图怎么命名和管理？ | [image-storage.md § 缩略图](./architecture/image-storage.md#缩略图) |
+| images.json 什么格式？ | [image-storage.md § images.json](./architecture/image-storage.md#元数据文件imagesjson) |
 
 ### 开发环境与工具链
 
@@ -72,6 +78,6 @@
 - `docs/product/vision.md` — 产品目标与边界
 - `docs/product/features.md` — 功能清单与优先级
 - `docs/architecture/overview.md` — 整体架构设计
-- `docs/architecture/data-model.md` — Key 结构与数据模型设计
+- `docs/architecture/data-model.md` — Key 结构与数据模型设计（BuntDB main.db）
 - `docs/operations/release.md` — 发布流程
 - `docs/operations/packaging.md` — Windows 安装包说明

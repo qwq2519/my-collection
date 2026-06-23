@@ -93,62 +93,11 @@ Markdown 格式的短笔记，结构为 **title（必填）+ body**。
 
 #### 管理方式
 
-采用"集中管理"模式，所有元数据统一存储在 `persist/` 目录：
-
 - **用户手动指定**要管理的图片文件夹（支持多个）
+- 每个文件夹可包含多个子文件夹，组织粒度为"一个文件夹"
 - 多个文件夹之间**不能存在父子嵌套关系**（如不能同时添加 `D:\Photos` 和 `D:\Photos\2026`）
 - 添加后由后台**异步扫描处理**，不阻塞 UI
-- **不在用户图片文件夹中写入任何文件**（无 `.collections-cache`），避免污染用户目录
-
-```text
-persist/
-├── data.db              ← BuntDB：图片元数据（标签、路径等）
-├── search.bleve/        ← Bleve：图片标签搜索索引
-├── image-cache/         ← 缩略图 + 哈希树快照
-│   ├── thumbnails/      ← 缩略图文件
-│   └── tree-snapshots/  ← 各文件夹的哈希树 JSON
-```
-
-#### 元数据存储
-
-图片的标签、路径映射等元数据存储在 BuntDB 中，是唯一权威数据源（single source of truth）。不存在本地缓存文件与 persist 之间的同步问题。
-
-#### 缓存文件职责
-
-- 记录该文件夹下图片的元数据（标签、缩略图路径等）
-- 支持增量索引：文件变化时先更新缓存文件
-- 缓存文件再同步复制到项目的 persist 目录下
-
-#### 缓存文件格式：JSON
-
-采用 JSON 全量快照，通过"写临时文件 → rename"保证原子性。
-
-**数据规模估算：** 单条图片记录约 300 字节，3000 张图片约 900KB，万张约 3MB。SSD 上全量重写耗时 < 5ms，无性能瓶颈。
-
-**备选方案对比：**
-
-| 格式 | 写入方式 | 磁盘 IO | 可读性 | 增量能力 | 复杂度 |
-|------|----------|---------|--------|----------|--------|
-| **JSON（选定）** | 全量重写 | 中 | 高，可直接查看编辑 | 无，但小文件重写代价极低 | 最低 |
-| MessagePack | 全量重写 | 中 | 无，二进制不可读 | 无 | 低 |
-| AOF 追加日志 | 仅追加 | 极低 | 中，文本可读 | 天然增量 | 中（需 compact） |
-
-**选择 JSON 的理由：**
-
-- 单文件夹图片数在千级规模，JSON 重写开销可忽略（< 5ms）
-- 人类可读，调试和手动修复方便
-- Go 标准库直接支持，零外部依赖
-- 原子写入（write tmp → rename）解决崩溃安全性问题
-- 如果未来某文件夹图片超万级确实出现瓶颈，再局部升级为 AOF
-
-**不选 MessagePack 的理由：** 相比 JSON 节省 30-50% 体积（900KB→500KB），但失去可读性，收益不值得。
-
-**不选 AOF 的理由：** 增量追加在小数据量时优势不明显，但增加了 compact 实现复杂度和启动时日志重放逻辑。
-
-#### 缩略图
-
-- 预生成缩略图，存放在缓存体系中
-- 用于图片列表快速浏览，避免每次读原图
+- **不在用户图片文件夹中写入任何文件**，避免污染用户目录
 
 #### 支持格式
 
@@ -158,44 +107,17 @@ persist/
 
 - **触发时机**：应用启动时 + 用户手动触发扫描
 - **不做实时监听**（不使用 fsnotify）
-
-**检测策略：基于 mtime + size 的哈希树（Merkle Tree）**
-
-对每个文件用 `hash(文件名 + mtime + size)` 作为叶子节点指纹，按目录层级构建哈希树：
-
-```text
-           root_hash
-          /         \
-    dir_hash_A     dir_hash_B       ← 子目录级
-    /    \           /    \
-  f1     f2        f3     f4        ← 文件级
-  hash(name       hash(name
-  +mtime+size)    +mtime+size)
-```
-
-检测流程：
-
-| 步骤 | 说明 |
-|------|------|
-| 1. 比较根 hash | 相同 → 整个文件夹无变化，零开销跳过 |
-| 2. 逐层下钻 | 根不同 → 比较子目录 hash，跳过未变化的子目录 |
-| 3. 定位变更文件 | 进入变化的子目录，对比文件级指纹，发现新增/删除/修改 |
-| 4. 可疑确认 | mtime 变但 size 不变时，算内容 hash 兜底确认 |
-
-**为什么用 Merkle Tree 而不是简单遍历：**
-
-- 元数据是集中存储在 persist/ 中的，不是分散在各用户文件夹里。当用户移动文件夹位置或重命名子目录时，需要高效识别"哪些文件实际没变、哪些需要重建索引"
-- 子目录重命名时，该目录的子树 hash 不变（内部文件 mtime/size 未变），可快速判断是重命名而非新增+删除
-- 万级文件分布在多个子目录时，大部分子树 hash 未变则直接跳过，避免全量 readdir
-- 哈希树快照以 JSON 存储在 `persist/image-cache/tree-snapshots/`，首次全量构建，后续仅对比和局部更新
+- 基于 Merkle Tree + 目录 mtime 剪枝实现快速增量检测
 
 #### 文件删除处理
 
-用户在文件系统中删除图片后，下次扫描时自动从缓存和搜索索引中移除。
+用户在文件系统中删除图片后，下次扫描时自动从元数据和搜索索引中移除。
 
 #### 数据规模
 
 - 图片：万级（不确定，可能更多）
+
+> 存储架构、Merkle Tree 算法、元数据文件格式等实现细节详见 [图片存储架构](../architecture/image-storage.md)。
 
 ---
 
@@ -250,20 +172,23 @@ Tag 是 URL 和图片搜索的第一优先级。
 
 ```text
 persist/
-├── data.db              ← BuntDB 主数据文件（URL、笔记、图片元数据、标签）
-├── search.bleve/        ← Bleve 搜索索引（可从 data.db 重建）
-└── image-cache/         ← 缩略图 + 哈希树快照
-    ├── thumbnails/      ← 预生成的缩略图
-    └── tree-snapshots/  ← 各文件夹的 Merkle Tree JSON
+├── main.db              ← BuntDB 主数据文件（URL、笔记、文件夹注册表）
+├── search.bleve/        ← Bleve 搜索索引（可从源数据重建）
+└── folders/             ← 图片文件夹数据（每文件夹独立存储）
+    └── {folder_id}/
+        ├── images.json  ← 图片元数据（标签、缩略图路径等）
+        ├── tree.json    ← Merkle Tree 快照
+        └── thumbnails/  ← 缩略图文件
 ```
 
 ### 备份方式
 
 直接拷贝整个 `persist/` 文件夹即可完成完整备份和恢复。
 
-- `data.db` 包含所有业务数据（含图片标签），是备份的核心
-- `search.bleve/` 可从 `data.db` 重建，非必须备份但能加速恢复
-- `image-cache/` 可通过重新扫描用户文件夹重建，非必须备份
+- `main.db` 包含 URL、笔记等业务数据和文件夹注册表，是备份的核心
+- `folders/` 包含图片元数据和标签，也是核心备份内容
+- `search.bleve/` 可从 `main.db` + `folders/*/images.json` 重建，非必须备份但能加速恢复
+- `folders/*/thumbnails/` 可通过重新扫描用户文件夹重建，非必须备份
 
 ### 数据流
 
@@ -272,13 +197,14 @@ persist/
         │
         │ 应用启动 / 手动扫描
         ▼
-persist/data.db（写入元数据 + 标签）
+persist/folders/{id}/images.json（写入图片元数据 + 标签）
+persist/folders/{id}/tree.json（更新哈希树快照）
+persist/folders/{id}/thumbnails/（生成缩略图）
 persist/search.bleve/（同步更新索引）
-persist/image-cache/（生成缩略图 + 更新哈希树）
         │
         │ 运行时查询
         ▼
-内存（BuntDB 常驻 + Bleve 查询）
+内存（images.json 全量加载 + BuntDB 常驻 + Bleve 查询）
 ```
 
 ---
@@ -310,5 +236,6 @@ persist/image-cache/（生成缩略图 + 更新哈希树）
 ## 相关文档
 
 - [UI 界面设计](./ui-design.md)
+- [图片存储架构](../architecture/image-storage.md)
 - [存储技术栈决策](../architecture/storage-decision.md)
 - [文档索引](../INDEX.md)

@@ -18,6 +18,7 @@
 - [功能需求](./product/requirements.md)
 - [UI 界面设计](./product/ui-design.md)
 - [存储技术栈决策](./architecture/storage-decision.md)
+- [图片存储架构](./architecture/image-storage.md)
 - [WSL + Windows 开发与构建](./development/windows-wsl.md)
 
 ## 新增文档
