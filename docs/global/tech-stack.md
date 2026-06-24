@@ -331,14 +331,13 @@ Wails 将 Go 结构体的公开方法直接暴露给前端调用，无需手写 
 
 ```go
 // 请求 — 每种实体各定义一个，包含该实体特有的筛选字段
+// 排序固定为 updated_at 降序，不暴露排序参数
 type BookmarkListReq struct {
     Page     int      `json:"page"`
     PageSize int      `json:"page_size"`
     Search   string   `json:"search,omitempty"`
     Tags     []string `json:"tags,omitempty"`
     SiteID   string   `json:"site_id,omitempty"`
-    SortBy   string   `json:"sort_by,omitempty"`
-    SortDesc bool     `json:"sort_desc,omitempty"`
 }
 
 // 响应 — 每种实体各定义一个 ListResult
