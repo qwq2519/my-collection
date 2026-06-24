@@ -19,8 +19,9 @@ persist/
     └── {folder_id}/
         ├── media_meta.json         ← 媒体元数据（图片+视频）
         ├── tree_hash.json          ← Merkle Tree 快照
-        └── thumbnails/             ← 缩略图文件
-            └── {hash}.jpg
+        └── thumbnails/             ← 缩略图 + 动画预览
+            ├── {hash}.jpg          ← 静态缩略图（所有文件）
+            └── {hash}.preview.webp ← 动画预览（仅视频，ffmpeg 可用时）
 ```
 
 - `main.db` + `media-folders/*/media_meta.json` 是核心数据，丢失不可恢复
@@ -306,6 +307,7 @@ BuntDB 支持基于 JSON 字段创建自定义索引，用于加速非主键查�
       "media_type": "video",
       "tags": ["旅行::日本"],
       "thumbnail": "9c1d4e7f20a3b6d8.jpg",
+      "preview": "9c1d4e7f20a3b6d8.preview.webp",
       "added_at": "2026-06-21T14:00:00Z",
       "file_size": 104857600,
       "dimensions": [1920, 1080],
@@ -322,7 +324,8 @@ BuntDB 支持基于 JSON 字段创建自定义索引，用于加速非主键查�
 | `files` | Map，key 为相对路径，value 为媒体元数据 |
 | `files[*].media_type` | `"image"` 或 `"video"` |
 | `files[*].tags` | 标签数组 |
-| `files[*].thumbnail` | 缩略图文件名（`sha256(folder_id/rel_path)[:16].jpg`） |
+| `files[*].thumbnail` | 静态缩略图文件名（`sha256(folder_id/rel_path)[:16].jpg`） |
+| `files[*].preview` | 动画预览文件名（仅视频，`{hash}.preview.webp`），无则为空 |
 | `files[*].added_at` | 首次扫描发现的时间 |
 | `files[*].file_size` | 文件大小（字节） |
 | `files[*].dimensions` | `[width, height]` |
