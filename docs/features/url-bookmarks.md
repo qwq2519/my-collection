@@ -111,24 +111,26 @@ URL 和站点数据存储在 BuntDB 中，tag 搜索走 Bleve 索引。详见 [�
 **抓取流程：**
 
 1. 用户在表单中输入 URL，点击"抓取"
-2. 后端发 HTTP GET 请求，解析 HTML 返回结构化 JSON
-3. 抓取结果展示在表单旁边，用户手动选择需要的字段复制到表单中
-4. 抓取失败（超时/反爬/网络异常）时提示用户手动填写
+2. 后端发 HTTP GET 请求，解析 HTML
+3. 后端提取文本类元信息（title、description 等）返回结构化 JSON
+4. 后端同时**下载 icon 文件**，保存到 `persist/url-assets/icons/{domain}.{ext}`，返回结果中包含已保存的 icon 文件名
+5. 前端展示抓取结果，用户确认后将需要的字段回填到表单中
+6. 抓取失败（超时/反爬/网络异常）时提示用户手动填写
 
 **抓取字段（后端可扩展）：**
 
 | 字段 | 来源 | 说明 |
 |------|------|------|
-| title | `<title>` 或 `og:title` | 页面标题 |
-| description | `<meta name="description">` 或 `og:description` | 页面描述 |
-| icon | `<link rel="icon">` 或 `{domain}/favicon.ico` | 页面图标 |
-| og_image | `og:image` | Open Graph 封面图 |
+| title | `<title>` 或 `og:title` | 页面标题，文本返回 |
+| description | `<meta name="description">` 或 `og:description` | 页面描述，文本返回 |
+| icon | `<link rel="icon">` 或 `{domain}/favicon.ico` | 后端下载并保存到 persist，返回文件名 |
+| og_image | `og:image` | Open Graph 封面图 URL，文本返回 |
 
 后续可按需扩展更多 meta 标签（keywords、author、canonical 等）。
 
 **设计原则：**
 
-- 抓取是**辅助工具**，不自动填充表单，由用户决定使用哪些字段
+- 抓取是**辅助工具**，文本字段由用户确认后回填表单，icon 由后端直接下载保存
 - 超时上限 10 秒，不阻塞 UI（异步请求）
 - 不缓存抓取结果，每次重新请求
 
