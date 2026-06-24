@@ -145,7 +145,7 @@ Key:   bm:{bm_id}
 | url | string | 是 | 用户输入的原始 URL |
 | normalized_url | string | 是 | 归一化后的 URL，用于去重比对（后端自动生成） |
 | domain | string | 是 | 从 URL 提取并归一化的域名 |
-| site_id | string | 否 | 所属站点 ID；**空字符串表示在待归组队列中** |
+| site_id | string | 否 | 所属站点 ID；**空字符串表示在临时队列中** |
 | title | string | 是 | 页面标题 |
 | icon | string | 否 | 图标文件名，与站点共享 `persist/url-assets/icons/{domain}.{ext}` |
 | cover | string | 否 | 封面图文件名，存储在 `persist/url-assets/covers/{entity_id}.{ext}`，支持静态图和 GIF |
@@ -180,11 +180,11 @@ Key:   bm:{bm_id}
 - 按站点列出书签：BuntDB 自定义索引 `idx:bm_site`，索引 `site_id` 字段
 - 按域名查找书签：BuntDB 自定义索引 `idx:bm_domain`，索引 `domain` 字段
 - 按归一化 URL 查重：BuntDB 自定义索引 `idx:bm_normalized_url`，索引 `normalized_url` 字段
-- 待归组队列：查询 `site_id == ""` 的书签（通过索引 `idx:bm_site` 扫描空值）
+- 临时队列：查询 `site_id == ""` 的书签（通过索引 `idx:bm_site` 扫描空值）
 - 标签筛选（单标签 / 多标签组合）：走 Bleve keyword 精确匹配（tags 为数组，BuntDB 不支持数组字段索引）
 - 全文搜索：走 Bleve
 
-**待归组队列说明：**
+**临时队列说明：**
 
 队列作为临时备忘，只保留 URL 和基本元数据，不参与站点分组视图。用户可在队列中查看和删除条目，如需正式收藏则手动添加对应站点和书签。
 
@@ -351,7 +351,7 @@ BuntDB 支持基于 JSON 字段创建自定义索引，用于加速非主键查�
 | 索引名 | 目标 Key 前缀 | 索引字段 | 用途 |
 |--------|-------------|---------|------|
 | `idx:site_domain` | `site:*` | `.domain` | 按域名查找站点（添加 URL 时自动归组） |
-| `idx:bm_site` | `bm:*` | `.site_id` | 按站点列出书签 / 查询待归组队列 |
+| `idx:bm_site` | `bm:*` | `.site_id` | 按站点列出书签 / 查询临时队列 |
 | `idx:bm_domain` | `bm:*` | `.domain` | 按域名查找书签 |
 | `idx:bm_normalized_url` | `bm:*` | `.normalized_url` | URL 去重校验 |
 
@@ -572,7 +572,7 @@ Bleve 索引目录：`persist/search.bleve/`
 
 ```text
 Site 1 ←——→ N Bookmark        (通过 bookmark.site_id 关联)
-Bookmark (site_id="") = 待归组队列
+Bookmark (site_id="") = 临时队列
 
 Folder 1 ←——→ N Media         (通过 media_meta.json 内的 key)
 

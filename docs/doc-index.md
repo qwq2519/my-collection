@@ -6,7 +6,7 @@
 
 | 文档 | 说明 |
 |------|------|
-| [URL 收藏](./features/url-bookmarks.md) | 站点、书签、待归组队列、域名匹配、存活检测 |
+| [URL 收藏](./features/url-bookmarks.md) | 站点、书签、临时队列、域名匹配、存活检测 |
 | [笔记](./features/notes.md) | Markdown 短笔记 |
 | [媒体管理](./features/media-manager.md) | 图片+视频、文件夹扫描、Merkle Tree、元数据、缩略图、ffmpeg |
 | [小说管理](./features/novel.md) | **暂不实现**，本地小说导入、阅读器、进度管理 |

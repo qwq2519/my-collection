@@ -151,7 +151,7 @@ Wails v3 的 `Application` 支持配置自定义 `AssetHandler`，当请求路�
 | 操作 | 走哪个组件 |
 |------|-----------|
 | 增删改收藏/笔记 | BuntDB → 同步更新 Bleve |
-| 待归组队列读写 | BuntDB |
+| 临时队列读写 | BuntDB |
 | 批量删除 URL | BuntDB 事务 + 清理 Bleve |
 | 按 ID 精确查询 | BuntDB |
 | 标签筛选（多选精确匹配） | Bleve keyword 精确匹配 |
@@ -217,7 +217,7 @@ Wails 将 Go 结构体的公开方法直接暴露给前端调用，无需手写 
 
 | Service | 职责 |
 |---------|------|
-| `URLService` | 站点/书签/待归组队列的增删改查 |
+| `URLService` | 站点/书签/临时队列的增删改查 |
 | `NoteService` | 笔记的增删改查、图片管理 |
 | `MediaService` | 媒体文件夹管理、扫描、缩略图、标签 |
 | `TagService` | 标签管理（重命名/合并/删除/重算 count） |
