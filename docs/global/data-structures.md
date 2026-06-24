@@ -495,6 +495,7 @@ Bleve 索引目录：`persist/search.bleve/`
 | `title` | site.title | text（分词） |
 | `description` | site.description | text（分词） |
 | `domain` | site.domain | keyword |
+| `domain_text` | site.domain | text（分词） |
 | `tags` | site.tags | keyword（多值） |
 | `updated_at` | site.updated_at | datetime |
 
@@ -507,6 +508,7 @@ Bleve 索引目录：`persist/search.bleve/`
 | `title` | bookmark.title | text（分词） |
 | `description` | bookmark.description | text（分词） |
 | `domain` | bookmark.domain | keyword |
+| `domain_text` | bookmark.domain | text（分词） |
 | `tags` | bookmark.tags | keyword（多值） |
 | `url` | bookmark.url | keyword |
 | `updated_at` | bookmark.updated_at | datetime |
@@ -536,7 +538,31 @@ Bleve 索引目录：`persist/search.bleve/`
 
 **时间排序**：各实体的 `updated_at`（媒体为 `added_at`）以 datetime 类型索引，支持搜索结果按时间排序。
 
-**标签筛选方式**：用户多选标签进行筛选时，查询走 Bleve keyword 精确匹配（AND 语义）。不支持 `前端::*` 前缀模糊查询。
+### 搜索与筛选策略
+
+搜索框输入和结构化筛选同时生效时取**交集（AND）**。
+
+**搜索框（文本搜索）**：用户输入关键词，匹配所有 text 类型字段：
+
+| 模块 | 搜索框匹配字段 |
+|------|--------------|
+| URL（站点 + 书签） | `title` + `description` + `domain_text` |
+| 笔记 | `title` + `body` |
+| 媒体 | `filename` |
+
+`domain` 同时索引为 keyword（`domain`）和 text（`domain_text`）两种方式：搜索框走 `domain_text` 实现模糊匹配（输入"github"能命中 `github.com`），站点归组和精确过滤走 `domain` keyword。
+
+**结构化筛选**：
+
+| 筛选方式 | 走哪个字段 | 索引方式 |
+|---------|-----------|---------|
+| 标签多选 | `tags` | keyword 精确匹配（AND 语义） |
+| 站点筛选 | BuntDB `idx:bm_site` | 精确匹配 site_id |
+| 域名精确过滤 | `domain` | keyword |
+| 类型筛选（媒体） | `media_type` | keyword |
+| 存活状态（URL） | `status` 字段 | 前端过滤 |
+
+不支持 `前端::*` 前缀模糊查询。
 
 **重建来源**：Bleve 索引可从 BuntDB (main.db) + 各 media_meta.json 全量重建，不含不可恢复的数据。
 
