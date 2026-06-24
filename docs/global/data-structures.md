@@ -111,7 +111,6 @@ Key:   site:{site_id}
 |------|---------|
 | 添加书签并关联到站点 | 对应站点 `bookmark_count + 1` |
 | 删除书签（单条或批量） | 对应站点 `bookmark_count - 1`（批量时按站点汇总后一次性更新） |
-| 书签从临时队列分配到站点 | 目标站点 `bookmark_count + 1` |
 
 **updated_at 联动规则：** 书签的增删改操作会同步更新所属站点的 `updated_at` 为当前时间，使站点列表按 `updated_at` 排序时反映最新书签活动。
 
