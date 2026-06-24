@@ -161,16 +161,18 @@ URL 和站点数据存储在 BuntDB 中，tag 搜索走 Bleve 索引。详见 [�
 
 **搜索状态：平铺展示**
 
-搜索时打破分组，结果平铺显示，每条标注所属站点：
+搜索时打破分组，站点和书签混合平铺展示，统一按 `updated_at` 降序排列。每条结果标注类型和所属站点：
 
 ```text
 🔍 [go...]  [站点筛选 ▼]  [临时队列 ③]
 ┌──────────────────────┬─────────────────────────┐
-│ 📌 golang/go         │  标题: golang/go         │
-│    github.com  #Go   │  URL: github.com/go...  │
-│ 📌 Go by Example    │  站点: GitHub           │
-│    gobyexample.com   │  Tags: #Go #开源         │
-│ ...                  │  ...                    │
+│ 🌐 GitHub            │  标题: GitHub            │
+│    [站点] github.com │  类型: 站点              │
+│ 📌 golang/go         │  域名: github.com       │
+│    [书签] github.com │  Tags: #开发 #工具       │
+│ 📌 Go by Example    │  ...                    │
+│    [书签] gobyexample│                         │
+│ ...                  │                         │
 └──────────────────────┴─────────────────────────┘
 ```
 
