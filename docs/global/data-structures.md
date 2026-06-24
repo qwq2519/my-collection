@@ -184,7 +184,7 @@ Key:   note:{note_id}
 |------|------|------|------|
 | id | string | 是 | UUID |
 | title | string | 是 | 标题 |
-| body | string | 否 | Markdown 正文，图片引用指向 `persist/note-images/` |
+| body | string | 否 | Markdown 正文，图片引用存储相对路径（如 `note-images/{note_id}/{hash}.png`），前端渲染时加 `/persist/` 前缀 |
 | created_at | string | 是 | ISO 8601 |
 | updated_at | string | 是 | ISO 8601 |
 
