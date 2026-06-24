@@ -56,6 +56,7 @@
 - 支持格式：txt 文本文件 + 媒体格式（图片：JPG/JPEG、PNG、GIF、WebP、BMP；视频：MP4、MKV、AVI、MOV、WebM）
 - 存储在 `persist/url-assets/attachments/{entity_id}/`
 - 展示规则：图片附件直接展示缩略图，视频附件抽帧展示静态缩略图，txt 文件仅展示文件名
+- 缩略图由后端在文件上传完成后自动生成，存储路径和命名规则待定（见 [待讨论](../pending-plan.md)）
 - 通过统一上传接口上传，详见 [技术栈 - 统一文件上传](../global/tech-stack.md#统一文件上传)
 
 ### 删除
