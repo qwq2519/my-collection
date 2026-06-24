@@ -5,24 +5,11 @@
 ### 数据结构
 
 - **站点（Site）**：手动收藏，代表一个网站
-- **网址（Bookmark）**：具体 URL，系统按域名自动归组到对应站点下
+- **网址（Bookmark）**：具体 URL，归属于已有站点；若域名无对应站点则进入临时队列
 
-站点和书签功能类似，都有 title、icon、description、tags。区别在于展示时书签按 domain 归组到站点下。
+站点和书签功能类似，都有 title、icon、description、tags、cover、attachments。区别在于展示时书签按 domain 归组到站点下。
 
-**站点元数据：**
-
-- title（显示名称，如"GitHub"）
-- domain（完整域名，含子域名，用于自动归组）
-- icon（站点图标）
-- description（站点描述）
-- tags（标签列表）
-
-**Bookmark 元数据：**
-
-- icon（页面图标）
-- title（标题）
-- description（描述）
-- tags（标签列表）
+完整字段定义和存储格式详见 [数据结构 - site](../global/data-structures.md#site--站点) 和 [数据结构 - bm](../global/data-structures.md#bm--书签url)。
 
 ### 行为规则
 
