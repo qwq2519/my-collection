@@ -22,7 +22,8 @@ main.go              Wails 应用入口
 greetservice.go      Go 服务示例
 frontend/            React + TypeScript 前端
 build/config.yml     Wails 构建配置
-build/windows/       Windows 打包配置
+build/windows/       Windows 打包配置（当前目标平台）
+build/darwin|linux|…  Wails 框架默认生成，暂不使用
 Taskfile.yml         任务入口
 docs/                项目文档
 ```
