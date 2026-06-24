@@ -62,3 +62,58 @@ Go 后端涉及的异步操作需明确：
 ### ~~10. Service 接口概览~~ → 已完成
 
 已写入 [tech-stack.md - 接口约定](./global/tech-stack.md#接口约定)。包含 Service 列表、返回模式、分页结构、Events 事件、HTTP 扩展方案。
+
+## 设计问题（待讨论）
+
+### ~~11. 中文全文搜索缺少分词器方案~~ → 已完成
+
+已选定 gse（`github.com/go-ego/gse`），纯 Go 实现，无 CGO 依赖。写入 [tech-stack.md](./global/tech-stack.md#技术选型) 和 [data-structures.md](./global/data-structures.md#中文分词)。
+
+### 12. 标签 count 在实体删除时的维护未说明
+
+标签系统文档提到"增删标签时同步维护 count"，但以下场景的 count 维护没有说明：
+
+- 删除一条书签时，其 `tags` 数组中每个标签的 count 需要 -1
+- 删除一个站点时同理
+- 媒体扫描发现文件被删除时，其标签的 count 也需要同步递减
+
+需要在 [tag-system.md](./global/tag-system.md) 和各功能文档的删除流程中补充。
+
+### 13. 笔记图片与静态资源的前端访问路径未定义
+
+笔记 body 中存储 `![图片](note-images/xxx/ab3f.png)` 相对路径，但未说明前端如何访问 `persist/` 目录下的文件（图标、缩略图、笔记图片）。
+
+需要在 [tech-stack.md](./global/tech-stack.md) 中补充静态资源访问策略（Wails AssetHandler / Go HTTP 接口 / 其他）。
+
+### 14. 图标存储的命名冲突
+
+`persist/icons/` 下图标以 `{domain}.{ext}` 命名，站点和书签共享同一目录。同一域名下，站点图标和特定页面图标可能不同，当前设计会互相覆盖。
+
+需要明确：只保留域名级图标（站点和书签共用），还是按实体 ID 分别存储。
+
+### 15. URL 去重的归一化规则不明确
+
+添加 URL 时拒绝重复，但未定义 URL 归一化规则：
+
+- 尾部斜杠：`github.com/go` vs `github.com/go/`
+- 查询参数顺序：`?a=1&b=2` vs `?b=2&a=1`
+- fragment（`#section`）是否去除
+- 协议（http vs https）是否统一
+
+需要在 [url-bookmarks.md](./features/url-bookmarks.md) 中补充。
+
+### 16. 待归组书签缺少"分配到已有站点"的流程
+
+待归组队列中用户可以"创建对应站点"或"删除"，但缺少将书签手动分配到已存在站点的能力。例如 `docs.github.com/xxx` 想归到 `github.com` 站点下，当前按完整域名匹配做不到。
+
+需要在 [url-bookmarks.md](./features/url-bookmarks.md) 中补充手动分配站点的交互。
+
+### 17. 标签名中特殊字符的处理规则未定义
+
+标签用 `::` 作为层级分隔符，且标签名直接作为 BuntDB key（`url_tag:{name}`）。未定义：
+
+- 标签名中允许哪些字符
+- 标签名包含 `:` 时与 key 前缀分隔符的冲突处理
+- 空格、特殊符号的处理规则
+
+需要在 [tag-system.md](./global/tag-system.md) 中补充。

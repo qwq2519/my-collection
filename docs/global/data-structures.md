@@ -387,6 +387,15 @@ Bleve 索引目录：`persist/search.bleve/`
 
 所有实体共用一个 Bleve 索引，通过 `_type` 字段区分实体类型。
 
+### 中文分词
+
+使用 gse（`github.com/go-ego/gse`）作为 Bleve 的中文 analyzer，纯 Go 实现，无 CGO 依赖。
+
+- 自定义 analyzer 名称：`"gse"`，注册到 Bleve index mapping
+- 所有 `text（分词）` 类型的字段统一使用该 analyzer
+- `keyword` 类型字段（tags、domain、url 等）不经过分词，不受影响
+- gse 自带词典约 10-15MB，会嵌入二进制或随应用分发
+
 ### 文档结构
 
 **站点（Site）：**

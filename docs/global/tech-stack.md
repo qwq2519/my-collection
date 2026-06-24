@@ -10,6 +10,7 @@
 | 前端状态管理 | Zustand | 极轻量（~1KB），API 简单，每模块独立 store |
 | 主存储 | BuntDB | 内存 KV，自动持久化，纯 Go |
 | 搜索 | Bleve v2 | 全文搜索引擎，倒排索引，纯 Go |
+| 中文分词 | gse | 纯 Go 中文分词，无 CGO，为 Bleve 提供中文 analyzer |
 | 目标平台 | Windows 桌面 | 纯本地单机，不考虑多设备同步 |
 
 ## 存储架构
@@ -33,8 +34,9 @@
 |------|----|------|
 | BuntDB | `github.com/tidwall/buntdb` | 主存储，内存 KV，自动持久化 |
 | Bleve v2 | `github.com/blevesearch/bleve/v2` | 全文搜索，倒排索引 |
+| gse | `github.com/go-ego/gse` | 中文分词，为 Bleve 提供 CJK analyzer |
 
-两者均为纯 Go 实现，无 CGO 依赖。
+三者均为纯 Go 实现，无 CGO 依赖。
 
 ## 为什么选 BuntDB + Bleve
 
