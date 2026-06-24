@@ -35,11 +35,26 @@
 ### 编辑
 
 - 右侧详情区提供**"编辑"按钮**，点击后整体切换为表单态
+- 新增站点/书签时同样使用表单态
 - 可编辑字段：title、description、icon、cover、tags、attachments（完整字段定义见 [数据结构](../global/data-structures.md#site--站点)）
-- **封面（cover）**：编辑表单中支持上传图片作为封面，列表页主展示图；存储在 `persist/url-assets/covers/{entity_id}.{ext}`
-- **附件（attachments）**：编辑表单中支持上传附件文件，每个附件可添加标注（label）；存储在 `persist/url-assets/attachments/{entity_id}/`
 - 编辑完成后点击"保存"提交，或"取消"放弃修改
 - 站点和书签的编辑交互一致
+
+**封面（cover）：**
+
+- 编辑/新增表单中提供封面上传区域，支持上传图片作为列表页主展示图
+- 支持格式：JPG/JPEG、PNG、GIF、WebP、BMP（与媒体管理图片格式一致）
+- 存储在 `persist/url-assets/covers/{entity_id}.{ext}`
+- 封面以图片形式直接展示
+- 通过统一上传接口上传，详见 [技术栈 - 统一文件上传](../global/tech-stack.md#统一文件上传)
+
+**附件（attachments）：**
+
+- 编辑/新增表单中提供附件上传区域，每个附件可添加标注（label）
+- 支持格式：txt 文本文件 + 媒体格式（图片：JPG/JPEG、PNG、GIF、WebP、BMP；视频：MP4、MKV、AVI、MOV、WebM）
+- 存储在 `persist/url-assets/attachments/{entity_id}/`
+- 展示规则：图片附件直接展示缩略图，视频附件抽帧展示静态缩略图，txt 文件仅展示文件名
+- 通过统一上传接口上传，详见 [技术栈 - 统一文件上传](../global/tech-stack.md#统一文件上传)
 
 ### 删除
 
