@@ -104,6 +104,10 @@
 - **不区分协议**：`http://` 和 `https://` 视为同一站点，统一以域名为准
 - **路径不参与站点划分**：如 `notion.site/userA` 和 `notion.site/userB` 均归入 `notion.site` 站点
 - **拒绝 localhost 和 IP 地址**：`localhost`、`127.0.0.1`、`192.168.x.x` 等地址不允许作为收藏，添加时直接拒绝并提示
+- **拒绝纯 IP 地址**：包括公网 IP（如 `8.8.8.8`），一律拒绝
+- **拒绝带端口的 URL**：如 `example.com:8080/page`，拒绝并提示
+- **拒绝非 HTTP 协议**：仅接受 `http://` 和 `https://`，`ftp://`、`file://` 等协议拒绝
+- **拒绝带认证信息的 URL**：如 `user:pass@example.com`，拒绝并提示
 
 ### 存储
 

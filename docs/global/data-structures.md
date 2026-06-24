@@ -181,6 +181,17 @@ Key:   bm:{bm_id}
 
 后端提供 `NormalizeURL(rawURL) → normalizedURL` 方法，前端添加书签时自动调用并展示归一化结果供用户确认。
 
+**输入校验（归一化前先拒绝非法 URL）：**
+
+| 拒绝条件 | 示例 | 提示 |
+|---------|------|------|
+| 非 HTTP(S) 协议 | `ftp://files.example.com` | 仅支持 http/https 链接 |
+| 纯 IP 地址（含 localhost） | `192.168.1.1/page`、`8.8.8.8` | 不支持 IP 地址 |
+| 带端口 | `example.com:8080/page` | 不支持带端口的 URL |
+| 带认证信息 | `user:pass@example.com` | 不支持带认证的 URL |
+
+**归一化规则：**
+
 | 处理项 | 规则 | 示例 |
 |--------|------|------|
 | 协议 | 去除 `http://` / `https://` | `https://github.com/go` → `github.com/go` |
