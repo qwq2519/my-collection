@@ -31,7 +31,9 @@
 ### 编辑
 
 - 右侧详情区提供**"编辑"按钮**，点击后整体切换为表单态
-- 可编辑字段：title、description、icon、tags
+- 可编辑字段：title、description、icon、cover、tags、attachments（完整字段定义见 [数据结构](../global/data-structures.md#site--站点)）
+- **封面（cover）**：编辑表单中支持上传图片作为封面，列表页主展示图；存储在 `persist/url-assets/covers/{entity_id}.{ext}`
+- **附件（attachments）**：编辑表单中支持上传附件文件，每个附件可添加标注（label）；存储在 `persist/url-assets/attachments/{entity_id}/`
 - 编辑完成后点击"保存"提交，或"取消"放弃修改
 - 站点和书签的编辑交互一致
 
