@@ -91,12 +91,6 @@ Go 后端涉及的异步操作需明确：
 
 已简化设计：待归组队列定位为临时备忘，只支持查看和删除，不做站点分配。用户如需正式收藏，手动创建对应站点和书签。写入 [url-bookmarks.md - 待归组队列](./features/url-bookmarks.md#待归组队列) 和 [data-structures.md - bm](./global/data-structures.md#bm--书签url)。
 
-### 17. 标签名中特殊字符的处理规则未定义
+### ~~17. 标签名中特殊字符的处理规则未定义~~ → 已完成
 
-标签用 `::` 作为层级分隔符，且标签名直接作为 BuntDB key（`url_tag:{name}`）。未定义：
-
-- 标签名中允许哪些字符
-- 标签名包含 `:` 时与 key 前缀分隔符的冲突处理
-- 空格、特殊符号的处理规则
-
-需要在 [tag-system.md](./global/tag-system.md) 中补充。
+已定义标签名字符规则（允许/禁止字符表），写入 [data-structures.md - 标签名字符规则](./global/data-structures.md#媒体标签注册表) 和 [tag-system.md - 基本规则](./global/tag-system.md#基本规则)。
