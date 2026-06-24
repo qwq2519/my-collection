@@ -18,6 +18,7 @@ Markdown 格式的短笔记，结构为 **title（必填）+ body**。
 - Markdown body 中可以插入图片
 - 图片来源必须是 persist 目录下已有的图片，或复制粘贴时自动保存到 persist 目录
 - 不支持引用外部 URL 图片或任意本地路径图片
+- 粘贴图片统一走 `UploadService` 的 `note-image` scene（详见 [技术栈 - 统一文件上传](../global/tech-stack.md#统一文件上传)），具体前端拦截粘贴事件的技术方案在实现时确定
 
 ### 新建
 
