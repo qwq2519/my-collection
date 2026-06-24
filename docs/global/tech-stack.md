@@ -26,7 +26,7 @@
 │  - 内存常驻               - 启动时全量加载               │
 │  - 自动持久化到单文件      - 原子写入 JSON 文件           │
 │                                                         │
-│  persist/main.db     persist/media-folders/{id}/  search.bleve/│
+│  persist/main.db     persist/media-folders/{id}/  persist/search.bleve/│
 └─────────────────────────────────────────────────────────┘
 ```
 
