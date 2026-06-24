@@ -66,6 +66,7 @@ Key:   site:{site_id}
   "icon": "github.com.png",
   "description": "代码托管平台",
   "tags": ["开发", "工具::代码托管"],
+  "bookmark_count": 3,
   "created_at": "2026-06-22T10:00:00Z",
   "updated_at": "2026-06-22T10:00:00Z"
 }
@@ -79,6 +80,7 @@ Key:   site:{site_id}
 | icon | string | 否 | 图标文件名，存储在 `persist/icons/`，以域名命名（如 `github.com.png`） |
 | description | string | 否 | 站点描述 |
 | tags | string[] | 否 | 标签列表，与书签共享同一套 URL 标签体系 |
+| bookmark_count | int | 是 | 该站点下的书签数量，增删书签时同步维护 |
 | created_at | string | 是 | ISO 8601 |
 | updated_at | string | 是 | ISO 8601 |
 
@@ -102,6 +104,7 @@ Key:   bm:{bm_id}
 {
   "id": "e5f6a7b8-...",
   "url": "https://github.com/golang/go",
+  "normalized_url": "github.com/golang/go",
   "domain": "github.com",
   "site_id": "a1b2c3d4-...",
   "title": "golang/go",
@@ -117,7 +120,8 @@ Key:   bm:{bm_id}
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | id | string | 是 | UUID |
-| url | string | 是 | 完整 URL |
+| url | string | 是 | 用户输入的原始 URL |
+| normalized_url | string | 是 | 归一化后的 URL，用于去重比对（后端自动生成） |
 | domain | string | 是 | 从 URL 提取并归一化的域名 |
 | site_id | string | 否 | 所属站点 ID；**空字符串表示在待归组队列中** |
 | title | string | 是 | 页面标题 |
@@ -128,18 +132,35 @@ Key:   bm:{bm_id}
 | created_at | string | 是 | ISO 8601 |
 | updated_at | string | 是 | ISO 8601 |
 
+**URL 归一化规则（`normalized_url`）：**
+
+后端提供 `NormalizeURL(rawURL) → normalizedURL` 方法，前端添加书签时自动调用并展示归一化结果供用户确认。
+
+| 处理项 | 规则 | 示例 |
+|--------|------|------|
+| 协议 | 去除 `http://` / `https://` | `https://github.com/go` → `github.com/go` |
+| www 前缀 | 去除 | `www.example.com/page` → `example.com/page` |
+| 尾部斜杠 | 去除 | `github.com/go/` → `github.com/go` |
+| fragment | 去除 `#` 及之后内容 | `page.html#section` → `page.html` |
+| 查询参数 | 保留原序 | `?a=1&b=2` 保持不变 |
+| domain 大小写 | 转小写 | `GitHub.COM/Go` → `github.com/Go` |
+| path 大小写 | 保持原样 | path 部分区分大小写 |
+
+**去重**：添加书签时，用 `normalized_url` 在已有书签中查找，存在则拒绝。需要 BuntDB 自定义索引支持。
+
 **查询模式：**
 
 - 按 ID 精确查询：`bm:{id}`
 - 按站点列出书签：BuntDB 自定义索引 `idx:bm_site`，索引 `site_id` 字段
 - 按域名查找书签：BuntDB 自定义索引 `idx:bm_domain`，索引 `domain` 字段
+- 按归一化 URL 查重：BuntDB 自定义索引 `idx:bm_normalized_url`，索引 `normalized_url` 字段
 - 待归组队列：查询 `site_id == ""` 的书签（通过索引 `idx:bm_site` 扫描空值）
 - 标签筛选（单标签 / 多标签组合）：走 Bleve keyword 精确匹配（tags 为数组，BuntDB 不支持数组字段索引）
 - 全文搜索：走 Bleve
 
 **待归组队列说明：**
 
-队列不使用独立 key 前缀，而是复用 `bm:` 前缀，以 `site_id` 为空来标识。当用户为队列中的书签创建或指定站点后，只需更新 `site_id` 字段，无需迁移 key。
+队列作为临时备忘，只保留 URL 和基本元数据，不参与站点分组视图。用户可在队列中查看和删除条目，如需正式收藏则手动添加对应站点和书签。
 
 ---
 
@@ -283,6 +304,7 @@ BuntDB 支持基于 JSON 字段创建自定义索引，用于加速非主键查�
 | `idx:site_domain` | `site:*` | `.domain` | 按域名查找站点（添加 URL 时自动归组） |
 | `idx:bm_site` | `bm:*` | `.site_id` | 按站点列出书签 / 查询待归组队列 |
 | `idx:bm_domain` | `bm:*` | `.domain` | 按域名查找书签 |
+| `idx:bm_normalized_url` | `bm:*` | `.normalized_url` | URL 去重校验 |
 
 ---
 

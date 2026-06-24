@@ -83,22 +83,13 @@ Go 后端涉及的异步操作需明确：
 
 需要明确：只保留域名级图标（站点和书签共用），还是按实体 ID 分别存储。
 
-### 15. URL 去重的归一化规则不明确
+### ~~15. URL 去重的归一化规则不明确~~ → 已完成
 
-添加 URL 时拒绝重复，但未定义 URL 归一化规则：
+新增 `normalized_url` 字段和 `idx:bm_normalized_url` 索引，归一化规则写入 [data-structures.md - bm](./global/data-structures.md#bm--书签url)。后端提供 `NormalizeURL` 方法，前端调用后展示结果供用户确认。
 
-- 尾部斜杠：`github.com/go` vs `github.com/go/`
-- 查询参数顺序：`?a=1&b=2` vs `?b=2&a=1`
-- fragment（`#section`）是否去除
-- 协议（http vs https）是否统一
+### ~~16. 待归组书签缺少"分配到已有站点"的流程~~ → 已完成
 
-需要在 [url-bookmarks.md](./features/url-bookmarks.md) 中补充。
-
-### 16. 待归组书签缺少"分配到已有站点"的流程
-
-待归组队列中用户可以"创建对应站点"或"删除"，但缺少将书签手动分配到已存在站点的能力。例如 `docs.github.com/xxx` 想归到 `github.com` 站点下，当前按完整域名匹配做不到。
-
-需要在 [url-bookmarks.md](./features/url-bookmarks.md) 中补充手动分配站点的交互。
+已简化设计：待归组队列定位为临时备忘，只支持查看和删除，不做站点分配。用户如需正式收藏，手动创建对应站点和书签。写入 [url-bookmarks.md - 待归组队列](./features/url-bookmarks.md#待归组队列) 和 [data-structures.md - bm](./global/data-structures.md#bm--书签url)。
 
 ### 17. 标签名中特殊字符的处理规则未定义
 
