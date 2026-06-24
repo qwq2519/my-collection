@@ -173,7 +173,7 @@ Key:   bm:{bm_id}
 | attachments | object[] | 否 | 附件列表，文件存储在 `persist/url-assets/attachments/{entity_id}/` |
 | attachments[*].filename | string | 是 | 附件文件名 |
 | attachments[*].label | string | 否 | 附件描述/标注 |
-| status | string | 否 | `"alive"` / `"dead"`，默认 `"alive"` |
+| status | string | 是 | `"alive"` / `"dead"`，创建时默认 `"alive"`，后端自动设置 |
 | created_at | string | 是 | ISO 8601 |
 | updated_at | string | 是 | ISO 8601 |
 
