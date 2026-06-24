@@ -89,7 +89,7 @@ Go 后端涉及的异步操作需明确：
 
 ### ~~16. 临时队列（原待归组书签）缺少"分配到已有站点"的流程~~ → 已完成
 
-已简化设计：临时队列定位为临时备忘，只支持查看和删除，不做站点分配。用户如需正式收藏，手动创建对应站点和书签。写入 [url-bookmarks.md - 临时队列](./features/url-bookmarks.md#临时队列) 和 [data-structures.md - bm](./global/data-structures.md#bm--书签url)。
+已简化设计：临时队列独立为 `queue:{id}` 记录，只存 URL，不含元数据。添加书签时若无对应站点则拒绝创建书签，改为存入临时队列。用户如需正式收藏，先创建站点再手动添加书签。写入 [url-bookmarks.md - 临时队列](./features/url-bookmarks.md#临时队列) 和 [data-structures.md - queue](./global/data-structures.md#queue--临时队列)。
 
 ### ~~17. 标签名中特殊字符的处理规则未定义~~ → 已完成
 

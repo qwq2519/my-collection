@@ -151,7 +151,7 @@ Wails v3 的 `Application` 支持配置自定义 `AssetHandler`，当请求路�
 | 操作 | 走哪个组件 |
 |------|-----------|
 | 增删改收藏/笔记 | BuntDB → 同步更新 Bleve |
-| 临时队列读写 | BuntDB |
+| 临时队列读写 | BuntDB（前缀扫描 `queue:*`，仅存 URL） |
 | 批量删除 URL | BuntDB 事务 + 清理 Bleve |
 | 按 ID 精确查询 | BuntDB |
 | 标签筛选（多选精确匹配） | Bleve keyword 精确匹配 |
