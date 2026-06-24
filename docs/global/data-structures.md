@@ -28,7 +28,7 @@ persist/
         ├── tree_hash.json          ← Merkle Tree 快照
         └── thumbnails/             ← 缩略图 + 动画预览
             ├── {hash}.jpg          ← 静态缩略图（所有文件）
-            └── {hash}.preview.webp ← 动画预览（仅视频，ffmpeg 可用时）
+            └── {hash}.preview.webp ← 动画预览（视频 + GIF）
 ```
 
 - `main.db` + `media-folders/*/media_meta.json` 是核心数据，丢失不可恢复
@@ -477,7 +477,7 @@ BuntDB 支持基于 JSON 字段创建自定义索引，用于加速非主键查�
 | `files[*].media_type` | `"image"` 或 `"video"` |
 | `files[*].tags` | 标签数组 |
 | `files[*].thumbnail` | 静态缩略图文件名（`sha256(folder_id/rel_path)[:16].jpg`） |
-| `files[*].preview` | 动画预览文件名（仅视频，`{hash}.preview.webp`），无则为空 |
+| `files[*].preview` | 动画预览文件名（视频 + GIF，`{hash}.preview.webp`），无则为空 |
 | `files[*].updated_at` | 首次扫描发现时设为当前时间，文件修改（hash 变化）或标签编辑时更新 |
 | `files[*].file_size` | 文件大小（字节） |
 | `files[*].dimensions` | `[width, height]`，获取失败时为 `null` |
