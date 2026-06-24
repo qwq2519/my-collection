@@ -463,7 +463,7 @@ BuntDB 支持基于 JSON 字段创建自定义索引，用于加速非主键查�
 | `files[*].tags` | 标签数组 |
 | `files[*].thumbnail` | 静态缩略图文件名（`sha256(folder_id/rel_path)[:16].jpg`） |
 | `files[*].preview` | 动画预览文件名（仅视频，`{hash}.preview.webp`），无则为空 |
-| `files[*].updated_at` | 首次扫描发现时设为当前时间，文件修改（hash 变化）时更新 |
+| `files[*].updated_at` | 首次扫描发现时设为当前时间，文件修改（hash 变化）或标签编辑时更新 |
 | `files[*].file_size` | 文件大小（字节） |
 | `files[*].dimensions` | `[width, height]`，获取失败时为 `null` |
 | `files[*].duration` | 仅视频，时长（秒），ffmpeg 不可用时为 null |

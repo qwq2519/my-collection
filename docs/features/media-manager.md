@@ -287,6 +287,7 @@ Bleve 文档 ID = `{folder_id}/{relative_path}`，索引 tags、filename 和 med
 
 - 点击媒体文件展开详情面板，面板中可直接增删标签
 - 标签修改即时保存，无需手动点保存按钮
+- 编辑标签时同步更新该文件的 `updated_at`，使其在默认排序（`updated_at` 降序）中上浮
 
 **批量打标签：**
 
