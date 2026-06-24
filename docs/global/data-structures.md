@@ -460,7 +460,7 @@ BuntDB 支持基于 JSON 字段创建自定义索引，用于加速非主键查�
 | `root` | 根目录节点 |
 | `*.type` | `"file"` 或 `"dir"` |
 | `*.hash` | 文件：`xxh64(relative_path + mtime + size)`，relative_path 为从文件夹根到该文件的相对路径（如 `子目录A/img1.jpg`）；目录：`xxh64(sorted(child_hashes))` |
-| `*.dir_mtime` | 仅目录节点，用于 dir_mtime 剪枝优化 |
+| `*.dir_mtime` | 仅目录节点，用于 dir_mtime + children 双重剪枝优化（详见 [媒体管理 - 扫描算法](../features/media-manager.md#merkle-tree-变化检测)） |
 | `*.mtime` | 仅文件节点，文件修改时间 |
 | `*.size` | 仅文件节点，文件大小 |
 | `*.children` | 仅目录节点，Map，key 为文件/目录名 |

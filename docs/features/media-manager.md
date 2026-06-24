@@ -153,26 +153,43 @@ media_meta.json 中保存缩略图文件名用于前端展示，原始相对路�
 - 每个目录节点额外记录 `dir_mtime`
 - 扫描时仅处理扩展名匹配支持格式的文件，其他文件忽略
 
-**扫描算法（基于 dir_mtime 剪枝）：**
+**扫描算法（基于 dir_mtime + children 列表双重剪枝）：**
 
 ```text
 scan(dir_path, cached_node):
   1. stat(dir_path) → 获取当前 dir_mtime
   2. 若 dir_mtime == cached_node.dir_mtime:
-     → 整棵子树无变化，直接复用 cached_node（零 IO）
-  3. 否则 → ReadDir 获取子项:
+     → 该目录下无文件增删/重命名
+     → 但文件内容修改不会改变 dir_mtime，需进一步检查：
+     → ReadDir 获取子项列表（仅文件名 + mtime + size，不读内容）
+     → 对每个媒体文件：若 mtime + size 与缓存节点一致 → 跳过
+     → 若 mtime 或 size 有变化 → 重算该文件的叶节点 hash
+     → 子目录：递归 scan
+  3. 若 dir_mtime != cached_node.dir_mtime:
+     → 该目录有文件增删/重命名
+     → ReadDir 获取子项:
      - 子目录：递归 scan（可能在下层被剪枝）
      - 媒体文件（按扩展名过滤）：获取 mtime + size → 计算叶节点 hash
   4. 汇总子节点 hash → 计算目录 hash
   5. 返回新节点
 ```
 
+**决策记录（dir_mtime 剪枝策略）：**
+
+早期设计仅用 `dir_mtime` 做剪枝：dir_mtime 不变则跳过整棵子树。但在主流文件系统（NTFS、ext4）上，**修改文件内容只改变文件 mtime，不改变父目录 mtime**（目录 mtime 仅在增删/重命名直接子项时变化）。这导致文件原地修改（如用图片编辑器重新保存）会被漏检。
+
+**方案 A**（仅 dir_mtime 剪枝）：实现简单，但无法检测文件内容修改。
+
+**方案 B**（dir_mtime + children 列表双重检查，已选）：dir_mtime 不变时仍需 ReadDir 获取子项的 mtime/size，逐一与缓存比对。dir_mtime 变化时的行为不变（完整扫描）。代价是 dir_mtime 未变时多一次 ReadDir，但 ReadDir 本身开销很低（仅读目录元数据，不读文件内容），相比跳过修改检测带来的数据不一致，这个代价可接受。
+
+选择方案 B，确保增删和修改都能被检测到。
+
 **IO 开销：**
 
 | 场景 | 耗时 |
 |------|------|
-| 无变化 | < 1ms（1 次 stat） |
-| 1 个子目录改了 1 个文件 | < 5ms |
+| 无变化 | < 5ms（1 次 stat + ReadDir 比对 mtime/size） |
+| 1 个子目录改了 1 个文件 | < 10ms |
 | 新增子目录含 100 个文件 | < 20ms |
 | 全量首次扫描（万级）| 100-300ms (SSD) |
 
