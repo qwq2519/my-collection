@@ -139,7 +139,6 @@ Key:   bm:{bm_id}
   "domain": "github.com",
   "site_id": "a1b2c3d4-...",
   "title": "golang/go",
-  "icon": "",
   "cover": "e5f6a7b8.gif",
   "description": "Go 语言主仓库",
   "tags": ["go", "开源"],
@@ -160,7 +159,6 @@ Key:   bm:{bm_id}
 | domain | string | 是 | 从 URL 提取并归一化的域名（随 URL 固定不变） |
 | site_id | string | 是 | 所属站点 ID，书签必须归属于已有站点 |
 | title | string | 是 | 页面标题 |
-| icon | string | 否 | 图标文件名，与站点共享 `persist/url-assets/icons/{domain}.{ext}` |
 | cover | string | 否 | 封面图文件名，存储在 `persist/url-assets/covers/{entity_id}.{ext}`，支持静态图和 GIF |
 | description | string | 否 | 页面描述 |
 | tags | string[] | 否 | 标签列表，独立于站点 |

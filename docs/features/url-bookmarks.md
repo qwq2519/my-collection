@@ -36,7 +36,8 @@
 
 - 右侧详情区提供**"编辑"按钮**，点击后整体切换为表单态
 - 新增站点/书签时同样使用表单态
-- 可编辑字段：title、description、icon、cover、tags、attachments（完整字段定义见 [数据结构](../global/data-structures.md#site--站点)）
+- 可编辑字段：title、description、cover、tags、attachments（完整字段定义见 [数据结构](../global/data-structures.md#site--站点)）
+- 书签不存储独立的 icon 字段，前端通过 `domain` 字段拼接 `persist/url-assets/icons/{domain}.{ext}` 路径获取图标（与所属站点共享）
 - **书签 URL 不可修改**：URL 一旦添加即固定，`normalized_url`、`domain`、`site_id` 均不可变更。如需更正 URL，需删除后重新添加
 - **站点 domain 不可修改**：站点的 domain 在创建时确定，后续不可变更
 - 编辑完成后点击"保存"提交，或"取消"放弃修改
