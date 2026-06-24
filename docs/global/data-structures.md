@@ -75,12 +75,14 @@ Key:   site:{site_id}
 |------|------|------|------|
 | id | string | 是 | UUID，同 key 中的 `{site_id}` |
 | title | string | 是 | 显示名称 |
-| domain | string | 是 | 归一化后的完整域名（去 www），用于自动归组 |
+| domain | string | 是 | 归一化后的完整域名（去 www），用于自动归组，**站点间唯一** |
 | icon | string | 否 | 图标文件名，存储在 `persist/icons/`，以域名命名（如 `github.com.png`） |
 | description | string | 否 | 站点描述 |
 | tags | string[] | 否 | 标签列表，与书签共享同一套 URL 标签体系 |
 | created_at | string | 是 | ISO 8601 |
 | updated_at | string | 是 | ISO 8601 |
+
+**唯一性约束：** 同一 domain 只能创建一个站点，创建时校验 `idx:site_domain` 索引，已存在则拒绝并提示。
 
 **查询模式：**
 
@@ -105,7 +107,7 @@ Key:   bm:{bm_id}
   "title": "golang/go",
   "icon": "",
   "description": "Go 语言主仓库",
-  "tags": ["Go", "开源"],
+  "tags": ["go", "开源"],
   "status": "alive",
   "created_at": "2026-06-22T12:00:00Z",
   "updated_at": "2026-06-22T12:00:00Z"
