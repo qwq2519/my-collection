@@ -181,7 +181,7 @@ scan(dir_path, cached_node):
 | 变更类型 | 判定 | 处理 |
 |---------|------|------|
 | 新增 | 新树有、旧树无 | 生成缩略图 + 写 media_meta.json + 更新 Bleve |
-| 删除 | 旧树有、新树无 | 删缩略图 + 从 media_meta.json 移除 + 更新 Bleve |
+| 删除 | 旧树有、新树无 | 删缩略图 + 从 media_meta.json 移除 + 更新 Bleve + 递减 media_tag count |
 | 修改 | hash 不同 | 重新生成缩略图 + 更新 media_meta.json |
 | 子目录重命名 | "A 消失 + B 出现"且 hash 相同 | 批量更新 relative_path + 重算缩略图名 |
 
@@ -206,10 +206,12 @@ Bleve 文档 ID = `{folder_id}/{relative_path}`，索引 tags、filename 和 med
 **移除：**
 
 ```text
-1. 从 main.db 删除 folder:{folder_id}
-2. 从 Bleve 删除该 folder_id 下所有文档
-3. 删除 persist/media-folders/{folder_id}/ 整个目录
-4. 释放内存
+1. 遍历该文件夹下所有文件的 tags，汇总各 media_tag 的递减量
+2. 批量更新 media_tag 注册表 count
+3. 从 main.db 删除 folder:{folder_id}
+4. 从 Bleve 删除该 folder_id 下所有文档
+5. 删除 persist/media-folders/{folder_id}/ 整个目录
+6. 释放内存
 ```
 
 **移动（修改路径）：**

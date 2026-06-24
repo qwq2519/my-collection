@@ -69,15 +69,9 @@ Go 后端涉及的异步操作需明确：
 
 已选定 gse（`github.com/go-ego/gse`），纯 Go 实现，无 CGO 依赖。写入 [tech-stack.md](./global/tech-stack.md#技术选型) 和 [data-structures.md](./global/data-structures.md#中文分词)。
 
-### 12. 标签 count 在实体删除时的维护未说明
+### ~~12. 标签 count 在实体删除时的维护未说明~~ → 已完成
 
-标签系统文档提到"增删标签时同步维护 count"，但以下场景的 count 维护没有说明：
-
-- 删除一条书签时，其 `tags` 数组中每个标签的 count 需要 -1
-- 删除一个站点时同理
-- 媒体扫描发现文件被删除时，其标签的 count 也需要同步递减
-
-需要在 [tag-system.md](./global/tag-system.md) 和各功能文档的删除流程中补充。
+已补充到 [tag-system.md - 实体删除时的标签维护](./global/tag-system.md#实体删除时的标签维护)、[url-bookmarks.md - 删除](./features/url-bookmarks.md#删除)、[media-manager.md - Diff 结果处理 & 文件夹移除](./features/media-manager.md)。
 
 ### 13. 笔记图片与静态资源的前端访问路径未定义
 
