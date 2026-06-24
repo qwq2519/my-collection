@@ -27,6 +27,14 @@
 - **全量扫描按钮**：触发所有已注册媒体文件夹的扫描
 - 扫描进度通过 Wails Events 推送（`media:scan-progress`、`media:scan-complete`）
 
+### 数据备份
+
+- **导出备份按钮**：打包 `persist/` 核心数据为 zip 文件，用户选择保存路径
+- 备份前自动等待所有写入操作完成，确保数据一致性（详见 [技术栈 - 备份一致性机制](../global/tech-stack.md#备份一致性机制)）
+- 备份期间写入操作暂时阻塞，备份完成后自动恢复
+- 跳过可重建的数据（`search.bleve/`、`thumbnails/`）以减小体积
+- **恢复**：用户手动解压 zip 覆盖 `persist/` 目录后重启应用
+
 ### ffmpeg 状态
 
 - 展示 ffmpeg 是否可用（启动时 `exec.LookPath("ffmpeg")` 检测）
@@ -51,6 +59,7 @@
 | `RebuildIndex()` | 重建 Bleve 索引 | "重建索引"按钮 |
 | `ScanAllFolders()` | 扫描所有媒体文件夹 | "全量扫描"按钮 |
 | `ScanFolder(id)` | 扫描单个媒体文件夹 | 单个文件夹的"扫描"按钮 |
+| `ExportBackup()` | 导出备份 zip（等待写入完成后打包） | "导出备份"按钮 |
 
 ## UI
 
@@ -71,6 +80,9 @@
 
 📷 媒体扫描
    [全量扫描所有文件夹]
+
+💾 数据备份
+   [导出备份]                              → 打包为 zip，跳过可重建数据
 
 🎬 ffmpeg
    状态: ✅ 已安装 (ffmpeg 7.0)

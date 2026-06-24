@@ -92,13 +92,66 @@
 
 所有持久化数据集中存放，是唯一需要备份的目录。完整目录结构和各文件格式详见 [数据结构](./data-structures.md#persist-目录结构)。
 
-**备份方式**：直接拷贝整个 `persist/` 文件夹。
+**备份方式**：通过应用内"导出备份"功能，打包 `persist/` 目录为 zip 文件。
 
 - `main.db` + `media-folders/*/media_meta.json` 是核心数据
-- `search.bleve/` 可从上述数据重建
+- `search.bleve/` 可从上述数据重建，**备份时跳过**以减小体积
 - `url-assets/icons/` 可通过重新抓取恢复
 - `url-assets/covers/` + `url-assets/attachments/` 是用户上传数据
-- `thumbnails/` 可从源文件重新生成
+- `thumbnails/` 可从源文件重新生成，**备份时跳过**以减小体积
+
+**不建议直接拷贝 `persist/`**：BuntDB 正在写入时拷贝可能得到不一致的文件。应使用应用内备份功能确保一致性。
+
+### 备份一致性机制
+
+后端维护一个全局 `sync.RWMutex`（写入互斥锁），所有写入操作和备份操作通过该锁协调：
+
+```text
+                    writeMu (sync.RWMutex)
+                   /                      \
+  普通写入操作: RLock()                 备份操作: Lock()
+  (允许多个写入并发)                    (独占，等待所有写入完成后执行)
+```
+
+**普通写入操作**（BuntDB 写入、media_meta.json 写入、Bleve 索引更新等）：
+
+```go
+writeMu.RLock()
+defer writeMu.RUnlock()
+// 执行写入...
+```
+
+多个写入操作可以并发执行（RLock 之间不互斥），不影响正常性能。
+
+**备份操作**：
+
+```go
+writeMu.Lock()
+defer writeMu.Unlock()
+// 此时保证没有任何写入操作在进行中
+// 1. 已完成的写入已持久化（BuntDB 自动持久化，media_meta.json 原子写入）
+// 2. 打包 persist/ 为 zip（跳过 search.bleve/ 和 thumbnails/）
+// 3. 返回 zip 文件路径
+```
+
+`Lock()` 会等待所有已持有 `RLock()` 的写入完成后才获得锁，同时阻止新的写入进入，保证打包期间数据静止。
+
+**备份内容**（zip 中包含）：
+
+| 包含 | 说明 |
+|------|------|
+| `main.db` | 核心数据 |
+| `media-folders/*/media_meta.json` | 媒体元数据 |
+| `media-folders/*/tree_hash.json` | Merkle Tree 快照 |
+| `url-assets/` | 图标、封面、附件 |
+| `note-images/` | 笔记图片 |
+
+| 跳过 | 理由 |
+|------|------|
+| `search.bleve/` | 可从 main.db + media_meta.json 重建 |
+| `media-folders/*/thumbnails/` | 可从源文件重新生成 |
+
+**恢复**：解压 zip 覆盖 `persist/` 目录，启动时自动检测 `search.bleve/` 缺失或 `index_dirty`，触发重建。
 
 ## 静态资源访问
 
