@@ -36,7 +36,8 @@
 
 - 右侧详情区提供**"编辑"按钮**，点击后整体切换为表单态
 - 新增站点/书签时同样使用表单态
-- 可编辑字段：title、description、icon、cover、tags、attachments（完整字段定义见 [数据结构](../global/data-structures.md#site--站点)）
+- 可编辑字段：title、url（仅书签）、description、icon、cover、tags、attachments（完整字段定义见 [数据结构](../global/data-structures.md#site--站点)）
+- **书签 URL 支持修改**：修改 URL 后自动重新归一化（`normalized_url`）并检查去重，若新 URL 已被其他书签占用则拒绝保存
 - 编辑完成后点击"保存"提交，或"取消"放弃修改
 - 站点和书签的编辑交互一致
 

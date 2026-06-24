@@ -155,9 +155,9 @@ Key:   bm:{bm_id}
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | id | string | 是 | UUID |
-| url | string | 是 | 用户输入的原始 URL |
-| normalized_url | string | 是 | 归一化后的 URL，用于去重比对（后端自动生成） |
-| domain | string | 是 | 从 URL 提取并归一化的域名 |
+| url | string | 是 | 用户输入的原始 URL，支持编辑修改 |
+| normalized_url | string | 是 | 归一化后的 URL，用于去重比对（后端自动生成，URL 修改时重新计算） |
+| domain | string | 是 | 从 URL 提取并归一化的域名（URL 修改时重新提取） |
 | site_id | string | 是 | 所属站点 ID，书签必须归属于已有站点 |
 | title | string | 是 | 页面标题 |
 | icon | string | 否 | 图标文件名，与站点共享 `persist/url-assets/icons/{domain}.{ext}` |
