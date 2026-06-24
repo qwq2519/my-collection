@@ -7,11 +7,155 @@
 | 框架 | Wails v3 | Go + Web 前端，桌面应用，纯 Go 无 CGO |
 | 后端 | Go 1.25 | 高性能、编译简单、单二进制部署 |
 | 前端 | React + TypeScript + Vite | 生态成熟、类型安全、构建快 |
+| 前端 UI 组件 | shadcn/ui (Radix UI) | 组件代码在项目内可控，视觉现代简洁，按需添加 |
+| 前端 CSS | Tailwind CSS v4 | 原子化 CSS，shadcn/ui 标配，样式写在 className 中，不用单独 CSS 文件 |
 | 前端状态管理 | Zustand | 极轻量（~1KB），API 简单，每模块独立 store |
+| 前端表单 | react-hook-form + zod | shadcn/ui 推荐组合，zod 做 schema 校验，类型安全 |
+| 前端图标 | lucide-react | shadcn/ui 默认图标库，600+ 图标，tree-shakable |
+| Markdown 编辑器 | @uiw/react-md-editor | 编辑+预览双模式，轻量，支持自定义渲染 |
+| 虚拟滚动 | @tanstack/react-virtual | 列表和网格虚拟化，万级数据流畅滚动 |
 | 主存储 | BuntDB | 内存 KV，自动持久化，纯 Go |
 | 搜索 | Bleve v2 | 全文搜索引擎，倒排索引，纯 Go |
 | 中文分词 | gse | 纯 Go 中文分词，无 CGO，为 Bleve 提供中文 analyzer |
 | 目标平台 | Windows 桌面 | 当前仅面向 Windows，`build/` 下其他平台目录为 Wails v3 框架默认生成。纯本地单机，不考虑多设备同步 |
+
+## 前端技术栈
+
+### 路由方案
+
+桌面应用不使用 URL 路由。侧边栏 5 个一级页面（URL、笔记、媒体、标签管理、设置）通过 Zustand store 管理当前页面状态。不引入 React Router。
+
+### UI 组件库选型决策
+
+候选：Ant Design、shadcn/ui + Tailwind CSS、Arco Design。
+
+**选定 shadcn/ui + Tailwind CSS**：
+
+| 优势 | 说明 |
+|------|------|
+| 代码可控 | 组件代码复制到项目内，不受上游版本 breaking changes 影响 |
+| 视觉现代 | 默认风格简洁克制，适合工具类桌面应用 |
+| 按需使用 | CLI 逐个添加组件（`npx shadcn@latest add button`），无冗余 |
+| Tailwind CSS | 样式写在 className 中，不用在 CSS 文件和组件间跳转 |
+| 生态活跃 | 基于 Radix UI，无障碍友好，社区方案丰富 |
+
+| 需额外处理 | 方案 |
+|-----------|------|
+| 标签输入（自动补全+多选+新建） | 基于 shadcn Command + Popover 组合实现 |
+| 标签树形展示（筛选面板） | 自定义递归组件，按 `::` 分割渲染缩进层级+折叠 |
+| 可折叠分组列表（站点+书签） | shadcn Collapsible 组件 |
+| 可调整分栏布局 | shadcn Resizable 组件（基于 react-resizable-panels） |
+
+**不选 Ant Design**：包体积大、视觉偏企业后台风格、样式定制需覆盖 token、版本升级有 breaking changes 风险。
+**不选 Arco Design**：社区生态和文档质量逊于 antd，且同样存在依赖上游维护的问题。
+
+### 前端依赖清单
+
+```text
+# shadcn/ui 基础（初始化时自动安装）
+tailwindcss, @tailwindcss/vite, class-variance-authority, clsx, tailwind-merge, lucide-react
+
+# 表单
+react-hook-form, @hookform/resolvers, zod
+
+# 状态管理
+zustand
+
+# Markdown 编辑器
+@uiw/react-md-editor
+
+# 虚拟滚动
+@tanstack/react-virtual
+```
+
+## 前端目录结构
+
+按功能模块组织（feature-based），与后端 Service 分层对应：
+
+```text
+frontend/src/
+├── main.tsx                        # 入口
+├── App.tsx                         # 根组件：侧边栏 + 内容区
+├── index.css                       # Tailwind 入口 + CSS 变量（主题色等）
+│
+├── components/                     # 通用组件
+│   ├── ui/                         # shadcn/ui 组件（CLI 自动生成到此目录）
+│   │   ├── button.tsx
+│   │   ├── input.tsx
+│   │   └── ...
+│   ├── layout/
+│   │   ├── Sidebar.tsx             # 侧边栏导航
+│   │   └── ContentArea.tsx         # 内容区容器
+│   ├── TagInput.tsx                # 标签输入（自动补全+多选+新建）
+│   ├── TagTreeFilter.tsx           # 标签树形筛选面板
+│   ├── SearchBar.tsx               # 通用搜索框
+│   ├── FileUpload.tsx              # 通用文件上传
+│   ├── ConfirmDialog.tsx           # 通用确认弹窗
+│   └── EmptyState.tsx              # 空状态占位
+│
+├── features/                       # 功能模块
+│   ├── url/                        # URL 收藏模块
+│   │   ├── URLPage.tsx             # 模块入口：搜索栏 + 列表 + 详情
+│   │   ├── SiteList.tsx            # 站点分组折叠列表
+│   │   ├── BookmarkItem.tsx        # 单条书签列表项
+│   │   ├── SiteDetail.tsx          # 站点详情/编辑
+│   │   ├── BookmarkDetail.tsx      # 书签详情/编辑
+│   │   ├── SiteForm.tsx            # 站点表单
+│   │   ├── BookmarkForm.tsx        # 书签表单
+│   │   ├── TempQueue.tsx           # 临时队列面板
+│   │   └── hooks.ts               # 模块 hooks（数据请求、操作）
+│   ├── notes/
+│   │   ├── NotesPage.tsx
+│   │   ├── NoteList.tsx
+│   │   ├── NoteEditor.tsx          # Markdown 编辑器封装
+│   │   └── hooks.ts
+│   ├── media/
+│   │   ├── MediaPage.tsx
+│   │   ├── MediaGrid.tsx           # 缩略图虚拟网格
+│   │   ├── MediaCard.tsx           # 单个缩略图卡片
+│   │   ├── MediaDetail.tsx         # 详情面板
+│   │   ├── MediaFilter.tsx         # 筛选栏
+│   │   └── hooks.ts
+│   ├── tags/
+│   │   ├── TagsPage.tsx
+│   │   ├── TagList.tsx
+│   │   ├── TagMergeDialog.tsx      # 合并弹窗
+│   │   └── hooks.ts
+│   └── settings/
+│       ├── SettingsPage.tsx
+│       ├── FolderManager.tsx       # 媒体文件夹管理
+│       ├── IndexStatus.tsx         # 索引状态与重建
+│       └── hooks.ts
+│
+├── stores/                         # Zustand stores（每模块独立）
+│   ├── app.ts                      # 全局：当前页面、侧边栏状态
+│   ├── url.ts                      # URL 模块：站点列表、书签、搜索状态
+│   ├── note.ts                     # 笔记模块
+│   ├── media.ts                    # 媒体模块
+│   ├── tag.ts                      # 标签模块
+│   └── setting.ts                  # 设置模块
+│
+├── hooks/                          # 全局通用 hooks
+│   ├── useWailsEvent.ts            # Wails Events 订阅封装
+│   └── usePagination.ts            # 分页 + 无限滚动逻辑
+│
+├── lib/                            # 工具函数
+│   └── utils.ts                    # cn() 等工具（shadcn 初始化生成）
+│
+└── types/                          # 前端专用类型
+    └── index.ts                    # 页面枚举、筛选条件等（后端实体类型由 bindings/ 自动生成）
+```
+
+### 目录约定
+
+| 目录 | 职责 | 谁维护 |
+|------|------|--------|
+| `components/ui/` | shadcn/ui 组件 | CLI 自动生成，可手动修改 |
+| `components/` 其他 | 跨模块复用的业务组件 | 手动 |
+| `features/{module}/` | 功能模块，组件 + hooks 同目录 | 手动 |
+| `stores/` | 每模块独立 store，与后端 Service 对应 | 手动 |
+| `bindings/` | Wails 自动生成的 TS 类型和服务调用 | `wails3 generate bindings` 自动生成，**不手动编辑** |
+| `types/` | 前端独有类型（页面枚举、筛选条件等） | 手动 |
 
 ## 存储架构
 
