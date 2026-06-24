@@ -207,6 +207,40 @@ MediaStore.Update(folder_id, changes):
 5. **数据格式 JSON**：统一使用 JSON，便于调试和导出
 6. **媒体数据隔离**：按文件夹独立存储，不与 URL/笔记耦合
 
+## 统一文件上传
+
+前端提供通用的图片/视频上传组件（原子化、可复用），所有模块的文件上传统一调用后端的 `UploadFile` 接口。后端根据前端传递的 `scene` 参数将文件分发到 `persist/` 下不同子目录。
+
+**接口签名：**
+
+```go
+// scene: 上传场景，决定文件存储路径
+// entity_id: 关联实体 ID（站点/书签/笔记的 UUID）
+// file: 文件内容
+UploadFile(req UploadFileReq) (*UploadFileResult, error)
+```
+
+**scene 路由表：**
+
+| scene | 存储路径 | 使用场景 |
+|-------|---------|---------|
+| `site-icon` | `persist/url-assets/icons/{domain}.{ext}` | 站点图标 |
+| `site-cover` | `persist/url-assets/covers/{entity_id}.{ext}` | 站点封面 |
+| `bm-cover` | `persist/url-assets/covers/{entity_id}.{ext}` | 书签封面 |
+| `site-attachment` | `persist/url-assets/attachments/{entity_id}/{filename}` | 站点附件 |
+| `bm-attachment` | `persist/url-assets/attachments/{entity_id}/{filename}` | 书签附件 |
+| `note-image` | `persist/note-images/{entity_id}/{hash}.{ext}` | 笔记图片 |
+
+**支持格式：**
+
+| 类型 | 格式 |
+|------|------|
+| 图片 | JPG/JPEG、PNG、GIF、WebP、BMP |
+| 视频 | MP4、MKV、AVI、MOV、WebM |
+| 文本 | TXT（仅附件场景） |
+
+后端校验文件扩展名是否在 scene 允许范围内，不合法则拒绝。返回值包含存储后的文件路径，供前端写入实体数据。
+
 ## 接口约定
 
 Wails 将 Go 结构体的公开方法直接暴露给前端调用，无需手写 REST API。接口文档以 **Go 函数注释**为主，不单独维护接口文档文件（Go 注释会自动生成 TypeScript JSDoc）。
@@ -221,6 +255,7 @@ Wails 将 Go 结构体的公开方法直接暴露给前端调用，无需手写 
 | `NoteService` | 笔记的增删改查、图片管理 |
 | `MediaService` | 媒体文件夹管理、扫描、缩略图、标签 |
 | `TagService` | 标签管理（重命名/合并/删除/重算 count） |
+| `UploadService` | 统一文件上传，按 scene 分发到 persist 子目录 |
 | `SettingService` | 应用设置、索引重建 |
 
 ### 方法签名约定
