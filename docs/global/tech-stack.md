@@ -322,10 +322,12 @@ Wails 将 Go 结构体的公开方法直接暴露给前端调用，无需手写 
 
 | 操作类型 | 返回签名 | 示例 |
 |---------|---------|------|
-| 单条查询 | `(*Entity, error)` | `GetBookmark(id string) (*Bookmark, error)` |
+| 单条详情 | `(*Entity, error)` | `GetBookmark(id string) (*Bookmark, error)` |
 | 分页列表 | `(*XxxListResult, error)` | `ListBookmarks(req BookmarkListReq) (*BookmarkListResult, error)` |
 | 创建/更新 | `(*Entity, error)` | `CreateBookmark(req CreateBookmarkReq) (*Bookmark, error)` |
 | 删除 | `error` | `DeleteBookmark(id string) error` |
+
+列表接口返回摘要字段（title、domain、tags 等），单条详情接口返回完整信息（含 description、cover、attachments 等）。
 
 **分页请求/响应结构：**
 
