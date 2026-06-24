@@ -11,16 +11,17 @@ persist/
 ├── main.db                    ← BuntDB 主存储（单文件）
 ├── search.bleve/              ← Bleve 搜索索引目录（可重建）
 ├── url-assets/                ← URL 模块资源（站点 + 书签相关文件）
-│   ├── icons/                 ← 站点/书签图标（按域名命名，可重新抓取）
+│   ├── icons/                 ← 站点图标（按域名命名，可重新抓取）
 │   │   └── {domain}.{ext}
 │   ├── covers/                ← 封面图（用户上传）
 │   │   └── {entity_id}.{ext}
-│   └── attachments/           ← 附件（用户上传的图片、文件等）
+│   └── attachments/           ← 附件（用户上传的图片、视频、文本等）
 │       └── {entity_id}/
-│           └── {filename}
+│           ├── {filename}            ← 原始附件
+│           └── {filename}.thumb.jpg  ← 附件缩略图（图片/视频，后端上传时自动生成）
 ├── note-images/               ← 笔记中粘贴的图片
 │   └── {note_id}/
-│       └── {hash}.{ext}
+│       └── {sha256[:16]}.{ext}      ← SHA-256 前 16 字符 + 原始扩展名
 └── media-folders/                   ← 媒体管理数据（每文件夹独立）
     └── {folder_id}/
         ├── media_meta.json         ← 媒体元数据（图片+视频）
@@ -38,7 +39,15 @@ persist/
 - `thumbnails/` 可从源文件重新生成
 - `note-images/` 是笔记引用的图片实体，删除则笔记中图片丢失
 
-**删除清理规则**：删除站点或书签时，同步删除 `persist/url-assets/covers/{entity_id}.*` 和 `persist/url-assets/attachments/{entity_id}/` 整个目录。
+**文件清理规则**：
+
+| 触发场景 | 清理动作 |
+|---------|---------|
+| 删除站点 | 删除 `icons/{domain}.*` + `covers/{entity_id}.*` + `attachments/{entity_id}/` 整个目录 |
+| 删除书签 | 删除 `covers/{entity_id}.*` + `attachments/{entity_id}/` 整个目录 |
+| 更换封面 | 上传新封面前先删除 `covers/{entity_id}.*`（通配删除旧文件，避免扩展名变化导致残留） |
+| 删除单个附件 | 删除 `attachments/{entity_id}/{filename}` + 对应的 `{filename}.thumb.jpg` |
+| 删除笔记 | 删除 `note-images/{note_id}/` 整个目录 |
 
 ## BuntDB Key Schema
 
@@ -248,7 +257,7 @@ Key:   note:{note_id}
 {
   "id": "c9d0e1f2-...",
   "title": "学习笔记",
-  "body": "今天学了 Go 的接口...\n\n![图片](note-images/c9d0e1f2-.../ab3f.png)",
+  "body": "今天学了 Go 的接口...\n\n![图片](note-images/c9d0e1f2-.../a3f2b8c1e5d7f9ab.png)",
   "created_at": "2026-06-20T09:00:00Z",
   "updated_at": "2026-06-22T15:00:00Z"
 }
@@ -258,7 +267,7 @@ Key:   note:{note_id}
 |------|------|------|------|
 | id | string | 是 | UUID |
 | title | string | 是 | 标题 |
-| body | string | 否 | Markdown 正文，图片引用存储相对路径（如 `note-images/{note_id}/{hash}.png`），前端渲染时加 `/persist/` 前缀 |
+| body | string | 否 | Markdown 正文，图片引用存储相对路径（如 `note-images/{note_id}/{sha256[:16]}.png`），前端渲染时加 `/persist/` 前缀 |
 | created_at | string | 是 | ISO 8601 |
 | updated_at | string | 是 | ISO 8601 |
 

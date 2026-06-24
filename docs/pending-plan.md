@@ -62,13 +62,9 @@ Go 后端涉及的异步操作需明确：
 
 已写入 [tech-stack.md - 接口约定](./global/tech-stack.md#接口约定)。包含 Service 列表、返回模式、分页结构、Events 事件、HTTP 扩展方案。
 
-### 18. 附件缩略图的存储路径和命名规则
+### ~~18. 附件缩略图的存储路径和命名规则~~ → 已完成
 
-站点/书签附件中的图片和视频，上传后由后端自动生成缩略图。待确定：
-
-- 缩略图存储路径（是放在 `persist/url-assets/attachments/{entity_id}/` 下还是单独目录）
-- 命名规则（是否复用媒体管理的 SHA-256 方案）
-- 图片缩略图和视频缩略图的生成方式
+缩略图放在同一附件目录内，命名为 `{filename}.thumb.jpg`。写入 [url-bookmarks.md - 附件](./features/url-bookmarks.md#编辑) 和 [data-structures.md - persist 目录结构](./global/data-structures.md#persist-目录结构)。
 
 ## 设计问题（待讨论）
 

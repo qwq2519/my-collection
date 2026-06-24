@@ -49,6 +49,7 @@
 - 编辑/新增表单中提供封面上传区域，支持上传图片作为列表页主展示图
 - 支持格式：JPG/JPEG、PNG、GIF、WebP、BMP（与媒体管理图片格式一致）
 - 存储在 `persist/url-assets/covers/{entity_id}.{ext}`
+- **更换封面**：上传新封面前先通配删除旧文件 `covers/{entity_id}.*`，避免扩展名变化导致残留
 - 封面以图片形式直接展示
 - 通过统一上传接口上传，详见 [技术栈 - 统一文件上传](../global/tech-stack.md#统一文件上传)
 
@@ -58,7 +59,8 @@
 - 支持格式：txt 文本文件 + 媒体格式（图片：JPG/JPEG、PNG、GIF、WebP、BMP；视频：MP4、MKV、AVI、MOV、WebM）
 - 存储在 `persist/url-assets/attachments/{entity_id}/`
 - 展示规则：图片附件直接展示缩略图，视频附件抽帧展示静态缩略图，txt 文件仅展示文件名
-- 缩略图由后端在文件上传完成后自动生成，存储路径和命名规则待定（见 [待讨论](../pending-plan.md)）
+- **缩略图**：后端在文件上传完成后自动生成，存放在同一附件目录内，命名为 `{filename}.thumb.jpg`（如 `screenshot.png.thumb.jpg`）。图片缩略图用 Go 标准库缩放，视频缩略图用 ffmpeg 抽帧（不可用时显示通用视频图标）
+- **删除单个附件**：同步删除源文件和对应缩略图
 - 通过统一上传接口上传，详见 [技术栈 - 统一文件上传](../global/tech-stack.md#统一文件上传)
 
 ### 删除
@@ -68,6 +70,7 @@
 - 支持删除单条书签
 - 支持**批量选择删除**：列表中多选书签后批量删除
 - 删除操作需二次确认
+- **文件清理**：删除站点时同步删除 icon、封面和附件目录；删除书签时同步删除封面和附件目录。详见 [数据结构 - 文件清理规则](../global/data-structures.md#persist-目录结构)
 - **bookmark_count 维护**：添加或删除书签时同步更新所属站点的 `bookmark_count`，详见 [数据结构 - site](../global/data-structures.md#site--站点)
 - **标签 count 维护**：删除书签或站点时，遍历其 tags 数组，递减对应 url_tag 注册表的 count（批量删除时先汇总再一次性更新）
 
