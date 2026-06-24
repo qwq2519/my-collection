@@ -104,10 +104,12 @@
 
 ### 备份一致性机制
 
-后端维护一个全局 `sync.RWMutex`（写入互斥锁），所有写入操作和备份操作通过该锁协调：
+后端维护一个全局 `sync.RWMutex`（备份协调锁），用于在备份期间暂停所有写入操作，保证数据一致性。
+
+**命名与语义**：变量命名为 `backupMu`。这里借用 RWMutex 的"多读单写"机制实现"多写单备份"——普通写入操作取 RLock（允许并发），备份操作取 Lock（独占）。语义上 RLock 对应的是"普通操作"而非"读操作"，需注意这一反直觉用法。
 
 ```text
-                    writeMu (sync.RWMutex)
+                   backupMu (sync.RWMutex)
                    /                      \
   普通写入操作: RLock()                 备份操作: Lock()
   (允许多个写入并发)                    (独占，等待所有写入完成后执行)
@@ -116,19 +118,20 @@
 **普通写入操作**（BuntDB 写入、media_meta.json 写入、Bleve 索引更新等）：
 
 ```go
-writeMu.RLock()
-defer writeMu.RUnlock()
+// 取 RLock 而非 Lock，允许多个写入操作并发执行，
+// 仅在备份（Lock）期间阻塞
+backupMu.RLock()
+defer backupMu.RUnlock()
 // 执行写入...
 ```
-
-多个写入操作可以并发执行（RLock 之间不互斥），不影响正常性能。
 
 **备份操作**：
 
 ```go
-writeMu.Lock()
-defer writeMu.Unlock()
-// 此时保证没有任何写入操作在进行中
+// 独占锁，等待所有进行中的写入（RLock）完成后再执行，
+// 持锁期间阻止新的写入进入，保证 persist/ 目录数据静止
+backupMu.Lock()
+defer backupMu.Unlock()
 // 1. 已完成的写入已持久化（BuntDB 自动持久化，media_meta.json 原子写入）
 // 2. 打包 persist/ 为 zip（跳过 search.bleve/ 和 thumbnails/）
 // 3. 返回 zip 文件路径
