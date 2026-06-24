@@ -10,6 +10,7 @@
 | [笔记](./features/notes.md) | Markdown 短笔记 |
 | [媒体管理](./features/media-manager.md) | 图片+视频、文件夹扫描、Merkle Tree、元数据、缩略图、ffmpeg |
 | [小说管理](./features/novel.md) | **暂不实现**，本地小说导入、阅读器、进度管理 |
+| [LLM 对话](./features/llm-chat.md) | **暂不实现**，大模型多轮对话、重新生成、隐藏轮次 |
 
 ## 全局文档
 
