@@ -115,15 +115,21 @@ relative_path = 从文件夹根目录算起的相对路径（如 "子目录A/img
 | 图片（含 GIF） | Go 标准库 `image` 包缩放第一帧 | 跳过，显示占位图标 |
 | 视频 | `ffmpeg -ss 1 -i {path} -frames:v 1 -q:v 2 {output}` | 显示通用视频图标 |
 
-**动画预览**（仅视频，ffmpeg 可用时生成）：
+**动画预览**（视频 + GIF）：
 
 命名规则：`{hash}.preview.webp`，与静态缩略图同目录。
+
+**视频**（ffmpeg 可用时生成）：
 
 ```bash
 ffmpeg -ss 0 -t 6 -i input.mp4 -vf "fps=2,scale=320:-1" -loop 0 -q:v 75 output.webp
 ```
 
 从视频前 6 秒均匀抽帧（每秒 2 帧），生成动画 WebP。ffmpeg 不可用时不生成，不影响功能。
+
+**GIF**（Go 标准库，无需 ffmpeg）：
+
+使用 Go `image/gif` 解码原始 GIF 全部帧，缩放后编码为动画 WebP。不依赖外部工具，始终可用。
 
 **前端展示策略**（按文件扩展名判断，无需额外字段）：
 
