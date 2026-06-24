@@ -47,19 +47,26 @@
 
 ## 后端接口
 
-通过 `SettingService` 暴露，前端每个按钮对应一个方法调用：
+设置页面涉及两个 Service：`SettingService` 负责应用级设置，`MediaService` 负责媒体文件夹管理和扫描。
+
+**SettingService：**
 
 | 方法 | 用途 | 触发方式 |
 |------|------|---------|
 | `GetSettings()` | 获取当前设置（persist 路径、ffmpeg 状态、索引状态等） | 进入设置页时自动调用 |
+| `RebuildIndex()` | 重建 Bleve 索引 | "重建索引"按钮 |
+| `ExportBackup()` | 导出备份 zip（等待写入完成后打包） | "导出备份"按钮 |
+
+**MediaService（媒体文件夹管理）：**
+
+| 方法 | 用途 | 触发方式 |
+|------|------|---------|
 | `ListFolders()` | 列出已注册媒体文件夹 | 进入设置页时自动调用 |
 | `AddFolder(path)` | 添加媒体文件夹 | "添加文件夹"按钮 |
 | `RemoveFolder(id)` | 移除媒体文件夹 | "移除"按钮 |
 | `UpdateFolderPath(id, newPath)` | 更新文件夹路径 | "修改路径"按钮 |
-| `RebuildIndex()` | 重建 Bleve 索引 | "重建索引"按钮 |
 | `ScanAllFolders()` | 扫描所有媒体文件夹 | "全量扫描"按钮 |
 | `ScanFolder(id)` | 扫描单个媒体文件夹 | 单个文件夹的"扫描"按钮 |
-| `ExportBackup()` | 导出备份 zip（等待写入完成后打包） | "导出备份"按钮 |
 
 ## UI
 
