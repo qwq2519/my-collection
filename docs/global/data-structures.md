@@ -335,6 +335,21 @@ BuntDB 支持基于 JSON 字段创建自定义索引，用于加速非主键查�
 
 媒体管理的元数据和变化检测快照以 JSON 文件存储在 `persist/media-folders/{folder_id}/` 下，独立于 BuntDB。
 
+### Hash 算法选型
+
+| 用途 | 算法 | 包 | 理由 |
+|------|------|---|------|
+| Merkle Tree 变化检测 | xxHash (xxh64) | `github.com/cespare/xxhash/v2` | 非密码学场景，速度优先 |
+| 缩略图文件命名 | SHA-256 取前 16 字符 | Go 标准库 `crypto/sha256` | 需要稳定、低碰撞的文件名 |
+
+**决策记录（Merkle Tree hash）：**
+
+候选方案：FNV-1a（Go 标准库 `hash/fnv`）、xxHash（`github.com/cespare/xxhash/v2`）。
+
+当前 Merkle Tree 的输入是短字符串（`filename + mtime + size`），两者速度差异不大。但后续可能扩展为对文件内容做 hash（重复检测、更精确的变化检测），输入为 MB-GB 级数据，此时 xxHash 比 FNV-1a 快约 7 倍（~10 GB/s vs ~1.5 GB/s），差距显著。
+
+选 xxHash 一步到位，避免后续混用两套 hash 或做迁移。多一个外部依赖，但 `cespare/xxhash` 是成熟稳定的小库，可接受。
+
 ### media_meta.json — 媒体元数据
 
 ```json
@@ -375,7 +390,7 @@ BuntDB 支持基于 JSON 字段创建自定义索引，用于加速非主键查�
 | `files[*].preview` | 动画预览文件名（仅视频，`{hash}.preview.webp`），无则为空 |
 | `files[*].added_at` | 首次扫描发现的时间 |
 | `files[*].file_size` | 文件大小（字节） |
-| `files[*].dimensions` | `[width, height]` |
+| `files[*].dimensions` | `[width, height]`，获取失败时为 `null` |
 | `files[*].duration` | 仅视频，时长（秒），ffmpeg 不可用时为 null |
 
 写入策略：写临时文件 → rename 原子替换。
@@ -418,7 +433,7 @@ BuntDB 支持基于 JSON 字段创建自定义索引，用于加速非主键查�
 |------|------|
 | `root` | 根目录节点 |
 | `*.type` | `"file"` 或 `"dir"` |
-| `*.hash` | 文件：`hash(filename + mtime + size)`；目录：`hash(sorted(child_hashes))` |
+| `*.hash` | 文件：`xxh64(relative_path + mtime + size)`，relative_path 为从文件夹根到该文件的相对路径（如 `子目录A/img1.jpg`）；目录：`xxh64(sorted(child_hashes))` |
 | `*.dir_mtime` | 仅目录节点，用于 dir_mtime 剪枝优化 |
 | `*.mtime` | 仅文件节点，文件修改时间 |
 | `*.size` | 仅文件节点，文件大小 |

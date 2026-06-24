@@ -35,8 +35,9 @@
 | BuntDB | `github.com/tidwall/buntdb` | 主存储，内存 KV，自动持久化 |
 | Bleve v2 | `github.com/blevesearch/bleve/v2` | 全文搜索，倒排索引 |
 | gse | `github.com/go-ego/gse` | 中文分词，为 Bleve 提供 CJK analyzer |
+| xxHash | `github.com/cespare/xxhash/v2` | Merkle Tree 变化检测用的高速 hash |
 
-三者均为纯 Go 实现，无 CGO 依赖。
+四者均为纯 Go 实现，无 CGO 依赖。
 
 ## 为什么选 BuntDB + Bleve
 

@@ -145,11 +145,11 @@ media_meta.json 中保存缩略图文件名用于前端展示，原始相对路�
           /         \
     dir_hash_A     dir_hash_B       ← 子目录（各自记录 dir_mtime）
     /    \           /    \
-  f1     f2        f3     f4        ← 文件：hash(filename + mtime + size)
+  f1     f2        f3     f4        ← 文件：xxh64(relative_path + mtime + size)
 ```
 
-- 叶节点指纹：`hash(filename + mtime + size)`
-- 目录节点指纹：`hash(sorted(child_hashes))`
+- 叶节点指纹：`xxh64(relative_path + mtime + size)`，relative_path 为从文件夹根到该文件的相对路径
+- 目录节点指纹：`xxh64(sorted(child_hashes))`
 - 每个目录节点额外记录 `dir_mtime`
 - 扫描时仅处理扩展名匹配支持格式的文件，其他文件忽略
 
