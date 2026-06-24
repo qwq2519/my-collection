@@ -96,7 +96,8 @@
 
 - `main.db` + `media-folders/*/media_meta.json` 是核心数据
 - `search.bleve/` 可从上述数据重建
-- `icons/` 可通过重新抓取恢复
+- `url-assets/icons/` 可通过重新抓取恢复
+- `url-assets/covers/` + `url-assets/attachments/` 是用户上传数据
 - `thumbnails/` 可从源文件重新生成
 
 ## 静态资源访问
@@ -110,7 +111,8 @@ Wails v3 的 `Application` 支持配置自定义 `AssetHandler`，当请求路�
 **前端引用方式**：
 
 ```html
-<img src="/persist/icons/github.com.png" />
+<img src="/persist/url-assets/icons/github.com.png" />
+<img src="/persist/url-assets/covers/{entity_id}.gif" />
 <img src="/persist/note-images/{note_id}/{hash}.png" />
 <img src="/persist/media-folders/{folder_id}/thumbnails/{hash}.jpg" />
 ```
@@ -119,7 +121,7 @@ Wails v3 的 `Application` 支持配置自定义 `AssetHandler`，当请求路�
 
 **安全约束**：
 
-- 路径白名单：只允许访问 `persist/` 下的 `icons/`、`note-images/`、`media-folders/` 子目录
+- 路径白名单：只允许访问 `persist/` 下的 `url-assets/`、`note-images/`、`media-folders/` 子目录
 - 目录遍历防护：校验解析后的绝对路径仍在 `persist/` 目录内（防止 `../` 攻击）
 
 **缓存策略**：

@@ -10,8 +10,14 @@
 persist/
 ├── main.db                    ← BuntDB 主存储（单文件）
 ├── search.bleve/              ← Bleve 搜索索引目录（可重建）
-├── icons/                     ← 站点/书签图标（按域名命名，可重新抓取）
-│   └── {domain}.{ext}
+├── url-assets/                ← URL 模块资源（站点 + 书签相关文件）
+│   ├── icons/                 ← 站点/书签图标（按域名命名，可重新抓取）
+│   │   └── {domain}.{ext}
+│   ├── covers/                ← 封面图（用户上传）
+│   │   └── {entity_id}.{ext}
+│   └── attachments/           ← 附件（用户上传的图片、文件等）
+│       └── {entity_id}/
+│           └── {filename}
 ├── note-images/               ← 笔记中粘贴的图片
 │   └── {note_id}/
 │       └── {hash}.{ext}
@@ -26,9 +32,13 @@ persist/
 
 - `main.db` + `media-folders/*/media_meta.json` 是核心数据，丢失不可恢复
 - `search.bleve/` 可从 main.db + media_meta.json 全量重建
-- `icons/` 可通过重新抓取恢复
+- `url-assets/icons/` 可通过重新抓取恢复
+- `url-assets/covers/` 是用户上传的封面图，删除则封面丢失
+- `url-assets/attachments/` 是用户上传的附件，删除则附件丢失
 - `thumbnails/` 可从源文件重新生成
 - `note-images/` 是笔记引用的图片实体，删除则笔记中图片丢失
+
+**删除清理规则**：删除站点或书签时，同步删除 `persist/url-assets/covers/{entity_id}.*` 和 `persist/url-assets/attachments/{entity_id}/` 整个目录。
 
 ## BuntDB Key Schema
 
@@ -64,8 +74,12 @@ Key:   site:{site_id}
   "title": "GitHub",
   "domain": "github.com",
   "icon": "github.com.png",
+  "cover": "a1b2c3d4.png",
   "description": "代码托管平台",
   "tags": ["开发", "工具::代码托管"],
+  "attachments": [
+    { "filename": "screenshot.png", "label": "首页截图" }
+  ],
   "bookmark_count": 3,
   "created_at": "2026-06-22T10:00:00Z",
   "updated_at": "2026-06-22T10:00:00Z"
@@ -77,9 +91,13 @@ Key:   site:{site_id}
 | id | string | 是 | UUID，同 key 中的 `{site_id}` |
 | title | string | 是 | 显示名称 |
 | domain | string | 是 | 归一化后的完整域名（去 www），用于自动归组，**站点间唯一** |
-| icon | string | 否 | 图标文件名，存储在 `persist/icons/`，以域名命名（如 `github.com.png`） |
+| icon | string | 否 | 图标文件名，存储在 `persist/url-assets/icons/`，以域名命名（如 `github.com.png`） |
+| cover | string | 否 | 封面图文件名，存储在 `persist/url-assets/covers/{entity_id}.{ext}`，列表页主展示图 |
 | description | string | 否 | 站点描述 |
 | tags | string[] | 否 | 标签列表，与书签共享同一套 URL 标签体系 |
+| attachments | object[] | 否 | 附件列表，文件存储在 `persist/url-assets/attachments/{entity_id}/` |
+| attachments[*].filename | string | 是 | 附件文件名 |
+| attachments[*].label | string | 否 | 附件描述/标注 |
 | bookmark_count | int | 是 | 该站点下的书签数量，增删书签时同步维护 |
 | created_at | string | 是 | ISO 8601 |
 | updated_at | string | 是 | ISO 8601 |
@@ -109,8 +127,12 @@ Key:   bm:{bm_id}
   "site_id": "a1b2c3d4-...",
   "title": "golang/go",
   "icon": "",
+  "cover": "e5f6a7b8.gif",
   "description": "Go 语言主仓库",
   "tags": ["go", "开源"],
+  "attachments": [
+    { "filename": "demo.png", "label": "效果演示" }
+  ],
   "status": "alive",
   "created_at": "2026-06-22T12:00:00Z",
   "updated_at": "2026-06-22T12:00:00Z"
@@ -125,9 +147,13 @@ Key:   bm:{bm_id}
 | domain | string | 是 | 从 URL 提取并归一化的域名 |
 | site_id | string | 否 | 所属站点 ID；**空字符串表示在待归组队列中** |
 | title | string | 是 | 页面标题 |
-| icon | string | 否 | 图标文件名，与站点共享 `persist/icons/{domain}.{ext}` |
+| icon | string | 否 | 图标文件名，与站点共享 `persist/url-assets/icons/{domain}.{ext}` |
+| cover | string | 否 | 封面图文件名，存储在 `persist/url-assets/covers/{entity_id}.{ext}`，支持静态图和 GIF |
 | description | string | 否 | 页面描述 |
 | tags | string[] | 否 | 标签列表，独立于站点 |
+| attachments | object[] | 否 | 附件列表，文件存储在 `persist/url-assets/attachments/{entity_id}/` |
+| attachments[*].filename | string | 是 | 附件文件名 |
+| attachments[*].label | string | 否 | 附件描述/标注 |
 | status | string | 否 | `"alive"` / `"dead"`，默认 `"alive"` |
 | created_at | string | 是 | ISO 8601 |
 | updated_at | string | 是 | ISO 8601 |
