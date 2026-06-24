@@ -470,6 +470,7 @@ Bleve 索引目录：`persist/search.bleve/`
 | `description` | site.description | text（分词） |
 | `domain` | site.domain | keyword |
 | `tags` | site.tags | keyword（多值） |
+| `updated_at` | site.updated_at | datetime |
 
 **书签（Bookmark）：**
 
@@ -482,6 +483,7 @@ Bleve 索引目录：`persist/search.bleve/`
 | `domain` | bookmark.domain | keyword |
 | `tags` | bookmark.tags | keyword（多值） |
 | `url` | bookmark.url | keyword |
+| `updated_at` | bookmark.updated_at | datetime |
 
 **笔记（Note）：**
 
@@ -490,7 +492,8 @@ Bleve 索引目录：`persist/search.bleve/`
 | `_id` | `"note:{note_id}"` | — |
 | `_type` | `"note"` | keyword |
 | `title` | note.title | text（分词） |
-| `body` | note.body | text（分词，全文搜索） |
+| `body` | note.body 经 strip Markdown 后的纯文本 | text（分词，全文搜索） |
+| `updated_at` | note.updated_at | datetime |
 
 **媒体（Media）：**
 
@@ -501,6 +504,11 @@ Bleve 索引目录：`persist/search.bleve/`
 | `media_type` | `"image"` 或 `"video"` | keyword |
 | `filename` | 从 relative_path 提取文件名 | text（分词） |
 | `tags` | file.tags | keyword（多值） |
+| `added_at` | file.added_at | datetime |
+
+**笔记索引预处理**：笔记 body 索引前由后端 strip Markdown 语法标记（`#`、`[]`、` ``` ` 等），只保留纯文本内容。BuntDB 中存储原始 Markdown，Bleve 中存储过滤后的纯文本。
+
+**时间排序**：各实体的 `updated_at`（媒体为 `added_at`）以 datetime 类型索引，支持搜索结果按时间排序。
 
 **标签筛选方式**：用户多选标签进行筛选时，查询走 Bleve keyword 精确匹配（AND 语义）。不支持 `前端::*` 前缀模糊查询。
 
