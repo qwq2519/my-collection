@@ -92,6 +92,8 @@
 
 所有持久化数据集中存放，是唯一需要备份的目录。完整目录结构和各文件格式详见 [数据结构](./data-structures.md#persist-目录结构)。
 
+**目录位置**：`persist/` 位于可执行文件所在目录下（即 `{exe_dir}/persist/`）。开发阶段 `wails3 dev` 在项目根目录运行，因此 `persist/` 生成在项目根目录下。
+
 **备份方式**：通过应用内"导出备份"功能，打包 `persist/` 目录为 zip 文件。
 
 - `main.db` + `media-folders/*/media_meta.json` 是核心数据
