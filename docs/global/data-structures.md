@@ -212,6 +212,7 @@ Key:   queue:{queue_id}
 {
   "id": "d1e2f3a4-...",
   "url": "https://example.com/some-page",
+  "normalized_url": "example.com/some-page",
   "added_at": "2026-06-22T14:00:00Z"
 }
 ```
@@ -220,9 +221,12 @@ Key:   queue:{queue_id}
 |------|------|------|------|
 | id | string | 是 | UUID |
 | url | string | 是 | 用户输入的原始 URL |
+| normalized_url | string | 是 | 归一化后的 URL，用于入队去重（规则同书签，见 [bm - URL 归一化规则](#bm--书签url)） |
 | added_at | string | 是 | ISO 8601，加入队列的时间 |
 
 临时队列是一个极简的 URL 暂存区。添加书签时若域名无对应站点，URL 自动存入此队列。队列条目只保存 URL 本身，不含 title、tags 等元数据，不参与搜索索引（不进 Bleve）。
+
+**入队去重**：入队时对 URL 做归一化，校验 `normalized_url` 是否已存在于队列或已有书签中，重复则拒绝并提示。
 
 用户可在队列中查看和删除条目。如需正式收藏，用户先创建对应站点，再手动添加书签。
 
@@ -230,6 +234,7 @@ Key:   queue:{queue_id}
 
 - 列出所有队列条目：前缀扫描 `queue:*`
 - 按 ID 删除：`queue:{id}`
+- 按归一化 URL 查重：BuntDB 自定义索引 `idx:queue_normalized_url`，索引 `normalized_url` 字段
 
 ---
 
@@ -402,7 +407,8 @@ BuntDB 支持基于 JSON 字段创建自定义索引，用于加速非主键查�
 | `idx:site_domain` | `site:*` | `.domain` | 按域名查找站点（添加 URL 时自动归组） |
 | `idx:bm_site` | `bm:*` | `.site_id` | 按站点列出书签 |
 | `idx:bm_domain` | `bm:*` | `.domain` | 按域名查找书签 |
-| `idx:bm_normalized_url` | `bm:*` | `.normalized_url` | URL 去重校验 |
+| `idx:bm_normalized_url` | `bm:*` | `.normalized_url` | 书签 URL 去重校验 |
+| `idx:queue_normalized_url` | `queue:*` | `.normalized_url` | 临时队列 URL 去重校验 |
 
 ---
 
