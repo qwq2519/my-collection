@@ -560,7 +560,8 @@ Bleve 索引目录：`persist/search.bleve/`
 | 站点筛选 | BuntDB `idx:bm_site` | 精确匹配 site_id |
 | 域名精确过滤 | `domain` | keyword |
 | 类型筛选（媒体） | `media_type` | keyword |
-| 存活状态（URL） | `status` 字段 | 前端过滤 |
+
+`status` 字段（`"alive"` / `"dead"`）仅用于详情页状态展示，**不参与搜索、筛选或排序**，因此不纳入 Bleve 索引。
 
 不支持 `前端::*` 前缀模糊查询。
 
