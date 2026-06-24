@@ -73,11 +73,9 @@ Go 后端涉及的异步操作需明确：
 
 已补充到 [tag-system.md - 实体删除时的标签维护](./global/tag-system.md#实体删除时的标签维护)、[url-bookmarks.md - 删除](./features/url-bookmarks.md#删除)、[media-manager.md - Diff 结果处理 & 文件夹移除](./features/media-manager.md)。
 
-### 13. 笔记图片与静态资源的前端访问路径未定义
+### ~~13. 笔记图片与静态资源的前端访问路径未定义~~ → 已完成
 
-笔记 body 中存储 `![图片](note-images/xxx/ab3f.png)` 相对路径，但未说明前端如何访问 `persist/` 目录下的文件（图标、缩略图、笔记图片）。
-
-需要在 [tech-stack.md](./global/tech-stack.md) 中补充静态资源访问策略（Wails AssetHandler / Go HTTP 接口 / 其他）。
+已选定 Wails AssetHandler 方案，含候选方案对比。写入 [tech-stack.md - 静态资源访问](./global/tech-stack.md#静态资源访问)。
 
 ### 14. 图标存储的命名冲突
 

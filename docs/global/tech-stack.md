@@ -98,6 +98,51 @@
 - `icons/` 可通过重新抓取恢复
 - `thumbnails/` 可从源文件重新生成
 
+## 静态资源访问
+
+前端需要访问 `persist/` 目录下的本地文件（站点图标、笔记图片、媒体缩略图）。采用 **Wails AssetHandler** 方案。
+
+### 方案：Wails AssetHandler
+
+Wails v3 的 `Application` 支持配置自定义 `AssetHandler`，当请求路径在前端打包产物（`embed.FS`）中未命中时，转发给该 handler。将 `/persist/...` 路径映射到本地文件系统。
+
+**前端引用方式**：
+
+```html
+<img src="/persist/icons/github.com.png" />
+<img src="/persist/note-images/{note_id}/{hash}.png" />
+<img src="/persist/media-folders/{folder_id}/thumbnails/{hash}.jpg" />
+```
+
+笔记 body 中存储的图片路径（`note-images/xxx/img.png`）渲染时加 `/persist/` 前缀即可。
+
+**安全约束**：
+
+- 路径白名单：只允许访问 `persist/` 下的 `icons/`、`note-images/`、`media-folders/` 子目录
+- 目录遍历防护：校验解析后的绝对路径仍在 `persist/` 目录内（防止 `../` 攻击）
+
+**缓存策略**：
+
+- 图标和缩略图变更频率低，设置 `Cache-Control` 响应头，减少重复读盘
+- 笔记图片按内容 hash 命名，天然适合长期缓存
+
+### 候选方案对比（决策记录）
+
+| | AssetHandler（已选） | Go 方法返回 Base64 | 本地 HTTP 服务器 | 自定义 URL Scheme |
+|---|---|---|---|---|
+| 实现复杂度 | 低 | 中 | 中 | 高 |
+| Markdown 兼容 | 好（标准 `src`） | 差（需拦截替换所有图片引用） | 好 | 需适配非标准协议 |
+| 列表性能 | 好（浏览器并行加载） | 差（大量串行 Go 调用） | 好 | 好 |
+| 缓存 | 可配置 HTTP 缓存头 | 无浏览器缓存 | 天然支持 | 取决于 WebView 实现 |
+| 安全性 | 需路径校验 | Go 层校验，较安全 | 需路径校验 + CORS | 天然隔离 |
+| 架构契合度 | 高（Wails 原生机制） | 中 | 中（已规划 HTTP 扩展可复用） | 待验证 WebView2 支持 |
+
+**不选 Base64**：列表页（媒体网格、书签列表）图片多，逐张异步调用 Go 方法性能差；Base64 编码膨胀约 33%；Markdown 预览中 `![](path)` 无法直接渲染。
+
+**不选 HTTP 服务器**：引入端口管理、CORS 配置、独立生命周期管理，对纯本地桌面工具过重。
+
+**不选自定义 Scheme**：Wails v3 对自定义协议的支持依赖底层 WebView，跨平台行为可能不一致，且 Markdown 编辑器需适配非标准协议。
+
 ## 职责分工
 
 | 操作 | 走哪个组件 |
