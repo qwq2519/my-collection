@@ -431,7 +431,7 @@ BuntDB 支持基于 JSON 字段创建自定义索引，用于加速非主键查�
       "media_type": "image",
       "tags": ["风景", "2026"],
       "thumbnail": "a3f2b8c1e5d7f9ab.jpg",
-      "added_at": "2026-06-22T10:00:00Z",
+      "updated_at": "2026-06-22T10:00:00Z",
       "file_size": 2048576,
       "dimensions": [1920, 1080]
     },
@@ -440,7 +440,7 @@ BuntDB 支持基于 JSON 字段创建自定义索引，用于加速非主键查�
       "tags": ["旅行::日本"],
       "thumbnail": "9c1d4e7f20a3b6d8.jpg",
       "preview": "9c1d4e7f20a3b6d8.preview.webp",
-      "added_at": "2026-06-21T14:00:00Z",
+      "updated_at": "2026-06-21T14:00:00Z",
       "file_size": 104857600,
       "dimensions": [1920, 1080],
       "duration": 182.5
@@ -458,7 +458,7 @@ BuntDB 支持基于 JSON 字段创建自定义索引，用于加速非主键查�
 | `files[*].tags` | 标签数组 |
 | `files[*].thumbnail` | 静态缩略图文件名（`sha256(folder_id/rel_path)[:16].jpg`） |
 | `files[*].preview` | 动画预览文件名（仅视频，`{hash}.preview.webp`），无则为空 |
-| `files[*].added_at` | 首次扫描发现的时间 |
+| `files[*].updated_at` | 首次扫描发现时设为当前时间，文件修改（hash 变化）时更新 |
 | `files[*].file_size` | 文件大小（字节） |
 | `files[*].dimensions` | `[width, height]`，获取失败时为 `null` |
 | `files[*].duration` | 仅视频，时长（秒），ffmpeg 不可用时为 null |
@@ -576,11 +576,11 @@ Bleve 索引目录：`persist/search.bleve/`
 | `media_type` | `"image"` 或 `"video"` | keyword |
 | `filename` | 从 relative_path 提取文件名 | text（分词） |
 | `tags` | file.tags | keyword（多值） |
-| `added_at` | file.added_at | datetime |
+| `updated_at` | file.updated_at | datetime |
 
 **笔记索引预处理**：笔记 body 索引前由后端 strip Markdown 语法标记（`#`、`[]`、` ``` ` 等），只保留纯文本内容。BuntDB 中存储原始 Markdown，Bleve 中存储过滤后的纯文本。
 
-**时间排序**：各实体的 `updated_at`（媒体为 `added_at`）以 datetime 类型索引，支持搜索结果按时间排序。
+**时间排序**：各实体统一以 `updated_at` 字段（datetime 类型）索引，支持搜索结果按时间排序。
 
 ### 搜索与筛选策略
 
