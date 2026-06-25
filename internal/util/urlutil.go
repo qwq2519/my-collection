@@ -59,7 +59,7 @@ func NormalizeURL(rawURL string) (string, error) {
 
 	result := normalizeHost(u) + strings.TrimSuffix(u.Path, "/")
 	if u.RawQuery != "" {
-		result += "?" + u.RawQuery
+		result += "?" + u.Query().Encode()
 	}
 
 	return result, nil

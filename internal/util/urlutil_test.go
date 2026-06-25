@@ -35,6 +35,7 @@ func TestNormalizeURL(t *testing.T) {
 		{"https://GitHub.COM/Go", "github.com/Go"},
 		{"https://example.com/page#section", "example.com/page"},
 		{"https://example.com/page?a=1&b=2", "example.com/page?a=1&b=2"},
+		{"https://example.com/page?b=2&a=1", "example.com/page?a=1&b=2"},
 		{"https://www.example.com/", "example.com"},
 	}
 
