@@ -81,7 +81,7 @@ func openBleve(persistDir string) (bleve.Index, error) {
 		return idx, nil
 	}
 
-	if !os.IsNotExist(err) && err != bleve.Error(1) {
+	if !os.IsNotExist(err) && err != bleve.ErrorIndexPathDoesNotExist {
 		return nil, fmt.Errorf("open index: %w", err)
 	}
 
