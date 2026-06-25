@@ -21,6 +21,7 @@ import (
 const (
 	gseTokenizerName = "gse"
 	gseAnalyzerName  = "gse"
+	bleveBatchSize   = 500
 )
 
 // gseTokenizer 基于 gse 的 Bleve 分词器
@@ -376,7 +377,7 @@ func batchIndex(idx bleve.Index, docs []BleveDoc) error {
 	batch := idx.NewBatch()
 	for i, doc := range docs {
 		batch.Index(doc.ID, doc.Fields)
-		if (i+1)%500 == 0 {
+		if (i+1)%bleveBatchSize == 0 {
 			if err := idx.Batch(batch); err != nil {
 				return fmt.Errorf("batch index at %d: %w", i, err)
 			}
