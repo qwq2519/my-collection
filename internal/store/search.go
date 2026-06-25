@@ -287,16 +287,24 @@ func (s *Store) removeDirtyItem(docID string) {
 	}
 }
 
+// foreachDirtyItem 遍历脏队列中所有条目，对每条调用 fn。
+// 统一遍历逻辑，避免多处重复 AscendKeys + Unmarshal。
+func (s *Store) foreachDirtyItem(tx *buntdb.Tx, fn func(key string, item model.DirtyItem)) {
+	tx.AscendKeys("dirty:*", func(key, value string) bool {
+		var item model.DirtyItem
+		if err := json.Unmarshal([]byte(value), &item); err == nil {
+			fn(key, item)
+		}
+		return true
+	})
+}
+
 // GetDirtyItems 获取脏队列中所有条目
 func (s *Store) GetDirtyItems() []model.DirtyItem {
 	var items []model.DirtyItem
 	s.db.View(func(tx *buntdb.Tx) error {
-		tx.AscendKeys("dirty:*", func(key, value string) bool {
-			var item model.DirtyItem
-			if err := json.Unmarshal([]byte(value), &item); err == nil {
-				items = append(items, item)
-			}
-			return true
+		s.foreachDirtyItem(tx, func(_ string, item model.DirtyItem) {
+			items = append(items, item)
 		})
 		return nil
 	})
@@ -307,19 +315,15 @@ func (s *Store) GetDirtyItems() []model.DirtyItem {
 func (s *Store) GetDirtyIndexStatus() model.DirtyIndexStatus {
 	status := model.DirtyIndexStatus{}
 	s.db.View(func(tx *buntdb.Tx) error {
-		tx.AscendKeys("dirty:*", func(key, value string) bool {
-			var item model.DirtyItem
-			if err := json.Unmarshal([]byte(value), &item); err == nil {
-				switch item.DocType {
-				case "site", "bookmark":
-					status.URLCount++
-				case "note":
-					status.NoteCount++
-				case "media":
-					status.MediaCount++
-				}
+		s.foreachDirtyItem(tx, func(_ string, item model.DirtyItem) {
+			switch item.DocType {
+			case "site", "bookmark":
+				status.URLCount++
+			case "note":
+				status.NoteCount++
+			case "media":
+				status.MediaCount++
 			}
-			return true
 		})
 		return nil
 	})
@@ -331,9 +335,8 @@ func (s *Store) GetDirtyIndexStatus() model.DirtyIndexStatus {
 func (s *Store) ClearAllDirtyItems() {
 	err := s.db.Update(func(tx *buntdb.Tx) error {
 		var keys []string
-		tx.AscendKeys("dirty:*", func(key, value string) bool {
+		s.foreachDirtyItem(tx, func(key string, _ model.DirtyItem) {
 			keys = append(keys, key)
-			return true
 		})
 		for _, k := range keys {
 			if _, err := tx.Delete(k); err != nil && err != buntdb.ErrNotFound {
@@ -352,12 +355,10 @@ func (s *Store) ClearAllDirtyItems() {
 func (s *Store) ClearDirtyByType(docType string) {
 	err := s.db.Update(func(tx *buntdb.Tx) error {
 		var keys []string
-		tx.AscendKeys("dirty:*", func(key, value string) bool {
-			var item model.DirtyItem
-			if err := json.Unmarshal([]byte(value), &item); err == nil && item.DocType == docType {
+		s.foreachDirtyItem(tx, func(key string, item model.DirtyItem) {
+			if item.DocType == docType {
 				keys = append(keys, key)
 			}
-			return true
 		})
 		for _, k := range keys {
 			if _, err := tx.Delete(k); err != nil && err != buntdb.ErrNotFound {
