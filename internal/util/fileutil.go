@@ -19,10 +19,13 @@ func AtomicWrite(path string, data []byte, perm os.FileMode) error {
 		return fmt.Errorf("create temp file: %w", err)
 	}
 	tmpPath := tmp.Name()
+	closed := false
 
 	defer func() {
 		if err != nil {
-			tmp.Close()
+			if !closed {
+				tmp.Close()
+			}
 			os.Remove(tmpPath)
 		}
 	}()
@@ -38,6 +41,7 @@ func AtomicWrite(path string, data []byte, perm os.FileMode) error {
 	if err = tmp.Close(); err != nil {
 		return fmt.Errorf("close temp file: %w", err)
 	}
+	closed = true
 
 	if err = os.Rename(tmpPath, path); err != nil {
 		return fmt.Errorf("rename temp to target: %w", err)
