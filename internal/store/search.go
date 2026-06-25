@@ -163,8 +163,8 @@ type BleveDoc struct {
 // 自动注入 _type 字段，调用方无需手动设置。
 // 失败时记录到脏队列，不阻塞主流程。
 func (s *Store) IndexDoc(id string, docType string, fields map[string]interface{}) error {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.backupMu.RLock()
+	defer s.backupMu.RUnlock()
 
 	fields["_type"] = docType
 
@@ -179,8 +179,8 @@ func (s *Store) IndexDoc(id string, docType string, fields map[string]interface{
 
 // DeleteDoc 从 Bleve 索引中删除文档。失败时记录到脏队列。
 func (s *Store) DeleteDoc(id string, docType string) error {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.backupMu.RLock()
+	defer s.backupMu.RUnlock()
 
 	if err := s.idx.DeleteDoc(id); err != nil {
 		slog.Warn("bleve delete failed", "id", id, "err", err)
@@ -191,19 +191,17 @@ func (s *Store) DeleteDoc(id string, docType string) error {
 	return nil
 }
 
-// Search 执行 Bleve 搜索查询，持 mu.RLock 保证与重建操作互斥。
+// Search 执行 Bleve 搜索查询。不持 backupMu，备份期间搜索不受影响。
+// 并发安全由 IndexManager 内部的 mu 保证。
 func (s *Store) Search(req *bleve.SearchRequest) (*bleve.SearchResult, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	return s.idx.Search(req)
 }
 
 // RebuildIndex 全量重建 Bleve 索引（设置页"重建所有索引"）。
-// 取 mu.Lock 独占，阻塞所有并发的读写操作。
+// 取 backupMu.Lock 独占，阻塞所有并发写操作，允许读操作。
 func (s *Store) RebuildIndex(docs []BleveDoc) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.backupMu.Lock()
+	defer s.backupMu.Unlock()
 
 	if err := s.idx.Rebuild(docs); err != nil {
 		return err
@@ -214,8 +212,8 @@ func (s *Store) RebuildIndex(docs []BleveDoc) error {
 
 // RebuildDocs 局部重建：删除指定 ID 的旧文档，写入新文档。
 func (s *Store) RebuildDocs(deleteIDs []string, newDocs []BleveDoc) error {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.backupMu.RLock()
+	defer s.backupMu.RUnlock()
 
 	batch, err := s.idx.NewBatch()
 	if err != nil {

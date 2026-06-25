@@ -504,40 +504,44 @@ src/index.css              定义 CSS 变量默认值（ink 主题），运行�
 
 ### 备份一致性机制
 
-后端维护一个全局 `sync.RWMutex`（备份协调锁），用于在备份期间暂停所有写入操作，保证数据一致性。
+后端采用双锁分离策略，分别管理备份协调和索引状态保护。
 
-**命名与语义**：变量命名为 `backupMu`。这里借用 RWMutex 的"多读单写"机制实现"多写单备份"——普通写入操作取 RLock（允许并发），备份操作取 Lock（独占）。语义上 RLock 对应的是"普通操作"而非"读操作"，需注意这一反直觉用法。
+**Store.backupMu**（备份协调锁 `sync.RWMutex`）：借用 RWMutex 的"多读单写"机制实现"多写单备份"——写入操作取 RLock（允许并发），备份和全量索引重建取 Lock（独占）。**读操作不取 backupMu**，备份期间搜索不受影响。
+
+**IndexManager.mu**（索引状态锁 `sync.RWMutex`）：保护索引实例和状态的并发安全。索引读写取 RLock，重建和关闭取 Lock。独立于 backupMu。
 
 ```text
-                   backupMu (sync.RWMutex)
-                   /                      \
-  普通写入操作: RLock()                 备份操作: Lock()
-  (允许多个写入并发)                    (独占，等待所有写入完成后执行)
+Store.backupMu (sync.RWMutex)         IndexManager.mu (sync.RWMutex)
+         /                \                    /               \
+  写入操作: RLock()    备份/重建: Lock()   索引读写: RLock()  重建/关闭: Lock()
+  (允许并发写入)      (独占，阻塞写入)    (允许并发搜索)    (阻塞索引操作)
+  读操作: 不加锁                        
 ```
 
-**普通写入操作**（BuntDB 写入、media_meta.json 写入、Bleve 索引更新等）：
+**普通写入操作**（BuntDB 写入、Bleve 索引更新等）：
 
 ```go
-// 取 RLock 而非 Lock，允许多个写入操作并发执行，
-// 仅在备份（Lock）期间阻塞
 backupMu.RLock()
 defer backupMu.RUnlock()
-// 执行写入...
+// 执行写入（索引操作由 IndexManager.mu 内部保护）
 ```
 
-**备份操作**：
+**读操作**（搜索查询）：
 
 ```go
-// 独占锁，等待所有进行中的写入（RLock）完成后再执行，
-// 持锁期间阻止新的写入进入，保证 persist/ 目录数据静止
-backupMu.Lock()
-defer backupMu.Unlock()
-// 1. 已完成的写入已持久化（BuntDB 自动持久化，media_meta.json 原子写入）
-// 2. 打包 persist/ 为 zip（跳过 search.bleve/ 和 thumbnails/）
-// 3. 返回 zip 文件路径
+// 不取 backupMu，直接调用 IndexManager
+// IndexManager 内部取 mu.RLock 保证索引状态安全
+return s.idx.Search(req)
 ```
 
-`Lock()` 会等待所有已持有 `RLock()` 的写入完成后才获得锁，同时阻止新的写入进入，保证打包期间数据静止。
+**备份/全量重建**：
+
+```go
+backupMu.Lock()
+defer backupMu.Unlock()
+// 阻塞所有写入，但搜索不受影响（走 IndexManager.mu）
+// 重建期间搜索会因 IndexManager 状态为 Rebuilding 返回错误
+```
 
 **备份内容**（zip 中包含）：
 
