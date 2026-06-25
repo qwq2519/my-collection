@@ -178,6 +178,11 @@ type BleveDoc struct {
 // IndexDoc 索引单个文档到 Bleve（写操作后调用）。
 // 失败时记录到脏队列，不阻塞主流程。
 func (s *Store) IndexDoc(id string, docType string, fields map[string]interface{}) error {
+	if s.index == nil {
+		slog.Warn("bleve index unavailable, skipping", "id", id)
+		s.addDirtyItem(id, docType)
+		return fmt.Errorf("bleve index unavailable")
+	}
 	if err := s.index.Index(id, fields); err != nil {
 		slog.Warn("bleve index failed", "id", id, "err", err)
 		s.addDirtyItem(id, docType)
@@ -188,6 +193,11 @@ func (s *Store) IndexDoc(id string, docType string, fields map[string]interface{
 
 // DeleteDoc 从 Bleve 索引中删除文档。失败时记录到脏队列。
 func (s *Store) DeleteDoc(id string, docType string) error {
+	if s.index == nil {
+		slog.Warn("bleve index unavailable, skipping delete", "id", id)
+		s.addDirtyItem(id, docType)
+		return fmt.Errorf("bleve index unavailable")
+	}
 	if err := s.index.Delete(id); err != nil {
 		slog.Warn("bleve delete failed", "id", id, "err", err)
 		s.addDirtyItem(id, docType)
@@ -205,6 +215,7 @@ func (s *Store) RebuildIndex(docs []BleveDoc) error {
 
 	if s.index != nil {
 		s.index.Close()
+		s.index = nil
 	}
 
 	if err := os.RemoveAll(indexPath); err != nil {
