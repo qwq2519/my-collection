@@ -166,9 +166,13 @@ func (s *Store) IndexDoc(id string, docType string, fields map[string]interface{
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	fields["_type"] = docType
+	doc := make(map[string]interface{}, len(fields)+1)
+	for k, v := range fields {
+		doc[k] = v
+	}
+	doc["_type"] = docType
 
-	if err := s.idx.IndexDoc(id, fields); err != nil {
+	if err := s.idx.IndexDoc(id, doc); err != nil {
 		slog.Warn("bleve index failed", "id", id, "err", err)
 		s.addDirtyItem(id, docType)
 		return err
