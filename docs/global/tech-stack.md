@@ -136,11 +136,13 @@ frontend/src/
 │   └── setting.ts                  # 设置模块
 │
 ├── hooks/                          # 全局通用 hooks
+│   ├── useTheme.ts                 # 主题注入：读取主题 key → 写入 CSS 变量
 │   ├── useWailsEvent.ts            # Wails Events 订阅封装
 │   └── usePagination.ts            # 分页 + 无限滚动逻辑
 │
 ├── lib/                            # 工具函数
-│   └── utils.ts                    # cn() 等工具（shadcn 初始化生成）
+│   ├── utils.ts                    # cn() 等工具（shadcn 初始化生成）
+│   └── themes.ts                   # 主题预设注册中心（所有主题 HSL 色值）
 │
 └── types/                          # 前端专用类型
     └── index.ts                    # 页面枚举、筛选条件等（后端实体类型由 bindings/ 自动生成）
@@ -156,6 +158,184 @@ frontend/src/
 | `stores/` | 每模块独立 store，与后端 Service 对应 | 手动 |
 | `bindings/` | Wails 自动生成的 TS 类型和服务调用 | `wails3 generate bindings` 自动生成，**不手动编辑** |
 | `types/` | 前端独有类型（页面枚举、筛选条件等） | 手动 |
+
+## 主题系统
+
+### 架构
+
+shadcn/ui 的所有组件通过 CSS 变量引用颜色（`bg-primary`、`text-muted-foreground` 等）。替换 CSS 变量的值即可切换整个 UI 配色，不需要改任何组件代码。
+
+```text
+src/lib/themes.ts          主题预设注册中心（所有主题的 HSL 色值）
+src/stores/app.ts          Zustand 持有当前主题 key，持久化到 BuntDB
+src/hooks/useTheme.ts      应用启动时读取主题并注入 CSS 变量
+src/index.css              定义 CSS 变量默认值（ink 主题），运行时被 JS 覆盖
+```
+
+切换主题的数据流：
+
+```text
+用户在设置页选择主题
+  → Zustand store 更新 themeKey
+  → useTheme 从 themes 注册表取出对应色值
+  → 遍历写入 document.documentElement.style.setProperty(...)
+  → 所有 shadcn 组件通过 CSS 变量自动跟随变化
+  → 持久化到 BuntDB（SettingService）
+```
+
+新增主题只需在 `themes.ts` 的注册表中添加一组 HSL 值，不需要改任何组件。
+
+### 主题预设
+
+四套内置主题，风格统一为低饱和度淡雅路线。默认主题：`ink`。
+
+**CSS 变量语义说明：**
+
+| 变量 | 用途 |
+|------|------|
+| `--background` / `--foreground` | 页面背景 / 正文文字 |
+| `--primary` / `--primary-foreground` | 强调色（按钮、链接）/ 强调色上的文字 |
+| `--secondary` / `--secondary-foreground` | 次要按钮背景 / 次要按钮文字 |
+| `--muted` / `--muted-foreground` | 弱化区域背景 / 弱化文字（占位符、次要信息） |
+| `--accent` / `--accent-foreground` | 悬停/选中态背景 / 对应文字 |
+| `--destructive` / `--destructive-foreground` | 危险操作（删除） |
+| `--border` | 边框 |
+| `--input` | 输入框边框 |
+| `--ring` | 焦点环（键盘导航） |
+| `--card` / `--card-foreground` | 卡片背景 / 卡片文字（与 background 通常一致） |
+| `--popover` / `--popover-foreground` | 浮层背景 / 浮层文字 |
+| `--sidebar-*` | 侧边栏专用变量（与主背景微妙区分） |
+
+#### A. 水墨（ink）— 无彩色
+
+纯灰阶，最克制。强调色为深灰，整体像 iA Writer、Typora 的气质。
+
+| 变量 | HSL 值 |
+|------|--------|
+| `--background` | `0 0% 100%` |
+| `--foreground` | `220 10% 12%` |
+| `--primary` | `220 10% 28%` |
+| `--primary-foreground` | `0 0% 98%` |
+| `--secondary` | `220 5% 96%` |
+| `--secondary-foreground` | `220 10% 25%` |
+| `--muted` | `220 5% 96%` |
+| `--muted-foreground` | `220 5% 46%` |
+| `--accent` | `220 5% 94%` |
+| `--accent-foreground` | `220 10% 12%` |
+| `--destructive` | `0 60% 50%` |
+| `--destructive-foreground` | `0 0% 98%` |
+| `--border` | `220 5% 90%` |
+| `--input` | `220 5% 88%` |
+| `--ring` | `220 10% 28%` |
+| `--card` | `0 0% 100%` |
+| `--card-foreground` | `220 10% 12%` |
+| `--popover` | `0 0% 100%` |
+| `--popover-foreground` | `220 10% 12%` |
+| `--sidebar-background` | `220 5% 97%` |
+| `--sidebar-foreground` | `220 10% 12%` |
+| `--sidebar-accent` | `220 5% 93%` |
+| `--sidebar-accent-foreground` | `220 10% 12%` |
+| `--sidebar-border` | `220 5% 91%` |
+
+#### B. 暖石（stone）— 暖灰棕
+
+带棕色调的暖灰，像牛皮纸或旧书页，和"收藏"的语义契合。
+
+| 变量 | HSL 值 |
+|------|--------|
+| `--background` | `40 20% 99%` |
+| `--foreground` | `30 10% 12%` |
+| `--primary` | `30 30% 33%` |
+| `--primary-foreground` | `40 20% 98%` |
+| `--secondary` | `35 15% 95%` |
+| `--secondary-foreground` | `30 12% 25%` |
+| `--muted` | `35 12% 95%` |
+| `--muted-foreground` | `30 8% 46%` |
+| `--accent` | `35 15% 93%` |
+| `--accent-foreground` | `30 10% 12%` |
+| `--destructive` | `0 55% 48%` |
+| `--destructive-foreground` | `40 20% 98%` |
+| `--border` | `35 10% 89%` |
+| `--input` | `35 10% 87%` |
+| `--ring` | `30 30% 33%` |
+| `--card` | `40 20% 99%` |
+| `--card-foreground` | `30 10% 12%` |
+| `--popover` | `40 18% 100%` |
+| `--popover-foreground` | `30 10% 12%` |
+| `--sidebar-background` | `38 18% 96%` |
+| `--sidebar-foreground` | `30 10% 12%` |
+| `--sidebar-accent` | `35 14% 92%` |
+| `--sidebar-accent-foreground` | `30 10% 12%` |
+| `--sidebar-border` | `35 10% 90%` |
+
+#### C. 青竹（sage）— 灰绿
+
+低饱和灰绿色，安静自然，长时间看屏幕舒适。
+
+| 变量 | HSL 值 |
+|------|--------|
+| `--background` | `150 10% 99%` |
+| `--foreground` | `150 8% 12%` |
+| `--primary` | `155 25% 30%` |
+| `--primary-foreground` | `150 10% 98%` |
+| `--secondary` | `150 8% 95%` |
+| `--secondary-foreground` | `150 10% 25%` |
+| `--muted` | `150 6% 95%` |
+| `--muted-foreground` | `150 5% 46%` |
+| `--accent` | `155 10% 93%` |
+| `--accent-foreground` | `150 8% 12%` |
+| `--destructive` | `0 55% 48%` |
+| `--destructive-foreground` | `150 10% 98%` |
+| `--border` | `150 5% 89%` |
+| `--input` | `150 5% 87%` |
+| `--ring` | `155 25% 30%` |
+| `--card` | `150 10% 99%` |
+| `--card-foreground` | `150 8% 12%` |
+| `--popover` | `150 8% 100%` |
+| `--popover-foreground` | `150 8% 12%` |
+| `--sidebar-background` | `150 8% 97%` |
+| `--sidebar-foreground` | `150 8% 12%` |
+| `--sidebar-accent` | `152 8% 92%` |
+| `--sidebar-accent-foreground` | `150 8% 12%` |
+| `--sidebar-border` | `150 5% 90%` |
+
+#### D. 靛青（indigo）— 灰蓝
+
+低饱和蓝灰色，经典工具类应用配色方向，稳妥有辨识度。
+
+| 变量 | HSL 值 |
+|------|--------|
+| `--background` | `220 14% 99%` |
+| `--foreground` | `224 12% 12%` |
+| `--primary` | `224 30% 38%` |
+| `--primary-foreground` | `220 14% 98%` |
+| `--secondary` | `220 10% 96%` |
+| `--secondary-foreground` | `224 14% 25%` |
+| `--muted` | `220 8% 96%` |
+| `--muted-foreground` | `220 8% 46%` |
+| `--accent` | `220 10% 94%` |
+| `--accent-foreground` | `224 12% 12%` |
+| `--destructive` | `0 60% 50%` |
+| `--destructive-foreground` | `220 14% 98%` |
+| `--border` | `220 8% 90%` |
+| `--input` | `220 8% 88%` |
+| `--ring` | `224 30% 38%` |
+| `--card` | `220 14% 99%` |
+| `--card-foreground` | `224 12% 12%` |
+| `--popover` | `220 12% 100%` |
+| `--popover-foreground` | `224 12% 12%` |
+| `--sidebar-background` | `220 10% 97%` |
+| `--sidebar-foreground` | `224 12% 12%` |
+| `--sidebar-accent` | `220 9% 93%` |
+| `--sidebar-accent-foreground` | `224 12% 12%` |
+| `--sidebar-border` | `220 8% 91%` |
+
+### 设计约束
+
+- 四套主题色相不同但风格统一：低饱和度、高明度背景、灰阶主导
+- 所有主题的 `--destructive` 均为红色系，保持危险操作的直觉辨识
+- `--sidebar-background` 比 `--background` 略深 2-3%，产生微妙层次但不割裂
+- 后续如需暗色模式，在 `ThemePreset.colors` 中增加 `dark` 字段，架构无需改动
 
 ## 存储架构
 

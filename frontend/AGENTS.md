@@ -22,13 +22,16 @@ src/
 ├── components/       # 跨模块复用的业务组件
 ├── features/{模块}/  # 功能模块（组件 + hooks 同目录）
 ├── stores/           # Zustand stores，每模块独立
-├── hooks/            # 全局通用 hooks
+├── hooks/            # 全局通用 hooks（useTheme, useWailsEvent, usePagination）
 ├── lib/              # 工具函数
+│   ├── utils.ts      # cn() 等
+│   └── themes.ts     # 主题预设注册中心
 └── types/            # 前端专用类型
 ```
 
 - `bindings/` 由 Wails 自动生成，不手动编辑
 - 路由用 Zustand store 管理当前页面，不用 React Router
+- 主题通过 CSS 变量切换，预设定义在 `lib/themes.ts`，详见 `docs/global/tech-stack.md` 主题系统章节
 
 ## 代码风格
 
