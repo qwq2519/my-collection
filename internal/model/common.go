@@ -11,6 +11,7 @@ type Attachment struct {
 // UploadFileReq 统一文件上传请求
 type UploadFileReq struct {
 	Scene    string `json:"scene"`
+	EntityID string `json:"entity_id"`
 	Filename string `json:"filename"`
 	Data     []byte `json:"data"`
 }
