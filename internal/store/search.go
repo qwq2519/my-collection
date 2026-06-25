@@ -160,10 +160,13 @@ type BleveDoc struct {
 }
 
 // IndexDoc 索引单个文档到 Bleve（写操作后调用）。
+// 自动注入 _type 字段，调用方无需手动设置。
 // 失败时记录到脏队列，不阻塞主流程。
 func (s *Store) IndexDoc(id string, docType string, fields map[string]interface{}) error {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+
+	fields["_type"] = docType
 
 	if err := s.idx.IndexDoc(id, fields); err != nil {
 		slog.Warn("bleve index failed", "id", id, "err", err)
