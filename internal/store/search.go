@@ -55,8 +55,12 @@ func (t *gseTokenizer) Tokenize(input []byte) analysis.TokenStream {
 	return tokens
 }
 
+// TODO: sync.Once 保证 gse 初始化只执行一次。如果首次初始化因临时原因失败
+// （如词典文件被占用），后续所有调用都会返回相同错误，搜索功能永久不可用。
+// 可改用 sync.OnceValues（Go 1.21+）配合重试计数器，或在 NewIndexManager
+// 中显式初始化并暴露重试入口，避免应用必须重启才能恢复。
 var (
-	gseOnce    sync.Once
+	gseOnce      sync.Once
 	gseSingleton *gse.Segmenter
 	gseInitErr   error
 )
