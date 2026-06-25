@@ -186,6 +186,14 @@ func (s *Store) DeleteDoc(id string, docType string) error {
 	return nil
 }
 
+// Search 执行 Bleve 搜索查询，持 mu.RLock 保证与重建操作互斥。
+func (s *Store) Search(req *bleve.SearchRequest) (*bleve.SearchResult, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return s.idx.Search(req)
+}
+
 // RebuildIndex 全量重建 Bleve 索引（设置页"重建所有索引"）。
 // 取 mu.Lock 独占，阻塞所有并发的读写操作。
 func (s *Store) RebuildIndex(docs []BleveDoc) error {
