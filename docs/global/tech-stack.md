@@ -564,16 +564,19 @@ defer backupMu.Unlock()
 
 Wails v3 的 `Application` 支持配置自定义 `AssetHandler`，当请求路径在前端打包产物（`embed.FS`）中未命中时，转发给该 handler。将 `/persist/...` 路径映射到本地文件系统。
 
-**前端引用方式**：
+**路径职责划分**：
+
+后端返回给前端的所有资源路径（图标、封面、缩略图、预览等）必须是**完整可访问路径**，前端直接用作 `<img src>` 或 `<video src>`，**不做任何路径拼接**。路径构建逻辑全部由后端负责。
 
 ```html
+<!-- 前端直接使用后端返回的路径，无需拼接 -->
 <img src="/persist/url-assets/icons/github.com.png" />
-<img src="/persist/url-assets/covers/{entity_id}.gif" />
-<img src="/persist/note-images/{note_id}/{hash}.png" />
-<img src="/persist/media-folders/{folder_id}/thumbnails/{hash}.jpg" />
+<img src="/persist/url-assets/covers/a1b2c3d4.gif" />
+<img src="/persist/note-images/c9d0e1f2/a3f2b8c1e5d7f9ab.png" />
+<img src="/persist/media-folders/550e8400/thumbnails/a3f2b8c1e5d7f9ab.jpg" />
 ```
 
-笔记 body 中存储的图片路径（`note-images/xxx/img.png`）渲染时加 `/persist/` 前缀即可。
+笔记 body 中存储的图片路径（`note-images/xxx/img.png`）渲染时加 `/persist/` 前缀即可（这是唯一的前端路径处理）。
 
 **安全约束**：
 

@@ -42,3 +42,4 @@ internal/
 - 文件写入使用"写临时文件 → rename"原子替换
 - 写操作在 `backupMu.RLock()` 保护下执行，备份操作取 `Lock()`
 - ID 统一使用 UUID v4
+- **路径由后端构建**：返回给前端的所有资源路径（图标、封面、缩略图、预览等）必须是完整可访问路径（如 `/persist/media-folders/{id}/thumbnails/xxx.jpg`），前端直接用作 `src`，不做任何路径拼接
