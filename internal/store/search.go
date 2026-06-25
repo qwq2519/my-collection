@@ -29,26 +29,20 @@ type gseTokenizer struct {
 }
 
 func (t *gseTokenizer) Tokenize(input []byte) analysis.TokenStream {
-	text := string(input)
-	segments := t.seg.Cut(text, true)
+	segments := t.seg.Segment(input)
 
 	tokens := make(analysis.TokenStream, 0, len(segments))
 	pos := 1
-	searchFrom := 0
 
 	for _, seg := range segments {
-		start := strings.Index(text[searchFrom:], seg)
-		if start < 0 {
+		text := seg.Token().Text()
+		if len(strings.TrimSpace(text)) == 0 {
 			continue
 		}
-		start += searchFrom
-		end := start + len(seg)
-		searchFrom = end
-
 		tokens = append(tokens, &analysis.Token{
-			Term:     []byte(seg),
-			Start:    start,
-			End:      end,
+			Term:     []byte(text),
+			Start:    seg.Start(),
+			End:      seg.End(),
 			Position: pos,
 			Type:     analysis.Ideographic,
 		})
