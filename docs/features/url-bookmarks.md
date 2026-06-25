@@ -47,7 +47,7 @@
 **封面（cover）：**
 
 - 编辑/新增表单中提供封面上传区域，支持上传图片作为列表页主展示图
-- 支持格式：JPG/JPEG、PNG、GIF、WebP、BMP（与媒体管理图片格式一致）
+- 支持格式：JPG/JPEG、PNG、GIF、WebP、BMP、AVIF、SVG（与媒体管理图片格式一致）
 - 存储在 `persist/url-assets/covers/{entity_id}.{ext}`
 - **更换封面**：上传新封面前先通配删除旧文件 `covers/{entity_id}.*`，避免扩展名变化导致残留
 - 封面以图片形式直接展示
@@ -56,7 +56,7 @@
 **附件（attachments）：**
 
 - 编辑/新增表单中提供附件上传区域，每个附件可添加标注（label）
-- 支持格式：txt 文本文件 + 媒体格式（图片：JPG/JPEG、PNG、GIF、WebP、BMP；视频：MP4、MKV、AVI、MOV、WebM）
+- 支持格式：txt 文本文件 + 媒体格式（图片：JPG/JPEG、PNG、GIF、WebP、BMP、AVIF、SVG；视频：MP4、MKV、AVI、MOV、WebM、WMV、FLV）
 - 存储在 `persist/url-assets/attachments/{entity_id}/`
 - 展示规则：图片附件直接展示缩略图，视频附件抽帧展示静态缩略图，txt 文件仅展示文件名
 - **缩略图**：后端在文件上传完成后自动生成，存放在同一附件目录内，命名为 `{filename}.thumb.jpg`（如 `screenshot.png.thumb.jpg`）。图片缩略图用 Go 标准库缩放，视频缩略图用 ffmpeg 抽帧（不可用时显示通用视频图标）

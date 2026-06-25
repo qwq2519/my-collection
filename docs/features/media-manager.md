@@ -15,8 +15,9 @@
 
 | 类型 | 格式 |
 |------|------|
-| 图片 | JPG/JPEG、PNG、GIF、WebP、BMP |
-| 视频 | MP4、MKV、AVI、MOV、WebM |
+| 图片 | JPG/JPEG、PNG、GIF、WebP、BMP、AVIF、SVG |
+| 视频 | MP4、MKV、AVI、MOV、WebM、WMV、FLV |
+| 音频 | MP3、FLAC、WAV、AAC、OGG、M4A |
 
 扫描时按文件扩展名判断类型。
 
@@ -278,7 +279,7 @@ Bleve 文档 ID = `{folder_id}/{relative_path}`，索引 tags、filename 和 med
 - 点击媒体文件展开详情面板（标签编辑、文件信息、缩略图预览）
 - 详情面板提供**"打开所在目录"按钮**，调用系统文件管理器（`explorer.exe`）定位到源文件，由用户自行使用系统工具查看原始图片或播放视频
 - 不在应用内提供原始图片全尺寸预览或视频播放功能
-- 顶部增加**类型筛选**：全部 / 图片 / 视频
+- 顶部增加**类型筛选**：全部 / 图片 / 视频 / 音频
 - 文件夹筛选、手动扫描触发作为内容区顶部控件
 
 ### 标签编辑

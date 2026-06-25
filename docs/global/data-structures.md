@@ -470,7 +470,7 @@ BuntDB 支持基于 JSON 字段创建自定义索引，用于加速非主键查�
 | `schema_version` | 格式版本号，用于后续迁移 |
 | `folder_id` | 冗余记录，与目录名一致 |
 | `files` | Map，key 为相对路径，value 为媒体元数据 |
-| `files[*].media_type` | `"image"` 或 `"video"` |
+| `files[*].media_type` | `"image"`、`"video"` 或 `"audio"` |
 | `files[*].tags` | 标签数组 |
 | `files[*].thumbnail` | 静态缩略图文件名（`sha256(folder_id/rel_path)[:16].jpg`） |
 | `files[*].preview` | 动画预览文件名（视频 + GIF，`{hash}.preview.webp`），无则为空 |
@@ -589,7 +589,7 @@ Bleve 索引目录：`persist/search.bleve/`
 |-----------|------|---------|
 | `_id` | `"{folder_id}/{relative_path}"` | — |
 | `_type` | `"media"` | keyword |
-| `media_type` | `"image"` 或 `"video"` | keyword |
+| `media_type` | `"image"`、`"video"` 或 `"audio"` | keyword |
 | `filename` | 从 relative_path 提取文件名 | text（分词） |
 | `tags` | file.tags | keyword（多值） |
 | `updated_at` | file.updated_at | datetime |

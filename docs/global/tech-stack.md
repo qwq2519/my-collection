@@ -694,8 +694,8 @@ UploadFile(req UploadFileReq) (*UploadFileResult, error)
 
 | 类型 | 格式 |
 |------|------|
-| 图片 | JPG/JPEG、PNG、GIF、WebP、BMP |
-| 视频 | MP4、MKV、AVI、MOV、WebM |
+| 图片 | JPG/JPEG、PNG、GIF、WebP、BMP、AVIF、SVG |
+| 视频 | MP4、MKV、AVI、MOV、WebM、WMV、FLV |
 | 文本 | TXT（仅附件场景） |
 
 后端校验文件扩展名是否在 scene 允许范围内，不合法则拒绝。返回值包含存储后的文件路径，供前端写入实体数据。
