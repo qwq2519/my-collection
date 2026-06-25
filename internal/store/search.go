@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"collections/internal/model"
@@ -35,12 +36,16 @@ func (t *gseTokenizer) Tokenize(input []byte) analysis.TokenStream {
 
 	tokens := make(analysis.TokenStream, 0, len(segments))
 	pos := 1
-	byteOffset := 0
+	searchFrom := 0
 
 	for _, seg := range segments {
-		start := byteOffset
+		start := strings.Index(text[searchFrom:], seg)
+		if start < 0 {
+			continue
+		}
+		start += searchFrom
 		end := start + len(seg)
-		byteOffset = end
+		searchFrom = end
 
 		tokens = append(tokens, &analysis.Token{
 			Term:     []byte(seg),
