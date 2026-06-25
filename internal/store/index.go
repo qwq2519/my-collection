@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"sync"
 
 	"github.com/blevesearch/bleve/v2"
 )
@@ -14,10 +13,10 @@ import (
 type IndexState int
 
 const (
-	IndexClosed    IndexState = iota // 已关闭或未初始化
-	IndexOpen                       // 正常可用
-	IndexRebuilding                 // 重建中，读写暂不可用
-	IndexError                      // 打开/创建失败
+	IndexClosed     IndexState = iota // 已关闭或未初始化
+	IndexOpen                        // 正常可用
+	IndexRebuilding                  // 重建中，读写暂不可用
+	IndexError                       // 打开/创建失败
 )
 
 func (s IndexState) String() string {
@@ -35,11 +34,9 @@ func (s IndexState) String() string {
 	}
 }
 
-// IndexManager 管理 Bleve 索引的生命周期，提供线程安全的访问。
-// 外部不直接持有 bleve.Index 引用，所有操作通过 IndexManager 间接完成，
-// 避免重建期间持有过期引用导致的竞态问题。
+// IndexManager 管理 Bleve 索引的生命周期和状态。
+// 自身不持有锁，并发安全由 Store.mu 统一保证。
 type IndexManager struct {
-	mu         sync.RWMutex
 	index      bleve.Index
 	state      IndexState
 	lastErr    error
@@ -86,69 +83,61 @@ func NewIndexManager(persistDir string) (*IndexManager, error) {
 	return m, nil
 }
 
-// State 返回当前索引状态（线程安全）
+// State 返回当前索引状态
 func (m *IndexManager) State() IndexState {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
 	return m.state
 }
 
-// IndexDoc 索引单个文档。索引不可用时返回 error。
-func (m *IndexManager) IndexDoc(id string, fields map[string]interface{}) error {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
+func (m *IndexManager) ensureOpen() error {
 	if m.state != IndexOpen {
 		return fmt.Errorf("bleve index unavailable (state: %s)", m.state)
+	}
+	return nil
+}
+
+// IndexDoc 索引单个文档
+func (m *IndexManager) IndexDoc(id string, fields map[string]interface{}) error {
+	if err := m.ensureOpen(); err != nil {
+		return err
 	}
 	return m.index.Index(id, fields)
 }
 
-// DeleteDoc 从索引删除文档。索引不可用时返回 error。
+// DeleteDoc 从索引删除文档
 func (m *IndexManager) DeleteDoc(id string) error {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	if m.state != IndexOpen {
-		return fmt.Errorf("bleve index unavailable (state: %s)", m.state)
+	if err := m.ensureOpen(); err != nil {
+		return err
 	}
 	return m.index.Delete(id)
 }
 
-// Search 执行搜索查询。索引不可用时返回 error。
+// Search 执行搜索查询
 func (m *IndexManager) Search(req *bleve.SearchRequest) (*bleve.SearchResult, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	if m.state != IndexOpen {
-		return nil, fmt.Errorf("bleve index unavailable (state: %s)", m.state)
+	if err := m.ensureOpen(); err != nil {
+		return nil, err
 	}
 	return m.index.Search(req)
 }
 
-// NewBatch 创建新的批量操作。索引不可用时返回 error。
+// NewBatch 创建新的批量操作
 func (m *IndexManager) NewBatch() (*bleve.Batch, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	if m.state != IndexOpen {
-		return nil, fmt.Errorf("bleve index unavailable (state: %s)", m.state)
+	if err := m.ensureOpen(); err != nil {
+		return nil, err
 	}
 	return m.index.NewBatch(), nil
 }
 
-// ExecuteBatch 执行批量操作。索引不可用时返回 error。
+// ExecuteBatch 执行批量操作
 func (m *IndexManager) ExecuteBatch(batch *bleve.Batch) error {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	if m.state != IndexOpen {
-		return fmt.Errorf("bleve index unavailable (state: %s)", m.state)
+	if err := m.ensureOpen(); err != nil {
+		return err
 	}
 	return m.index.Batch(batch)
 }
 
 // Rebuild 全量重建索引：关闭旧索引 → 删除文件 → 创建新索引 → 批量写入。
-// 重建期间持有写锁，所有并发的 IndexDoc/Search 等操作会阻塞等待。
+// 调用方须持有 Store.mu.Lock。
 func (m *IndexManager) Rebuild(docs []BleveDoc) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	m.state = IndexRebuilding
 	indexPath := filepath.Join(m.persistDir, "search.bleve")
 
@@ -188,8 +177,6 @@ func (m *IndexManager) Rebuild(docs []BleveDoc) error {
 
 // Close 关闭索引
 func (m *IndexManager) Close() error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
 	if m.index != nil {
 		err := m.index.Close()
 		m.index = nil

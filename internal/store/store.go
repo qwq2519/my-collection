@@ -8,13 +8,16 @@ import (
 	"github.com/tidwall/buntdb"
 )
 
-// Store 数据访问层主结构体，持有 BuntDB 和 IndexManager 实例
+// Store 数据访问层主结构体，持有 BuntDB 和 IndexManager 实例。
+//
+// 并发策略：单把全局 RWMutex 保护所有状态。
+//   - 普通读写操作取 mu.RLock（BuntDB/Bleve 内部已有并发安全，RLock 仅阻止独占操作）
+//   - 全量重建索引、备份等破坏性操作取 mu.Lock（独占）
 type Store struct {
+	mu sync.RWMutex
+
 	db  *buntdb.DB
 	Idx *IndexManager
-
-	// backupMu 备份协调锁：普通写操作取 RLock（允许并发），备份操作取 Lock（独占）
-	backupMu sync.RWMutex
 
 	persistDir string
 }
