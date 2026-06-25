@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"math"
 	"strings"
 	"sync"
 	"time"
@@ -307,7 +308,7 @@ func (s *Store) searchDocIDs(field, value string) ([]string, error) {
 	query := bleve.NewTermQuery(value)
 	query.SetField(field)
 	req := bleve.NewSearchRequest(query)
-	req.Size = 100000
+	req.Size = math.MaxInt32
 	req.Fields = []string{}
 
 	result, err := s.idx.Search(req)
