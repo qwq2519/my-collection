@@ -193,8 +193,8 @@ func (s *Store) DeleteDoc(id string, docType string) error {
 
 // RebuildIndex 全量重建 Bleve 索引（设置页"重建所有索引"）
 func (s *Store) RebuildIndex(docs []BleveDoc) error {
-	s.backupMu.RLock()
-	defer s.backupMu.RUnlock()
+	s.backupMu.Lock()
+	defer s.backupMu.Unlock()
 
 	indexPath := filepath.Join(s.persistDir, "search.bleve")
 
