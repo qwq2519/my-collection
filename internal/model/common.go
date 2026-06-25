@@ -8,7 +8,10 @@ type Attachment struct {
 	Label    string `json:"label,omitempty"`
 }
 
-// UploadFileReq 统一文件上传请求
+// UploadFileReq 统一文件上传请求（笔记图片、书签图标等小文件）。
+// Data 在 Wails 绑定层以 base64 JSON 编码，约 33% 膨胀，
+// 对当前场景（通常 <1MB）可接受。
+// 媒体文件不走上传，由后端扫描文件系统获取。
 type UploadFileReq struct {
 	Scene    string `json:"scene"`
 	EntityID string `json:"entity_id"`
