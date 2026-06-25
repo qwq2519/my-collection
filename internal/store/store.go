@@ -5,14 +5,13 @@ import (
 	"log/slog"
 	"sync"
 
-	"github.com/blevesearch/bleve/v2"
 	"github.com/tidwall/buntdb"
 )
 
-// Store 数据访问层主结构体，持有 BuntDB 和 Bleve 实例
+// Store 数据访问层主结构体，持有 BuntDB 和 IndexManager 实例
 type Store struct {
-	db    *buntdb.DB
-	index bleve.Index
+	db  *buntdb.DB
+	Idx *IndexManager
 
 	// backupMu 备份协调锁：普通写操作取 RLock（允许并发），备份操作取 Lock（独占）
 	backupMu sync.RWMutex
@@ -35,12 +34,12 @@ func New(persistDir string) (*Store, error) {
 		return nil, fmt.Errorf("register indexes: %w", err)
 	}
 
-	idx, err := openBleve(persistDir)
+	idx, err := NewIndexManager(persistDir)
 	if err != nil {
 		db.Close()
 		return nil, fmt.Errorf("open bleve: %w", err)
 	}
-	s.index = idx
+	s.Idx = idx
 
 	status := s.GetDirtyIndexStatus()
 	if status.HasDirty {
@@ -54,8 +53,8 @@ func New(persistDir string) (*Store, error) {
 func (s *Store) Close() error {
 	var firstErr error
 
-	if s.index != nil {
-		if err := s.index.Close(); err != nil && firstErr == nil {
+	if s.Idx != nil {
+		if err := s.Idx.Close(); err != nil && firstErr == nil {
 			firstErr = err
 		}
 	}

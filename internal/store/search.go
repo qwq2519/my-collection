@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -70,29 +68,6 @@ func gseTokenizerConstructor(config map[string]interface{}, cache *registry.Cach
 
 func init() {
 	registry.RegisterTokenizer(gseTokenizerName, gseTokenizerConstructor)
-}
-
-// openBleve 打开已有 Bleve 索引，或新建一个
-func openBleve(persistDir string) (bleve.Index, error) {
-	indexPath := filepath.Join(persistDir, "search.bleve")
-
-	idx, err := bleve.Open(indexPath)
-	if err == nil {
-		return idx, nil
-	}
-
-	if !os.IsNotExist(err) && err != bleve.ErrorIndexPathDoesNotExist {
-		return nil, fmt.Errorf("open index: %w", err)
-	}
-
-	slog.Info("creating new bleve index", "path", indexPath)
-	m := buildIndexMapping()
-	idx, err = bleve.New(indexPath, m)
-	if err != nil {
-		return nil, fmt.Errorf("create index: %w", err)
-	}
-
-	return idx, nil
 }
 
 // buildIndexMapping 构建 Bleve 索引映射：gse analyzer + 各实体文档结构
@@ -178,12 +153,7 @@ type BleveDoc struct {
 // IndexDoc 索引单个文档到 Bleve（写操作后调用）。
 // 失败时记录到脏队列，不阻塞主流程。
 func (s *Store) IndexDoc(id string, docType string, fields map[string]interface{}) error {
-	if s.index == nil {
-		slog.Warn("bleve index unavailable, skipping", "id", id)
-		s.addDirtyItem(id, docType)
-		return fmt.Errorf("bleve index unavailable")
-	}
-	if err := s.index.Index(id, fields); err != nil {
+	if err := s.Idx.IndexDoc(id, fields); err != nil {
 		slog.Warn("bleve index failed", "id", id, "err", err)
 		s.addDirtyItem(id, docType)
 		return err
@@ -193,12 +163,7 @@ func (s *Store) IndexDoc(id string, docType string, fields map[string]interface{
 
 // DeleteDoc 从 Bleve 索引中删除文档。失败时记录到脏队列。
 func (s *Store) DeleteDoc(id string, docType string) error {
-	if s.index == nil {
-		slog.Warn("bleve index unavailable, skipping delete", "id", id)
-		s.addDirtyItem(id, docType)
-		return fmt.Errorf("bleve index unavailable")
-	}
-	if err := s.index.Delete(id); err != nil {
+	if err := s.Idx.DeleteDoc(id); err != nil {
 		slog.Warn("bleve delete failed", "id", id, "err", err)
 		s.addDirtyItem(id, docType)
 		return err
@@ -211,32 +176,10 @@ func (s *Store) RebuildIndex(docs []BleveDoc) error {
 	s.backupMu.Lock()
 	defer s.backupMu.Unlock()
 
-	indexPath := filepath.Join(s.persistDir, "search.bleve")
-
-	if s.index != nil {
-		s.index.Close()
-		s.index = nil
-	}
-
-	if err := os.RemoveAll(indexPath); err != nil {
-		return fmt.Errorf("remove old index: %w", err)
-	}
-
-	m := buildIndexMapping()
-	idx, err := bleve.New(indexPath, m)
-	if err != nil {
-		return fmt.Errorf("create new index: %w", err)
-	}
-
-	if err := batchIndex(idx, docs); err != nil {
-		idx.Close()
+	if err := s.Idx.Rebuild(docs); err != nil {
 		return err
 	}
-
-	s.index = idx
 	s.ClearAllDirtyItems()
-
-	slog.Info("bleve index fully rebuilt", "docs", len(docs))
 	return nil
 }
 
@@ -246,7 +189,10 @@ func (s *Store) RebuildDocs(deleteIDs []string, newDocs []BleveDoc) error {
 	s.backupMu.RLock()
 	defer s.backupMu.RUnlock()
 
-	batch := s.index.NewBatch()
+	batch, err := s.Idx.NewBatch()
+	if err != nil {
+		return err
+	}
 	for _, id := range deleteIDs {
 		batch.Delete(id)
 	}
@@ -254,11 +200,10 @@ func (s *Store) RebuildDocs(deleteIDs []string, newDocs []BleveDoc) error {
 		batch.Index(doc.ID, doc.Fields)
 	}
 
-	if err := s.index.Batch(batch); err != nil {
+	if err := s.Idx.ExecuteBatch(batch); err != nil {
 		return fmt.Errorf("rebuild docs batch: %w", err)
 	}
 
-	// 从脏队列中移除已重建的项
 	for _, id := range deleteIDs {
 		s.removeDirtyItem(id)
 	}
@@ -410,7 +355,3 @@ func batchIndex(idx bleve.Index, docs []BleveDoc) error {
 	return nil
 }
 
-// Index 返回底层 Bleve 索引实例（供 service 层执行搜索查询）
-func (s *Store) Index() bleve.Index {
-	return s.index
-}
