@@ -20,7 +20,16 @@ var (
 	reSpaces     = regexp.MustCompile(`\s+`)                                 // 连续空白
 )
 
-// StripMarkdown 去除 Markdown 语法标记，保留纯文本内容，用于 Bleve 索引
+// StripMarkdown 去除 Markdown 语法标记，保留纯文本内容，用于 Bleve 索引。
+//
+// 已知局限（对搜索索引场景影响不大，可接受）：
+// - reBoldItalic 无法正确处理 ***bold italic*** 等首尾标记数量不对称的情况
+// - reInlineCode 不支持 `` `code` `` 双反引号语法
+// - reCodeBlock 在未闭合围栏代码块时会匹配到文件末尾
+// - 嵌套 Markdown 语法（如 **[link](url)**）可能残留部分标记
+//
+// TODO: 若后续需要更精确的剥离，可引入 goldmark 等 Markdown AST parser
+// 替代正则方案，以结构化方式提取纯文本。
 func StripMarkdown(md string) string {
 	s := md
 
