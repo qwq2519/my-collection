@@ -152,7 +152,12 @@ type BleveDoc struct {
 
 // IndexDoc 索引单个文档到 Bleve（写操作后调用）。
 // 失败时记录到脏队列，不阻塞主流程。
+// 注意：backupMu.RLock 保证备份期间不会有新的索引写入。
+// 后续 store CRUD 方法如果整体加锁，可移除此处的锁。
 func (s *Store) IndexDoc(id string, docType string, fields map[string]interface{}) error {
+	s.backupMu.RLock()
+	defer s.backupMu.RUnlock()
+
 	if err := s.Idx.IndexDoc(id, fields); err != nil {
 		slog.Warn("bleve index failed", "id", id, "err", err)
 		s.addDirtyItem(id, docType)
@@ -162,7 +167,11 @@ func (s *Store) IndexDoc(id string, docType string, fields map[string]interface{
 }
 
 // DeleteDoc 从 Bleve 索引中删除文档。失败时记录到脏队列。
+// 注意：backupMu.RLock 保证备份期间不会有新的索引删除。
 func (s *Store) DeleteDoc(id string, docType string) error {
+	s.backupMu.RLock()
+	defer s.backupMu.RUnlock()
+
 	if err := s.Idx.DeleteDoc(id); err != nil {
 		slog.Warn("bleve delete failed", "id", id, "err", err)
 		s.addDirtyItem(id, docType)
