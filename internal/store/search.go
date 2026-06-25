@@ -379,6 +379,9 @@ func (s *Store) foreachDirtyItem(tx *buntdb.Tx, fn func(key string, item model.D
 
 // HasDirtyItems 判断是否存在脏记录（前缀扫描 dirty:*）
 func (s *Store) HasDirtyItems() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	var found bool
 	s.db.View(func(tx *buntdb.Tx) error {
 		tx.AscendKeys("dirty:*", func(key, value string) bool {
@@ -392,6 +395,9 @@ func (s *Store) HasDirtyItems() bool {
 
 // GetDirtyItems 获取脏队列中所有条目
 func (s *Store) GetDirtyItems() []model.DirtyItem {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	var items []model.DirtyItem
 	s.db.View(func(tx *buntdb.Tx) error {
 		s.foreachDirtyItem(tx, func(_ string, item model.DirtyItem) {
@@ -404,6 +410,9 @@ func (s *Store) GetDirtyItems() []model.DirtyItem {
 
 // GetDirtyIndexStatus 获取索引状态摘要（按模块统计脏文档数）
 func (s *Store) GetDirtyIndexStatus() model.DirtyIndexStatus {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	status := model.DirtyIndexStatus{}
 	s.db.View(func(tx *buntdb.Tx) error {
 		s.foreachDirtyItem(tx, func(_ string, item model.DirtyItem) {
@@ -424,6 +433,9 @@ func (s *Store) GetDirtyIndexStatus() model.DirtyIndexStatus {
 
 // ClearAllDirtyItems 清空脏队列（全量重建后调用）
 func (s *Store) ClearAllDirtyItems() {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	err := s.db.Update(func(tx *buntdb.Tx) error {
 		var keys []string
 		s.foreachDirtyItem(tx, func(key string, _ model.DirtyItem) {
@@ -443,6 +455,9 @@ func (s *Store) ClearAllDirtyItems() {
 
 // ClearDirtyByType 清除指定类型的脏记录（模块级重建后调用）
 func (s *Store) ClearDirtyByType(docType string) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	err := s.db.Update(func(tx *buntdb.Tx) error {
 		var keys []string
 		s.foreachDirtyItem(tx, func(key string, item model.DirtyItem) {
