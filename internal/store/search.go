@@ -206,6 +206,10 @@ func (s *Store) Search(req *bleve.SearchRequest) (*bleve.SearchResult, error) {
 
 // RebuildIndexByType 按文档类型重建索引（如 "site"、"bookmark"、"note"）。
 // 取 mu.Lock 独占，阻塞所有并发读写。在现有 Bleve 实例上做 batch 操作，持锁时间短。
+//
+// TODO: 当前将所有删除+新增放入单个 batch，万级文档时内存压力大。
+// 后续应复用 bleveBatchSize 分批策略（先分批删除旧文档，再分批写入新文档），
+// RebuildMediaFolderIndex 同理。
 func (s *Store) RebuildIndexByType(docType string, docs []BleveDoc) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
