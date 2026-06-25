@@ -449,7 +449,8 @@ BuntDB 支持基于 JSON 字段创建自定义索引，用于加速非主键查�
       "thumbnail": "a3f2b8c1e5d7f9ab.jpg",
       "updated_at": "2026-06-22T10:00:00Z",
       "file_size": 2048576,
-      "dimensions": [1920, 1080]
+      "width": 1920,
+      "height": 1080
     },
     "子目录A/trip.mp4": {
       "media_type": "video",
@@ -458,7 +459,8 @@ BuntDB 支持基于 JSON 字段创建自定义索引，用于加速非主键查�
       "preview": "9c1d4e7f20a3b6d8.preview.webp",
       "updated_at": "2026-06-21T14:00:00Z",
       "file_size": 104857600,
-      "dimensions": [1920, 1080],
+      "width": 1920,
+      "height": 1080,
       "duration": 182.5
     }
   }
@@ -476,7 +478,8 @@ BuntDB 支持基于 JSON 字段创建自定义索引，用于加速非主键查�
 | `files[*].preview` | 动画预览文件名（视频 + GIF，`{hash}.preview.webp`），无则为空 |
 | `files[*].updated_at` | 首次扫描发现时设为当前时间，文件修改（hash 变化）或标签编辑时更新 |
 | `files[*].file_size` | 文件大小（字节） |
-| `files[*].dimensions` | `[width, height]`，获取失败时为 `null` |
+| `files[*].width` | 宽度（像素），获取失败时省略 |
+| `files[*].height` | 高度（像素），获取失败时省略 |
 | `files[*].duration` | 仅视频，时长（秒），ffmpeg 不可用时为 null |
 
 写入策略：写临时文件 → rename 原子替换。
