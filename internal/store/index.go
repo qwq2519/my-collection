@@ -192,7 +192,9 @@ func (m *IndexManager) Rebuild(docs []BleveDoc) error {
 	}
 
 	if err := batchIndex(idx, docs); err != nil {
-		idx.Close()
+		if closeErr := idx.Close(); closeErr != nil {
+			slog.Warn("close failed index after batch error", "err", closeErr)
+		}
 		restoreBackup()
 		if m.state != IndexOpen {
 			m.state = IndexError
