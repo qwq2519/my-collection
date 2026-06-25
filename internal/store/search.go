@@ -173,6 +173,7 @@ func (s *Store) IndexDoc(id string, docType string, fields map[string]interface{
 		s.addDirtyItem(id, docType)
 		return err
 	}
+	s.removeDirtyItem(id)
 	return nil
 }
 
@@ -186,6 +187,7 @@ func (s *Store) DeleteDoc(id string, docType string) error {
 		s.addDirtyItem(id, docType)
 		return err
 	}
+	s.removeDirtyItem(id)
 	return nil
 }
 
