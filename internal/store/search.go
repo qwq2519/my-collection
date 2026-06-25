@@ -363,9 +363,11 @@ func (s *Store) removeDirtyItem(docID string) {
 func (s *Store) foreachDirtyItem(tx *buntdb.Tx, fn func(key string, item model.DirtyItem)) {
 	tx.AscendKeys("dirty:*", func(key, value string) bool {
 		var item model.DirtyItem
-		if err := json.Unmarshal([]byte(value), &item); err == nil {
-			fn(key, item)
+		if err := json.Unmarshal([]byte(value), &item); err != nil {
+			slog.Warn("skip corrupted dirty item", "key", key, "err", err)
+			return true
 		}
+		fn(key, item)
 		return true
 	})
 }
