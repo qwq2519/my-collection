@@ -207,7 +207,9 @@ func (s *Store) RebuildIndex(docs []BleveDoc) error {
 		s.index.Close()
 	}
 
-	os.RemoveAll(indexPath)
+	if err := os.RemoveAll(indexPath); err != nil {
+		return fmt.Errorf("remove old index: %w", err)
+	}
 
 	m := buildIndexMapping()
 	idx, err := bleve.New(indexPath, m)
