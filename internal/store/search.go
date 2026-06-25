@@ -263,7 +263,7 @@ func (s *Store) RebuildDocs(deleteIDs []string, newDocs []BleveDoc) error {
 
 // addDirtyItem 记录一条索引失败的文档到脏队列
 func (s *Store) addDirtyItem(docID, docType string) {
-	s.db.Update(func(tx *buntdb.Tx) error {
+	err := s.db.Update(func(tx *buntdb.Tx) error {
 		item := model.DirtyItem{
 			DocID:    docID,
 			DocType:  docType,
@@ -273,17 +273,26 @@ func (s *Store) addDirtyItem(docID, docType string) {
 		if err != nil {
 			return err
 		}
-		tx.Set("dirty:"+docID, string(val), nil)
-		return nil
+		_, _, err = tx.Set("dirty:"+docID, string(val), nil)
+		return err
 	})
+	if err != nil {
+		slog.Warn("failed to add dirty item", "doc_id", docID, "err", err)
+	}
 }
 
 // removeDirtyItem 从脏队列移除一条
 func (s *Store) removeDirtyItem(docID string) {
-	s.db.Update(func(tx *buntdb.Tx) error {
-		tx.Delete("dirty:" + docID)
-		return nil
+	err := s.db.Update(func(tx *buntdb.Tx) error {
+		_, err := tx.Delete("dirty:" + docID)
+		if err == buntdb.ErrNotFound {
+			return nil
+		}
+		return err
 	})
+	if err != nil {
+		slog.Warn("failed to remove dirty item", "doc_id", docID, "err", err)
+	}
 }
 
 // GetDirtyItems 获取脏队列中所有条目
@@ -328,22 +337,27 @@ func (s *Store) GetDirtyIndexStatus() model.DirtyIndexStatus {
 
 // ClearAllDirtyItems 清空脏队列（全量重建后调用）
 func (s *Store) ClearAllDirtyItems() {
-	s.db.Update(func(tx *buntdb.Tx) error {
+	err := s.db.Update(func(tx *buntdb.Tx) error {
 		var keys []string
 		tx.AscendKeys("dirty:*", func(key, value string) bool {
 			keys = append(keys, key)
 			return true
 		})
 		for _, k := range keys {
-			tx.Delete(k)
+			if _, err := tx.Delete(k); err != nil && err != buntdb.ErrNotFound {
+				return err
+			}
 		}
 		return nil
 	})
+	if err != nil {
+		slog.Warn("failed to clear all dirty items", "err", err)
+	}
 }
 
 // ClearDirtyByType 清除指定类型的脏记录（模块级重建后调用）
 func (s *Store) ClearDirtyByType(docType string) {
-	s.db.Update(func(tx *buntdb.Tx) error {
+	err := s.db.Update(func(tx *buntdb.Tx) error {
 		var keys []string
 		tx.AscendKeys("dirty:*", func(key, value string) bool {
 			var item model.DirtyItem
@@ -353,10 +367,15 @@ func (s *Store) ClearDirtyByType(docType string) {
 			return true
 		})
 		for _, k := range keys {
-			tx.Delete(k)
+			if _, err := tx.Delete(k); err != nil && err != buntdb.ErrNotFound {
+				return err
+			}
 		}
 		return nil
 	})
+	if err != nil {
+		slog.Warn("failed to clear dirty items by type", "doc_type", docType, "err", err)
+	}
 }
 
 // --- 辅助函数 ---
