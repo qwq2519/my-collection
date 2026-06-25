@@ -51,6 +51,17 @@ type SiteListResult struct {
 	HasMore bool   `json:"has_more"`
 }
 
+// EnsureSlices 确保切片字段非 nil，避免 JSON 序列化为 null。
+// Store 层写入前调用。
+func (s *Site) EnsureSlices() {
+	if s.Tags == nil {
+		s.Tags = []string{}
+	}
+	if s.Attachments == nil {
+		s.Attachments = []Attachment{}
+	}
+}
+
 // LookupSiteByURLReq 根据 URL 查询对应站点请求
 type LookupSiteByURLReq struct {
 	URL string `json:"url"`

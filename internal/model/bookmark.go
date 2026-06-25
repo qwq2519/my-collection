@@ -18,6 +18,17 @@ type Bookmark struct {
 	UpdatedAt   time.Time    `json:"updated_at"`
 }
 
+// EnsureSlices 确保切片字段非 nil，避免 JSON 序列化为 null。
+// Store 层写入前调用。
+func (b *Bookmark) EnsureSlices() {
+	if b.Tags == nil {
+		b.Tags = []string{}
+	}
+	if b.Attachments == nil {
+		b.Attachments = []Attachment{}
+	}
+}
+
 // CreateBookmarkReq 创建书签请求
 type CreateBookmarkReq struct {
 	URL         string   `json:"url"`
