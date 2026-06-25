@@ -41,9 +41,8 @@ func New(persistDir string) (*Store, error) {
 	}
 	s.Idx = idx
 
-	status := s.GetDirtyIndexStatus()
-	if status.HasDirty {
-		slog.Warn("dirty index items found", "url", status.URLCount, "note", status.NoteCount, "media", status.MediaCount)
+	if s.HasDirtyIndex() {
+		slog.Warn("dirty index detected, rebuild recommended")
 	}
 
 	return s, nil
