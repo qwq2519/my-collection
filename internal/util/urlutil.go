@@ -15,6 +15,10 @@ func ValidateURL(rawURL string) error {
 
 // parseAndValidate 解析并校验 URL，返回已解析的 *url.URL 供后续复用
 func parseAndValidate(rawURL string) (*url.URL, error) {
+	if !strings.Contains(rawURL, "://") {
+		return nil, fmt.Errorf("URL 格式不正确")
+	}
+
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		return nil, fmt.Errorf("URL 格式不正确")
