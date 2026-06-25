@@ -24,6 +24,7 @@
 | [整体布局](./global/ui-layout.md) | 侧边栏、导航、搜索框、列表排序 |
 | [标签系统](./global/tag-system.md) | `::` 层级规则、生命周期、管理页面 |
 | [开发指南](./global/dev-guide.md) | WSL + Windows 开发环境与构建流程 |
+| [前端设计指南](./global/frontend-design-guide.md) | UI 设计原则、视觉规范、组件规范、反模式清单 |
 
 ## 待讨论
 
