@@ -504,44 +504,40 @@ src/index.css              定义 CSS 变量默认值（ink 主题），运行�
 
 ### 备份一致性机制
 
-后端采用双锁分离策略，分别管理备份协调和索引状态保护。
-
-**Store.backupMu**（备份协调锁 `sync.RWMutex`）：借用 RWMutex 的"多读单写"机制实现"多写单备份"——写入操作取 RLock（允许并发），备份和全量索引重建取 Lock（独占）。**读操作不取 backupMu**，备份期间搜索不受影响。
-
-**IndexManager.mu**（索引状态锁 `sync.RWMutex`）：保护索引实例和状态的并发安全。索引读写取 RLock，重建和关闭取 Lock。独立于 backupMu。
+后端维护一把全局 `sync.RWMutex`（`Store.mu`），所有操作都经过此锁。IndexManager 自身不持有锁，并发安全由 Store.mu 统一保证。
 
 ```text
-Store.backupMu (sync.RWMutex)         IndexManager.mu (sync.RWMutex)
-         /                \                    /               \
-  写入操作: RLock()    备份/重建: Lock()   索引读写: RLock()  重建/关闭: Lock()
-  (允许并发写入)      (独占，阻塞写入)    (允许并发搜索)    (阻塞索引操作)
-  读操作: 不加锁                        
+              Store.mu (sync.RWMutex)
+              /                      \
+  普通读写操作: RLock()           独占操作: Lock()
+  (IndexDoc/DeleteDoc/Search     (导出备份、模块级索引重建)
+   BuntDB CRUD，允许并发)        (阻塞所有读写)
 ```
 
-**普通写入操作**（BuntDB 写入、Bleve 索引更新等）：
+**普通操作**（读写均取 RLock，允许并发）：
 
 ```go
-backupMu.RLock()
-defer backupMu.RUnlock()
-// 执行写入（索引操作由 IndexManager.mu 内部保护）
+mu.RLock()
+defer mu.RUnlock()
+// BuntDB 读写、Bleve 索引/搜索
 ```
 
-**读操作**（搜索查询）：
+**导出备份 / 索引重建**（独占，阻塞所有读写）：
 
 ```go
-// 不取 backupMu，直接调用 IndexManager
-// IndexManager 内部取 mu.RLock 保证索引状态安全
-return s.idx.Search(req)
+mu.Lock()
+defer mu.Unlock()
+// 导出：打包 persist/ 为 zip
+// 重建：按模块 batch 删除 + 重新索引
 ```
 
-**备份/全量重建**：
+**索引重建策略**：不提供全量重建入口，拆分为模块级操作，每次只锁定重建一个模块的时间：
+- `RebuildIndexByType("site", docs)` — 重建站点索引
+- `RebuildIndexByType("bookmark", docs)` — 重建书签索引
+- `RebuildIndexByType("note", docs)` — 重建笔记索引
+- `RebuildMediaFolderIndex(folderID, docs)` — 重建指定媒体文件夹索引
 
-```go
-backupMu.Lock()
-defer backupMu.Unlock()
-// 阻塞所有写入，但搜索不受影响（走 IndexManager.mu）
-// 重建期间搜索会因 IndexManager 状态为 Rebuilding 返回错误
-```
+均在现有 Bleve 实例上做 batch 操作（查找旧文档 → 批量删除 → 批量写入），不关闭/重建整个索引文件，持锁时间短。
 
 **备份内容**（zip 中包含）：
 

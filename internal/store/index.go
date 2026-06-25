@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"sync"
 
 	"github.com/blevesearch/bleve/v2"
 )
@@ -36,10 +35,8 @@ func (s IndexState) String() string {
 }
 
 // IndexManager 管理 Bleve 索引的生命周期和状态。
-// 内部持有 RWMutex 保证并发安全：读操作（Search/IndexDoc/DeleteDoc 等）
-// 取 RLock，重建和关闭取 Lock。
+// 自身不持有锁，并发安全由 Store.mu 统一保证。
 type IndexManager struct {
-	mu         sync.RWMutex
 	index      bleve.Index
 	state      IndexState
 	lastErr    error
@@ -88,8 +85,6 @@ func NewIndexManager(persistDir string) (*IndexManager, error) {
 
 // State 返回当前索引状态
 func (m *IndexManager) State() IndexState {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
 	return m.state
 }
 
@@ -102,8 +97,6 @@ func (m *IndexManager) ensureOpen() error {
 
 // IndexDoc 索引单个文档
 func (m *IndexManager) IndexDoc(id string, fields map[string]interface{}) error {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
 	if err := m.ensureOpen(); err != nil {
 		return err
 	}
@@ -112,8 +105,6 @@ func (m *IndexManager) IndexDoc(id string, fields map[string]interface{}) error 
 
 // DeleteDoc 从索引删除文档
 func (m *IndexManager) DeleteDoc(id string) error {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
 	if err := m.ensureOpen(); err != nil {
 		return err
 	}
@@ -122,8 +113,6 @@ func (m *IndexManager) DeleteDoc(id string) error {
 
 // Search 执行搜索查询
 func (m *IndexManager) Search(req *bleve.SearchRequest) (*bleve.SearchResult, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
 	if err := m.ensureOpen(); err != nil {
 		return nil, err
 	}
@@ -132,8 +121,6 @@ func (m *IndexManager) Search(req *bleve.SearchRequest) (*bleve.SearchResult, er
 
 // NewBatch 创建新的批量操作
 func (m *IndexManager) NewBatch() (*bleve.Batch, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
 	if err := m.ensureOpen(); err != nil {
 		return nil, err
 	}
@@ -142,21 +129,16 @@ func (m *IndexManager) NewBatch() (*bleve.Batch, error) {
 
 // ExecuteBatch 执行批量操作
 func (m *IndexManager) ExecuteBatch(batch *bleve.Batch) error {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
 	if err := m.ensureOpen(); err != nil {
 		return err
 	}
 	return m.index.Batch(batch)
 }
 
-// Rebuild 全量重建索引：备份旧索引 → 创建新索引 → 批量写入 → 删除备份。
+// rebuild 全量重建索引：备份旧索引 → 创建新索引 → 批量写入 → 删除备份。
 // 失败时自动恢复旧索引，避免搜索功能完全不可用。
-// 内部取 mu.Lock 独占，阻塞所有并发的索引读写。
-func (m *IndexManager) Rebuild(docs []BleveDoc) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
+// 仅在索引损坏等异常场景内部调用，调用方须持有 Store.mu.Lock。
+func (m *IndexManager) rebuild(docs []BleveDoc) error {
 	m.state = IndexRebuilding
 	indexPath := filepath.Join(m.persistDir, "search.bleve")
 	backupPath := indexPath + ".bak"
@@ -235,9 +217,6 @@ func (m *IndexManager) Rebuild(docs []BleveDoc) error {
 
 // Close 关闭索引
 func (m *IndexManager) Close() error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	if m.index != nil {
 		err := m.index.Close()
 		m.index = nil

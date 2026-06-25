@@ -163,8 +163,8 @@ type BleveDoc struct {
 // 自动注入 _type 字段，调用方无需手动设置。
 // 失败时记录到脏队列，不阻塞主流程。
 func (s *Store) IndexDoc(id string, docType string, fields map[string]interface{}) error {
-	s.backupMu.RLock()
-	defer s.backupMu.RUnlock()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
 	fields["_type"] = docType
 
@@ -179,8 +179,8 @@ func (s *Store) IndexDoc(id string, docType string, fields map[string]interface{
 
 // DeleteDoc 从 Bleve 索引中删除文档。失败时记录到脏队列。
 func (s *Store) DeleteDoc(id string, docType string) error {
-	s.backupMu.RLock()
-	defer s.backupMu.RUnlock()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
 	if err := s.idx.DeleteDoc(id); err != nil {
 		slog.Warn("bleve delete failed", "id", id, "err", err)
@@ -191,29 +191,86 @@ func (s *Store) DeleteDoc(id string, docType string) error {
 	return nil
 }
 
-// Search 执行 Bleve 搜索查询。不持 backupMu，备份期间搜索不受影响。
-// 并发安全由 IndexManager 内部的 mu 保证。
+// Search 执行 Bleve 搜索查询。
 func (s *Store) Search(req *bleve.SearchRequest) (*bleve.SearchResult, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	return s.idx.Search(req)
 }
 
-// RebuildIndex 全量重建 Bleve 索引（设置页"重建所有索引"）。
-// 取 backupMu.Lock 独占，阻塞所有并发写操作，允许读操作。
-func (s *Store) RebuildIndex(docs []BleveDoc) error {
-	s.backupMu.Lock()
-	defer s.backupMu.Unlock()
+// RebuildIndexByType 按文档类型重建索引（如 "site"、"bookmark"、"note"）。
+// 取 mu.Lock 独占，阻塞所有并发读写。在现有 Bleve 实例上做 batch 操作，持锁时间短。
+func (s *Store) RebuildIndexByType(docType string, docs []BleveDoc) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	if err := s.idx.Rebuild(docs); err != nil {
+	oldIDs, err := s.searchDocIDs("_type", docType)
+	if err != nil {
+		return fmt.Errorf("search existing %s docs: %w", docType, err)
+	}
+
+	batch, err := s.idx.NewBatch()
+	if err != nil {
 		return err
 	}
-	s.ClearAllDirtyItems()
+	for _, id := range oldIDs {
+		batch.Delete(id)
+	}
+	for _, doc := range docs {
+		batch.Index(doc.ID, doc.Fields)
+	}
+
+	if err := s.idx.ExecuteBatch(batch); err != nil {
+		return fmt.Errorf("rebuild %s index: %w", docType, err)
+	}
+
+	s.ClearDirtyByType(docType)
+	slog.Info("index rebuilt by type", "type", docType, "deleted", len(oldIDs), "indexed", len(docs))
+	return nil
+}
+
+// RebuildMediaFolderIndex 按媒体文件夹重建索引。
+// 取 mu.Lock 独占，阻塞所有并发读写。仅影响指定文件夹的文档，持锁时间短。
+func (s *Store) RebuildMediaFolderIndex(folderID string, docs []BleveDoc) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	oldIDs, err := s.searchDocIDs("folder_id", folderID)
+	if err != nil {
+		return fmt.Errorf("search media docs for folder %s: %w", folderID, err)
+	}
+
+	batch, err := s.idx.NewBatch()
+	if err != nil {
+		return err
+	}
+	for _, id := range oldIDs {
+		batch.Delete(id)
+	}
+	for _, doc := range docs {
+		batch.Index(doc.ID, doc.Fields)
+	}
+
+	if err := s.idx.ExecuteBatch(batch); err != nil {
+		return fmt.Errorf("rebuild media folder %s index: %w", folderID, err)
+	}
+
+	for _, id := range oldIDs {
+		s.removeDirtyItem(id)
+	}
+	for _, doc := range docs {
+		s.removeDirtyItem(doc.ID)
+	}
+
+	slog.Info("media folder index rebuilt", "folder_id", folderID, "deleted", len(oldIDs), "indexed", len(docs))
 	return nil
 }
 
 // RebuildDocs 局部重建：删除指定 ID 的旧文档，写入新文档。
 func (s *Store) RebuildDocs(deleteIDs []string, newDocs []BleveDoc) error {
-	s.backupMu.RLock()
-	defer s.backupMu.RUnlock()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
 	batch, err := s.idx.NewBatch()
 	if err != nil {
@@ -239,6 +296,26 @@ func (s *Store) RebuildDocs(deleteIDs []string, newDocs []BleveDoc) error {
 
 	slog.Info("bleve docs rebuilt", "deleted", len(deleteIDs), "indexed", len(newDocs))
 	return nil
+}
+
+// searchDocIDs 按 keyword 字段精确匹配查找文档 ID 列表（内部方法，调用方须持锁）
+func (s *Store) searchDocIDs(field, value string) ([]string, error) {
+	query := bleve.NewTermQuery(value)
+	query.SetField(field)
+	req := bleve.NewSearchRequest(query)
+	req.Size = 100000
+	req.Fields = []string{}
+
+	result, err := s.idx.Search(req)
+	if err != nil {
+		return nil, err
+	}
+
+	ids := make([]string, 0, len(result.Hits))
+	for _, hit := range result.Hits {
+		ids = append(ids, hit.ID)
+	}
+	return ids, nil
 }
 
 // --- 脏队列管理 ---

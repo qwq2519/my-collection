@@ -10,14 +10,12 @@ import (
 
 // Store 数据访问层主结构体，持有 BuntDB 和 IndexManager 实例。
 //
-// 并发策略（双锁分离）：
-//   - backupMu (RWMutex)：备份协调锁。写操作取 RLock（允许并发写入），
-//     备份/全量重建取 Lock（独占，等待所有写入完成后执行）。
-//     读操作不取 backupMu，备份期间搜索不受影响。
-//   - IndexManager.mu (RWMutex)：索引状态锁。索引读写取 RLock，
-//     重建/关闭取 Lock。独立于 backupMu，保证索引操作的并发安全。
+// 并发策略（单锁）：
+//   - mu (RWMutex)：全局操作锁。普通读写操作取 RLock（允许并发），
+//     导出备份和模块级索引重建取 Lock（独占，阻塞所有读写）。
+//   - IndexManager 自身不持有锁，并发安全由 Store.mu 统一保证。
 type Store struct {
-	backupMu sync.RWMutex
+	mu sync.RWMutex
 
 	db  *buntdb.DB
 	idx *IndexManager
