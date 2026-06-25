@@ -17,7 +17,7 @@ type Store struct {
 	mu sync.RWMutex
 
 	db  *buntdb.DB
-	Idx *IndexManager
+	idx *IndexManager
 
 	persistDir string
 }
@@ -42,7 +42,7 @@ func New(persistDir string) (*Store, error) {
 		db.Close()
 		return nil, fmt.Errorf("open bleve: %w", err)
 	}
-	s.Idx = idx
+	s.idx = idx
 
 	if s.HasDirtyIndex() {
 		slog.Warn("dirty index detected, rebuild recommended")
@@ -55,8 +55,8 @@ func New(persistDir string) (*Store, error) {
 func (s *Store) Close() error {
 	var firstErr error
 
-	if s.Idx != nil {
-		if err := s.Idx.Close(); err != nil && firstErr == nil {
+	if s.idx != nil {
+		if err := s.idx.Close(); err != nil && firstErr == nil {
 			firstErr = err
 		}
 	}

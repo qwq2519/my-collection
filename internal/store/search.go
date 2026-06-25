@@ -165,7 +165,7 @@ func (s *Store) IndexDoc(id string, docType string, fields map[string]interface{
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	if err := s.Idx.IndexDoc(id, fields); err != nil {
+	if err := s.idx.IndexDoc(id, fields); err != nil {
 		slog.Warn("bleve index failed", "id", id, "err", err)
 		s.addDirtyItem(id, docType)
 		return err
@@ -178,7 +178,7 @@ func (s *Store) DeleteDoc(id string, docType string) error {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	if err := s.Idx.DeleteDoc(id); err != nil {
+	if err := s.idx.DeleteDoc(id); err != nil {
 		slog.Warn("bleve delete failed", "id", id, "err", err)
 		s.addDirtyItem(id, docType)
 		return err
@@ -192,7 +192,7 @@ func (s *Store) RebuildIndex(docs []BleveDoc) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if err := s.Idx.Rebuild(docs); err != nil {
+	if err := s.idx.Rebuild(docs); err != nil {
 		return err
 	}
 	s.ClearAllDirtyItems()
@@ -204,7 +204,7 @@ func (s *Store) RebuildDocs(deleteIDs []string, newDocs []BleveDoc) error {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	batch, err := s.Idx.NewBatch()
+	batch, err := s.idx.NewBatch()
 	if err != nil {
 		return err
 	}
@@ -215,7 +215,7 @@ func (s *Store) RebuildDocs(deleteIDs []string, newDocs []BleveDoc) error {
 		batch.Index(doc.ID, doc.Fields)
 	}
 
-	if err := s.Idx.ExecuteBatch(batch); err != nil {
+	if err := s.idx.ExecuteBatch(batch); err != nil {
 		return fmt.Errorf("rebuild docs batch: %w", err)
 	}
 
