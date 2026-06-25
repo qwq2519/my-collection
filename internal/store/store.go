@@ -3,19 +3,17 @@ package store
 import (
 	"fmt"
 	"log/slog"
-	"sync"
 
 	"github.com/tidwall/buntdb"
 )
 
 // Store 数据访问层主结构体，持有 BuntDB 和 IndexManager 实例。
 //
-// 并发策略（单锁）：
-//   - mu (RWMutex)：全局操作锁。普通读写操作取 RLock（允许并发），
-//     导出备份和模块级索引重建取 Lock（独占，阻塞所有读写）。
-//   - IndexManager 自身不持有锁，并发安全由 Store.mu 统一保证。
+// TODO: 并发策略待实现。计划使用 sync.RWMutex 作为全局操作锁：
+// 普通读写操作取 RLock（允许并发），导出备份和模块级索引重建取 Lock（独占）。
+// IndexManager 自身不持有锁，并发安全由 Store 统一保证。
 type Store struct {
-	mu sync.RWMutex
+	// mu sync.RWMutex // TODO: 待实现加锁逻辑
 
 	db  *buntdb.DB
 	idx *IndexManager
