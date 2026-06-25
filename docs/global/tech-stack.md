@@ -68,6 +68,80 @@ zustand
 @tanstack/react-virtual
 ```
 
+## 后端目录结构
+
+三包分层：`model`（数据定义）→ `store`（存储访问）→ `service`（业务逻辑 + Wails 绑定）。依赖方向单向：`service → store → model`。
+
+```text
+internal/
+├── model/                     # 领域模型 + 请求/响应类型（纯 struct，无依赖）
+│   ├── site.go                # Site, CreateSiteReq, UpdateSiteReq, SiteListResult
+│   ├── bookmark.go            # Bookmark, CreateBookmarkReq, BookmarkListResult
+│   ├── queue.go               # QueueItem
+│   ├── note.go                # Note, CreateNoteReq, NoteListResult
+│   ├── media.go               # MediaFolder, MediaFile, MediaMeta
+│   ├── tag.go                 # URLTag, MediaTag
+│   └── common.go              # 通用类型：UploadFileReq, UploadFileResult, 事件载荷等
+│
+├── store/                     # 数据访问层（BuntDB + Bleve 协同写入）
+│   ├── store.go               # Store 主结构体：初始化/关闭、backupMu、index_dirty 管理
+│   ├── buntdb.go              # BuntDB 连接、自定义索引注册（idx:site_domain 等）
+│   ├── search.go              # Bleve 初始化、gse analyzer、index mapping、RebuildIndex
+│   ├── site.go                # 站点 CRUD + 域名唯一性校验
+│   ├── bookmark.go            # 书签 CRUD + URL 去重 + bookmark_count 维护
+│   ├── queue.go               # 临时队列 CRUD + 入队去重
+│   ├── note.go                # 笔记 CRUD
+│   ├── media.go               # media_meta.json / tree_hash.json 读写
+│   └── tag.go                 # 标签注册表 CRUD + count 维护
+│
+├── service/                   # 业务逻辑层（Wails 绑定的 Service 结构体）
+│   ├── url.go                 # URLService：站点 + 书签 + 临时队列
+│   ├── note.go                # NoteService：笔记增删改查 + 图片管理
+│   ├── media.go               # MediaService：文件夹管理、扫描触发、缩略图、标签
+│   ├── tag.go                 # TagService：重命名、合并、删除、重算 count
+│   ├── upload.go              # UploadService：统一文件上传、scene 路由、缩略图生成
+│   ├── setting.go             # SettingService：配置读写、索引重建、备份导出
+│   ├── scanner.go             # 媒体文件夹扫描：Merkle Tree 构建、比对、变化检测
+│   ├── fetcher.go             # URL 元数据抓取：HTTP GET + HTML 解析 + icon 下载
+│   └── asset.go               # Wails AssetHandler：/persist/ 路径映射 + 白名单 + 缓存头
+│
+└── util/                      # 通用工具函数（跨包复用）
+    ├── urlutil.go             # URL 归一化、域名提取、输入校验
+    ├── fileutil.go            # 原子写入（tmp→rename）、路径安全校验
+    └── mdutil.go              # Markdown strip（Bleve 索引前预处理）
+```
+
+### 分层职责
+
+| 层 | 包 | 职责 | 持有 |
+|----|---|------|------|
+| 数据定义 | `model` | 纯 struct：实体、请求、响应、事件载荷 | 无状态 |
+| 数据访问 | `store` | 封装 BuntDB + Bleve 写入事务策略，屏蔽存储细节 | BuntDB 实例、Bleve 实例、backupMu |
+| 业务逻辑 | `service` | 编排校验、存储调用、文件操作、事件推送；公开方法即前端 API | `*store.Store` 引用 |
+| 工具函数 | `util` | 跨包复用的无状态工具：URL 处理、文件操作、文本处理 | 无状态 |
+
+### 设计约束
+
+- **service 内的辅助文件**（scanner、fetcher、asset）为同包内部实现，不对外暴露，仅被同包 Service 方法调用
+- **util 包**为纯函数集合，可被 store 和 service 共同引用，无状态、无副作用
+- **文件命名省略 `_service` / `_store` 后缀**，包名已表达层级含义
+- **后续拆包原则**：当单个辅助文件膨胀超过 500 行时，再提取为独立 `internal/` 子包
+
+### 初始化流程
+
+`main.go` 负责组装：
+
+```text
+main.go
+  1. store.New("persist")          → 打开 BuntDB + Bleve，注册索引
+  2. 创建各 Service，注入 Store    → &service.URLService{Store: s}
+  3. application.New(Options{      → 注册 Services + AssetHandler
+       Services: [...],
+       Assets: asset.NewHandler(),
+     })
+  4. app.Run()
+```
+
 ## 前端目录结构
 
 按功能模块组织（feature-based），与后端 Service 分层对应：
