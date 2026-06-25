@@ -9,42 +9,47 @@ import (
 
 // ValidateURL 校验 URL 是否合法，不合法返回错误描述
 func ValidateURL(rawURL string) error {
+	_, err := parseAndValidate(rawURL)
+	return err
+}
+
+// parseAndValidate 解析并校验 URL，返回已解析的 *url.URL 供后续复用
+func parseAndValidate(rawURL string) (*url.URL, error) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
-		return fmt.Errorf("URL 格式不正确")
+		return nil, fmt.Errorf("URL 格式不正确")
 	}
 
 	if u.Scheme != "http" && u.Scheme != "https" {
-		return fmt.Errorf("仅支持 http/https 链接")
+		return nil, fmt.Errorf("仅支持 http/https 链接")
 	}
 
 	if u.User != nil {
-		return fmt.Errorf("不支持带认证的 URL")
+		return nil, fmt.Errorf("不支持带认证的 URL")
 	}
 
 	host := u.Hostname()
 	if host == "" {
-		return fmt.Errorf("URL 缺少域名")
+		return nil, fmt.Errorf("URL 缺少域名")
 	}
 
 	if u.Port() != "" {
-		return fmt.Errorf("不支持带端口的 URL")
+		return nil, fmt.Errorf("不支持带端口的 URL")
 	}
 
 	if net.ParseIP(host) != nil || host == "localhost" {
-		return fmt.Errorf("不支持 IP 地址")
+		return nil, fmt.Errorf("不支持 IP 地址")
 	}
 
-	return nil
+	return u, nil
 }
 
 // NormalizeURL 将 URL 归一化：去协议、去 www、去尾部斜杠、去 fragment、域名转小写
 func NormalizeURL(rawURL string) (string, error) {
-	if err := ValidateURL(rawURL); err != nil {
+	u, err := parseAndValidate(rawURL)
+	if err != nil {
 		return "", err
 	}
-
-	u, _ := url.Parse(rawURL)
 
 	host := strings.ToLower(u.Hostname())
 	host = strings.TrimPrefix(host, "www.")
@@ -60,19 +65,14 @@ func NormalizeURL(rawURL string) (string, error) {
 	return result, nil
 }
 
-// ExtractDomain 从 URL 中提取归一化后的域名（去 www、转小写）
+// ExtractDomain 从已校验的 URL 中提取归一化域名（去 www、转小写）
 func ExtractDomain(rawURL string) (string, error) {
-	u, err := url.Parse(rawURL)
+	u, err := parseAndValidate(rawURL)
 	if err != nil {
-		return "", fmt.Errorf("URL 格式不正确")
+		return "", err
 	}
 
-	host := u.Hostname()
-	if host == "" {
-		return "", fmt.Errorf("URL 缺少域名")
-	}
-
-	host = strings.ToLower(host)
+	host := strings.ToLower(u.Hostname())
 	host = strings.TrimPrefix(host, "www.")
 
 	return host, nil
