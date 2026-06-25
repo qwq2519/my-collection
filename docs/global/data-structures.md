@@ -143,7 +143,6 @@ Key:   bm:{bm_id}
 {
   "id": "e5f6a7b8-...",
   "url": "https://github.com/golang/go",
-  "normalized_url": "github.com/golang/go",
   "domain": "github.com",
   "site_id": "a1b2c3d4-...",
   "title": "golang/go",
@@ -162,9 +161,8 @@ Key:   bm:{bm_id}
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | id | string | 是 | UUID |
-| url | string | 是 | 用户输入的原始 URL，**创建后不可修改** |
-| normalized_url | string | 是 | 归一化后的 URL，用于去重比对（后端自动生成，随 URL 固定不变） |
-| domain | string | 是 | 从 URL 提取并归一化的域名（随 URL 固定不变） |
+| url | string | 是 | 用户输入的原始 URL（保留协议），**创建后不可修改** |
+| domain | string | 是 | 从 URL 提取并归一化的域名（去 www、转小写），创建时自动生成 |
 | site_id | string | 是 | 所属站点 ID，书签必须归属于已有站点 |
 | title | string | 是 | 页面标题 |
 | cover | string | 否 | 封面图文件名，存储在 `persist/url-assets/covers/{entity_id}.{ext}`，支持静态图和 GIF |
@@ -177,11 +175,9 @@ Key:   bm:{bm_id}
 | created_at | string | 是 | ISO 8601 |
 | updated_at | string | 是 | ISO 8601 |
 
-**URL 归一化规则（`normalized_url`）：**
+**输入校验：**
 
-后端提供 `NormalizeURL(rawURL) → normalizedURL` 方法，前端添加书签时自动调用并展示归一化结果供用户确认。
-
-**输入校验（归一化前先拒绝非法 URL）：**
+仅支持 http/https 协议，其他一律拒绝。
 
 | 拒绝条件 | 示例 | 提示 |
 |---------|------|------|
@@ -190,34 +186,29 @@ Key:   bm:{bm_id}
 | 带端口 | `example.com:8080/page` | 不支持带端口的 URL |
 | 带认证信息 | `user:pass@example.com` | 不支持带认证的 URL |
 
-**归一化规则：**
+**去重规则：**
 
-| 处理项 | 规则 | 示例 |
-|--------|------|------|
-| 协议 | 去除 `http://` / `https://` | `https://github.com/go` → `github.com/go` |
-| www 前缀 | 去除 | `www.example.com/page` → `example.com/page` |
-| 尾部斜杠 | 去除 | `github.com/go/` → `github.com/go` |
-| fragment | 去除 `#` 及之后内容 | `page.html#section` → `page.html` |
-| 查询参数 | 保留原序 | `?a=1&b=2` 保持不变 |
-| domain 大小写 | 转小写 | `GitHub.COM/Go` → `github.com/Go` |
-| path 大小写 | 保持原样 | path 部分区分大小写 |
+不单独存储归一化 URL。去重在入库时运行时执行：
 
-**去重**：添加书签时，用 `normalized_url` 在已有书签中查找，存在则拒绝。需要 BuntDB 自定义索引支持。
+1. 对输入 URL 做归一化（去协议、去 www、去尾斜杠、去 fragment、域名转小写、path 保持原样）
+2. 通过域名找到对应站点，再通过 `idx:bm_site` 取出该站点下所有书签
+3. 对每条书签的 `url` 字段执行同样的归一化，逐条比对
+4. 存在相同归一化结果则拒绝，提示"该 URL 已收藏"
+
+归一化仅用于比对，不持久化。http 和 https 视为同一地址。
 
 **添加书签流程：**
 
-1. 用户输入 URL，后端提取域名并归一化
-2. 通过 `idx:site_domain` 查找是否存在对应站点
-3. 若站点存在 → 创建书签，`site_id` 指向该站点
+1. 用户输入 URL，后端校验合法性（仅 http/https）
+2. 提取域名，通过 `idx:site_domain` 查找是否存在对应站点
+3. 若站点存在 → 执行去重检查 → 通过则创建书签，`site_id` 指向该站点
 4. 若站点不存在 → **拒绝创建书签**，改为存入临时队列（`queue:{id}`），仅保存 URL
 
 **查询模式：**
 
 - 按 ID 精确查询：`bm:{id}`
 - 按站点列出书签：BuntDB 自定义索引 `idx:bm_site`，索引 `site_id` 字段
-- 按域名查找书签：BuntDB 自定义索引 `idx:bm_domain`，索引 `domain` 字段
-- 按归一化 URL 查重：BuntDB 自定义索引 `idx:bm_normalized_url`，索引 `normalized_url` 字段
-- 标签筛选（单标签 / 多标签组合）：走 Bleve keyword 精确匹配（tags 为数组，BuntDB 不支持数组字段索引）
+- 标签筛选（单标签 / 多标签组合）：走 Bleve keyword 精确匹配
 - 全文搜索：走 Bleve
 
 ---
@@ -232,7 +223,6 @@ Key:   queue:{queue_id}
 {
   "id": "d1e2f3a4-...",
   "url": "https://example.com/some-page",
-  "normalized_url": "example.com/some-page",
   "added_at": "2026-06-22T14:00:00Z"
 }
 ```
@@ -241,12 +231,9 @@ Key:   queue:{queue_id}
 |------|------|------|------|
 | id | string | 是 | UUID |
 | url | string | 是 | 用户输入的原始 URL |
-| normalized_url | string | 是 | 归一化后的 URL，用于入队去重（规则同书签，见 [bm - URL 归一化规则](#bm--书签url)） |
 | added_at | string | 是 | ISO 8601，加入队列的时间 |
 
 临时队列是一个极简的 URL 暂存区。添加书签时若域名无对应站点，URL 自动存入此队列。队列条目只保存 URL 本身，不含 title、tags 等元数据，不参与搜索索引（不进 Bleve）。
-
-**入队去重**：入队时对 URL 做归一化，校验 `normalized_url` 是否已存在于队列或已有书签中，重复则拒绝并提示。
 
 用户可在队列中查看和删除条目。如需正式收藏，用户先创建对应站点，再手动添加书签。
 
@@ -254,7 +241,6 @@ Key:   queue:{queue_id}
 
 - 列出所有队列条目：前缀扫描 `queue:*`
 - 按 ID 删除：`queue:{id}`
-- 按归一化 URL 查重：BuntDB 自定义索引 `idx:queue_normalized_url`，索引 `normalized_url` 字段
 
 ---
 
@@ -424,11 +410,10 @@ BuntDB 支持基于 JSON 字段创建自定义索引，用于加速非主键查�
 
 | 索引名 | 目标 Key 前缀 | 索引字段 | 用途 |
 |--------|-------------|---------|------|
-| `idx:site_domain` | `site:*` | `.domain` | 按域名查找站点（添加 URL 时自动归组） |
-| `idx:bm_site` | `bm:*` | `.site_id` | 按站点列出书签 |
-| `idx:bm_domain` | `bm:*` | `.domain` | 按域名查找书签 |
-| `idx:bm_normalized_url` | `bm:*` | `.normalized_url` | 书签 URL 去重校验 |
-| `idx:queue_normalized_url` | `queue:*` | `.normalized_url` | 临时队列 URL 去重校验 |
+| `idx:site_domain` | `site:*` | `.domain` | 按域名查找站点（添加书签时自动归组） |
+| `idx:bm_site` | `bm:*` | `.site_id` | 按站点列出书签、入库时取同站点书签做去重 |
+
+书签去重不依赖独立索引，而是通过 `idx:bm_site` 取出同站点书签后运行时归一化比对。
 
 ---
 

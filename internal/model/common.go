@@ -18,6 +18,21 @@ type UploadFileResult struct {
 	Path string `json:"path"`
 }
 
+// DirtyItem 索引脏队列条目（Bleve 写入失败时记录）
+type DirtyItem struct {
+	DocID    string `json:"doc_id"`
+	DocType  string `json:"doc_type"`
+	FailedAt string `json:"failed_at"`
+}
+
+// DirtyIndexStatus 索引状态摘要（返回给前端）
+type DirtyIndexStatus struct {
+	HasDirty   bool `json:"has_dirty"`
+	URLCount   int  `json:"url_count"`
+	NoteCount  int  `json:"note_count"`
+	MediaCount int  `json:"media_count"`
+}
+
 // ScanProgress 媒体扫描进度事件载荷
 type ScanProgress struct {
 	FolderID string `json:"folder_id"`

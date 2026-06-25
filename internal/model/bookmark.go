@@ -4,19 +4,18 @@ import "time"
 
 // Bookmark 书签实体
 type Bookmark struct {
-	ID            string       `json:"id"`
-	URL           string       `json:"url"`
-	NormalizedURL string       `json:"normalized_url"`
-	Domain        string       `json:"domain"`
-	SiteID        string       `json:"site_id"`
-	Title         string       `json:"title"`
-	Cover         string       `json:"cover,omitempty"`
-	Description   string       `json:"description,omitempty"`
-	Tags          []string     `json:"tags"`
-	Attachments   []Attachment `json:"attachments"`
-	Status        string       `json:"status"`
-	CreatedAt     time.Time    `json:"created_at"`
-	UpdatedAt     time.Time    `json:"updated_at"`
+	ID          string       `json:"id"`
+	URL         string       `json:"url"`
+	Domain      string       `json:"domain"`
+	SiteID      string       `json:"site_id"`
+	Title       string       `json:"title"`
+	Cover       string       `json:"cover,omitempty"`
+	Description string       `json:"description,omitempty"`
+	Tags        []string     `json:"tags"`
+	Attachments []Attachment `json:"attachments"`
+	Status      string       `json:"status"`
+	CreatedAt   time.Time    `json:"created_at"`
+	UpdatedAt   time.Time    `json:"updated_at"`
 }
 
 // CreateBookmarkReq 创建书签请求
