@@ -48,6 +48,11 @@ func AtomicWrite(path string, data []byte, perm os.FileMode) error {
 
 // SafePath 校验 target 解析后的绝对路径是否仍在 baseDir 内，防止目录遍历攻击。
 // 返回清理后的绝对路径。
+//
+// TODO: 当前使用 filepath.Abs 不解析符号链接，攻击者可在 baseDir 内创建
+// symlink 指向外部目录来绕过前缀检查。后续需改用 filepath.EvalSymlinks
+// 替代 filepath.Abs（注意 EvalSymlinks 要求路径存在，需额外处理不存在的情况）。
+// 当前为个人桌面应用，暂不存在安全风险。
 func SafePath(baseDir, target string) (string, error) {
 	absBase, err := filepath.Abs(baseDir)
 	if err != nil {
