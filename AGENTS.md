@@ -19,7 +19,4 @@
 
 ## 后端
 
-- 纯 Go 无 CGO，所有依赖必须为纯 Go 实现
-- Service 层公开方法即前端可调用接口，入参和返回值统一用 struct
-- BuntDB 先写先提交，Bleve 后写；Bleve 失败标记 `index_dirty`，不回滚 BuntDB
-- 文件写入使用"写临时文件 → rename"原子替换
+后端代码在 `internal/` 目录。后端开发规范见 `internal/AGENTS.md`。
