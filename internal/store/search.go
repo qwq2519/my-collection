@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
 	"time"
 
 	"collections/internal/model"
@@ -53,12 +54,25 @@ func (t *gseTokenizer) Tokenize(input []byte) analysis.TokenStream {
 	return tokens
 }
 
+var (
+	gseOnce    sync.Once
+	gseSingleton *gse.Segmenter
+	gseInitErr   error
+)
+
 func gseTokenizerConstructor(config map[string]interface{}, cache *registry.Cache) (analysis.Tokenizer, error) {
-	seg, err := gse.New()
-	if err != nil {
-		return nil, fmt.Errorf("init gse segmenter: %w", err)
+	gseOnce.Do(func() {
+		seg, err := gse.New()
+		if err != nil {
+			gseInitErr = fmt.Errorf("init gse segmenter: %w", err)
+			return
+		}
+		gseSingleton = &seg
+	})
+	if gseInitErr != nil {
+		return nil, gseInitErr
 	}
-	return &gseTokenizer{seg: &seg}, nil
+	return &gseTokenizer{seg: gseSingleton}, nil
 }
 
 func init() {
