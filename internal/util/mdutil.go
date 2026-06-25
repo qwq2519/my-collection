@@ -17,6 +17,7 @@ var (
 	reHR         = regexp.MustCompile(`(?m)^[-*_]{3,}\s*$`)                  // 水平分割线: --- / *** / ___
 	reListMarker = regexp.MustCompile(`(?m)^[\s]*[-*+]\s+|^[\s]*\d+\.\s+`)  // 列表标记: - / * / + / 1.
 	reHTMLTag    = regexp.MustCompile(`<[^>]+>`)                             // HTML 标签: <tag>
+	reSpaces     = regexp.MustCompile(`\s+`)                                 // 连续空白
 )
 
 // StripMarkdown 去除 Markdown 语法标记，保留纯文本内容，用于 Bleve 索引
@@ -35,8 +36,7 @@ func StripMarkdown(md string) string {
 	s = reListMarker.ReplaceAllString(s, "")
 	s = reHTMLTag.ReplaceAllString(s, "")
 
-	// 合并连续空白
-	s = regexp.MustCompile(`\s+`).ReplaceAllString(s, " ")
+	s = reSpaces.ReplaceAllString(s, " ")
 	s = strings.TrimSpace(s)
 
 	return s
