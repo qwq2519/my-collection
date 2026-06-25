@@ -44,6 +44,12 @@ func parseAndValidate(rawURL string) (*url.URL, error) {
 	return u, nil
 }
 
+// normalizeHost 归一化域名：转小写、去 www 前缀
+func normalizeHost(u *url.URL) string {
+	host := strings.ToLower(u.Hostname())
+	return strings.TrimPrefix(host, "www.")
+}
+
 // NormalizeURL 将 URL 归一化：去协议、去 www、去尾部斜杠、去 fragment、域名转小写
 func NormalizeURL(rawURL string) (string, error) {
 	u, err := parseAndValidate(rawURL)
@@ -51,13 +57,7 @@ func NormalizeURL(rawURL string) (string, error) {
 		return "", err
 	}
 
-	host := strings.ToLower(u.Hostname())
-	host = strings.TrimPrefix(host, "www.")
-
-	path := u.Path
-	path = strings.TrimSuffix(path, "/")
-
-	result := host + path
+	result := normalizeHost(u) + strings.TrimSuffix(u.Path, "/")
 	if u.RawQuery != "" {
 		result += "?" + u.RawQuery
 	}
@@ -71,9 +71,5 @@ func ExtractDomain(rawURL string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
-	host := strings.ToLower(u.Hostname())
-	host = strings.TrimPrefix(host, "www.")
-
-	return host, nil
+	return normalizeHost(u), nil
 }
