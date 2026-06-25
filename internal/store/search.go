@@ -270,13 +270,20 @@ func (s *Store) addDirtyItem(docID, docType string) {
 	}
 }
 
-// removeDirtyItem 从脏队列移除一条
+// removeDirtyItem 从脏队列移除一条，若队列清空则重置 dirty flag
 func (s *Store) removeDirtyItem(docID string) {
 	err := s.db.Update(func(tx *buntdb.Tx) error {
 		_, err := tx.Delete("dirty:" + docID)
 		if err == buntdb.ErrNotFound {
 			return nil
 		}
+		if err != nil {
+			return err
+		}
+		if s.hasDirtyItemsInTx(tx) {
+			return nil
+		}
+		_, _, err = tx.Set(metaIndexDirtyKey, "false", nil)
 		return err
 	})
 	if err != nil {
@@ -294,6 +301,16 @@ func (s *Store) foreachDirtyItem(tx *buntdb.Tx, fn func(key string, item model.D
 		}
 		return true
 	})
+}
+
+// hasDirtyItemsInTx 在事务内检查是否仍有脏记录
+func (s *Store) hasDirtyItemsInTx(tx *buntdb.Tx) bool {
+	found := false
+	tx.AscendKeys("dirty:*", func(key, value string) bool {
+		found = true
+		return false
+	})
+	return found
 }
 
 // GetDirtyItems 获取脏队列中所有条目
@@ -348,7 +365,7 @@ func (s *Store) ClearAllDirtyItems() {
 	}
 }
 
-// ClearDirtyByType 清除指定类型的脏记录（模块级重建后调用）
+// ClearDirtyByType 清除指定类型的脏记录（模块级重建后调用），若队列清空则重置 dirty flag
 func (s *Store) ClearDirtyByType(docType string) {
 	err := s.db.Update(func(tx *buntdb.Tx) error {
 		var keys []string
@@ -361,6 +378,10 @@ func (s *Store) ClearDirtyByType(docType string) {
 			if _, err := tx.Delete(k); err != nil && err != buntdb.ErrNotFound {
 				return err
 			}
+		}
+		if !s.hasDirtyItemsInTx(tx) {
+			_, _, err := tx.Set(metaIndexDirtyKey, "false", nil)
+			return err
 		}
 		return nil
 	})
