@@ -29,11 +29,12 @@ type CreateBookmarkReq struct {
 
 // UpdateBookmarkReq 更新书签请求
 type UpdateBookmarkReq struct {
-	ID          string    `json:"id"`
-	Title       *string   `json:"title,omitempty"`
-	Description *string   `json:"description,omitempty"`
-	Tags        *[]string `json:"tags,omitempty"`
-	Cover       *string   `json:"cover,omitempty"`
+	ID          string        `json:"id"`
+	Title       *string       `json:"title,omitempty"`
+	Description *string       `json:"description,omitempty"`
+	Tags        *[]string     `json:"tags,omitempty"`
+	Cover       *string       `json:"cover,omitempty"`
+	Attachments *[]Attachment `json:"attachments,omitempty"`
 }
 
 // BookmarkListReq 书签列表请求

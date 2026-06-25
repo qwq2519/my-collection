@@ -27,12 +27,13 @@ type CreateSiteReq struct {
 
 // UpdateSiteReq 更新站点请求
 type UpdateSiteReq struct {
-	ID          string    `json:"id"`
-	Title       *string   `json:"title,omitempty"`
-	Description *string   `json:"description,omitempty"`
-	Tags        *[]string `json:"tags,omitempty"`
-	Icon        *string   `json:"icon,omitempty"`
-	Cover       *string   `json:"cover,omitempty"`
+	ID          string        `json:"id"`
+	Title       *string       `json:"title,omitempty"`
+	Description *string       `json:"description,omitempty"`
+	Tags        *[]string     `json:"tags,omitempty"`
+	Icon        *string       `json:"icon,omitempty"`
+	Cover       *string       `json:"cover,omitempty"`
+	Attachments *[]Attachment `json:"attachments,omitempty"`
 }
 
 // SiteListReq 站点列表请求
