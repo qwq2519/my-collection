@@ -50,3 +50,15 @@ type SiteListResult struct {
 	Total   int    `json:"total"`
 	HasMore bool   `json:"has_more"`
 }
+
+// LookupSiteByURLReq 根据 URL 查询对应站点请求
+type LookupSiteByURLReq struct {
+	URL string `json:"url"`
+}
+
+// LookupSiteResult 站点查询结果
+type LookupSiteResult struct {
+	Found  bool   `json:"found"`
+	SiteID string `json:"site_id,omitempty"`
+	Domain string `json:"domain"`
+}
