@@ -135,41 +135,79 @@ func (m *IndexManager) ExecuteBatch(batch *bleve.Batch) error {
 	return m.index.Batch(batch)
 }
 
-// Rebuild 全量重建索引：关闭旧索引 → 删除文件 → 创建新索引 → 批量写入。
+// Rebuild 全量重建索引：备份旧索引 → 创建新索引 → 批量写入 → 删除备份。
+// 失败时自动恢复旧索引，避免搜索功能完全不可用。
 // 调用方须持有 Store.mu.Lock。
 func (m *IndexManager) Rebuild(docs []BleveDoc) error {
 	m.state = IndexRebuilding
 	indexPath := filepath.Join(m.persistDir, "search.bleve")
+	backupPath := indexPath + ".bak"
 
 	if m.index != nil {
-		m.index.Close()
+		if err := m.index.Close(); err != nil {
+			slog.Warn("close old index before rebuild", "err", err)
+		}
 		m.index = nil
 	}
 
-	if err := os.RemoveAll(indexPath); err != nil {
-		m.state = IndexError
-		m.lastErr = err
-		return fmt.Errorf("remove old index: %w", err)
+	_ = os.RemoveAll(backupPath)
+	hasBackup := false
+	if _, err := os.Stat(indexPath); err == nil {
+		if err := os.Rename(indexPath, backupPath); err != nil {
+			m.state = IndexError
+			m.lastErr = err
+			return fmt.Errorf("backup old index: %w", err)
+		}
+		hasBackup = true
+	}
+
+	restoreBackup := func() {
+		if !hasBackup {
+			return
+		}
+		_ = os.RemoveAll(indexPath)
+		if err := os.Rename(backupPath, indexPath); err != nil {
+			slog.Error("failed to restore index backup", "err", err)
+			return
+		}
+		if idx, err := bleve.Open(indexPath); err == nil {
+			m.index = idx
+			m.state = IndexOpen
+			m.lastErr = nil
+			slog.Info("restored old index after rebuild failure")
+		} else {
+			slog.Error("failed to reopen restored index", "err", err)
+		}
 	}
 
 	im := buildIndexMapping()
 	idx, err := bleve.New(indexPath, im)
 	if err != nil {
-		m.state = IndexError
-		m.lastErr = err
+		restoreBackup()
+		if m.state != IndexOpen {
+			m.state = IndexError
+			m.lastErr = err
+		}
 		return fmt.Errorf("create new index: %w", err)
 	}
 
 	if err := batchIndex(idx, docs); err != nil {
 		idx.Close()
-		m.state = IndexError
-		m.lastErr = err
+		restoreBackup()
+		if m.state != IndexOpen {
+			m.state = IndexError
+			m.lastErr = err
+		}
 		return err
 	}
 
 	m.index = idx
 	m.state = IndexOpen
 	m.lastErr = nil
+
+	if hasBackup {
+		_ = os.RemoveAll(backupPath)
+	}
 
 	slog.Info("bleve index fully rebuilt", "docs", len(docs))
 	return nil
