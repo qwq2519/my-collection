@@ -44,7 +44,7 @@ func New(persistDir string) (*Store, error) {
 	}
 	s.idx = idx
 
-	if s.HasDirtyIndex() {
+	if s.HasDirtyItems() {
 		slog.Warn("dirty index detected, rebuild recommended")
 	}
 
