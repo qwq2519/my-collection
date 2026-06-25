@@ -19,8 +19,7 @@ const (
 	TreeNodeDir  = "dir"
 )
 
-// FileExtToMediaType 文件扩展名 → 媒体类型映射
-var FileExtToMediaType = map[string]string{
+var fileExtToMediaType = map[string]string{
 	".jpg":  MediaTypeImage,
 	".jpeg": MediaTypeImage,
 	".png":  MediaTypeImage,
@@ -42,4 +41,16 @@ var FileExtToMediaType = map[string]string{
 	".aac":  MediaTypeAudio,
 	".ogg":  MediaTypeAudio,
 	".m4a":  MediaTypeAudio,
+}
+
+// LookupMediaType 根据文件扩展名查询媒体类型，扩展名需含前导点（如 ".jpg"）
+func LookupMediaType(ext string) (string, bool) {
+	mt, ok := fileExtToMediaType[ext]
+	return mt, ok
+}
+
+// IsSupportedMediaExt 判断文件扩展名是否为支持的媒体格式
+func IsSupportedMediaExt(ext string) bool {
+	_, ok := fileExtToMediaType[ext]
+	return ok
 }
