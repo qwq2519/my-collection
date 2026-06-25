@@ -1,5 +1,7 @@
 package model
 
+import "time"
+
 // Attachment 附件信息（站点/书签共用）
 type Attachment struct {
 	Filename string `json:"filename"`
@@ -20,9 +22,9 @@ type UploadFileResult struct {
 
 // DirtyItem 索引脏队列条目（Bleve 写入失败时记录）
 type DirtyItem struct {
-	DocID    string `json:"doc_id"`
-	DocType  string `json:"doc_type"`
-	FailedAt string `json:"failed_at"`
+	DocID    string    `json:"doc_id"`
+	DocType  string    `json:"doc_type"`
+	FailedAt time.Time `json:"failed_at"`
 }
 
 // DirtyIndexStatus 索引状态摘要（返回给前端）

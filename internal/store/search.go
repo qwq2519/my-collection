@@ -260,7 +260,7 @@ func (s *Store) addDirtyItem(docID, docType string) {
 		item := model.DirtyItem{
 			DocID:    docID,
 			DocType:  docType,
-			FailedAt: time.Now().Format(time.RFC3339),
+			FailedAt: time.Now(),
 		}
 		val, err := json.Marshal(item)
 		if err != nil {
