@@ -257,9 +257,16 @@ func (s *Store) RebuildDocs(deleteIDs []string, newDocs []BleveDoc) error {
 // addDirtyItem 记录一条索引失败的文档到脏队列
 func (s *Store) addDirtyItem(docID, docType string) {
 	s.db.Update(func(tx *buntdb.Tx) error {
-		val := fmt.Sprintf(`{"doc_id":"%s","doc_type":"%s","failed_at":"%s"}`,
-			docID, docType, time.Now().Format(time.RFC3339))
-		tx.Set("dirty:"+docID, val, nil)
+		item := model.DirtyItem{
+			DocID:    docID,
+			DocType:  docType,
+			FailedAt: time.Now().Format(time.RFC3339),
+		}
+		val, err := json.Marshal(item)
+		if err != nil {
+			return err
+		}
+		tx.Set("dirty:"+docID, string(val), nil)
 		return nil
 	})
 }
