@@ -168,8 +168,8 @@ type BleveDoc struct {
 // 自动注入 _type 字段，调用方无需手动设置。
 // 失败时记录到脏队列，不阻塞主流程。
 func (s *Store) IndexDoc(id string, docType string, fields map[string]interface{}) error {
-	// s.mu.RLock()    // TODO: 待实现加锁逻辑
-	// defer s.mu.RUnlock()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
 	doc := make(map[string]interface{}, len(fields)+1)
 	for k, v := range fields {
@@ -188,8 +188,8 @@ func (s *Store) IndexDoc(id string, docType string, fields map[string]interface{
 
 // DeleteDoc 从 Bleve 索引中删除文档。失败时记录到脏队列。
 func (s *Store) DeleteDoc(id string, docType string) error {
-	// s.mu.RLock()    // TODO: 待实现加锁逻辑
-	// defer s.mu.RUnlock()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
 	if err := s.idx.DeleteDoc(id); err != nil {
 		slog.Warn("bleve delete failed", "id", id, "err", err)
@@ -202,8 +202,8 @@ func (s *Store) DeleteDoc(id string, docType string) error {
 
 // Search 执行 Bleve 搜索查询。
 func (s *Store) Search(req *bleve.SearchRequest) (*bleve.SearchResult, error) {
-	// s.mu.RLock()    // TODO: 待实现加锁逻辑
-	// defer s.mu.RUnlock()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
 	return s.idx.Search(req)
 }
@@ -214,8 +214,8 @@ func (s *Store) Search(req *bleve.SearchRequest) (*bleve.SearchResult, error) {
 // 后续应复用 bleveBatchSize 分批策略（先分批删除旧文档，再分批写入新文档），
 // RebuildMediaFolderIndex 同理。
 func (s *Store) RebuildIndexByType(docType string, docs []BleveDoc) error {
-	// s.mu.Lock()     // TODO: 待实现加锁逻辑
-	// defer s.mu.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	oldIDs, err := s.searchDocIDs("_type", docType)
 	if err != nil {
@@ -244,8 +244,8 @@ func (s *Store) RebuildIndexByType(docType string, docs []BleveDoc) error {
 
 // RebuildMediaFolderIndex 按媒体文件夹重建索引。仅影响指定文件夹的文档。
 func (s *Store) RebuildMediaFolderIndex(folderID string, docs []BleveDoc) error {
-	// s.mu.Lock()     // TODO: 待实现加锁逻辑
-	// defer s.mu.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	oldIDs, err := s.searchDocIDs("folder_id", folderID)
 	if err != nil {
@@ -280,8 +280,8 @@ func (s *Store) RebuildMediaFolderIndex(folderID string, docs []BleveDoc) error 
 
 // RebuildDocs 局部重建：删除指定 ID 的旧文档，写入新文档。
 func (s *Store) RebuildDocs(deleteIDs []string, newDocs []BleveDoc) error {
-	// s.mu.RLock()    // TODO: 待实现加锁逻辑
-	// defer s.mu.RUnlock()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
 	batch, err := s.idx.NewBatch()
 	if err != nil {
@@ -381,8 +381,8 @@ func (s *Store) foreachDirtyItem(tx *buntdb.Tx, fn func(key string, item model.D
 
 // HasDirtyItems 判断是否存在脏记录（前缀扫描 dirty:*）
 func (s *Store) HasDirtyItems() bool {
-	// s.mu.RLock()    // TODO: 待实现加锁逻辑
-	// defer s.mu.RUnlock()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
 	var found bool
 	s.db.View(func(tx *buntdb.Tx) error {
@@ -397,8 +397,8 @@ func (s *Store) HasDirtyItems() bool {
 
 // GetDirtyItems 获取脏队列中所有条目
 func (s *Store) GetDirtyItems() []model.DirtyItem {
-	// s.mu.RLock()    // TODO: 待实现加锁逻辑
-	// defer s.mu.RUnlock()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
 	var items []model.DirtyItem
 	s.db.View(func(tx *buntdb.Tx) error {
@@ -412,8 +412,8 @@ func (s *Store) GetDirtyItems() []model.DirtyItem {
 
 // GetDirtyIndexStatus 获取索引状态摘要（按模块统计脏文档数）
 func (s *Store) GetDirtyIndexStatus() model.DirtyIndexStatus {
-	// s.mu.RLock()    // TODO: 待实现加锁逻辑
-	// defer s.mu.RUnlock()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
 	status := model.DirtyIndexStatus{}
 	s.db.View(func(tx *buntdb.Tx) error {
@@ -435,8 +435,8 @@ func (s *Store) GetDirtyIndexStatus() model.DirtyIndexStatus {
 
 // ClearAllDirtyItems 清空脏队列（全量重建后调用）
 func (s *Store) ClearAllDirtyItems() {
-	// s.mu.RLock()    // TODO: 待实现加锁逻辑
-	// defer s.mu.RUnlock()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
 	err := s.db.Update(func(tx *buntdb.Tx) error {
 		var keys []string
@@ -457,8 +457,8 @@ func (s *Store) ClearAllDirtyItems() {
 
 // ClearDirtyByType 清除指定类型的脏记录（模块级重建后调用）
 func (s *Store) ClearDirtyByType(docType string) {
-	// s.mu.RLock()    // TODO: 待实现加锁逻辑
-	// defer s.mu.RUnlock()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
 	err := s.db.Update(func(tx *buntdb.Tx) error {
 		var keys []string
