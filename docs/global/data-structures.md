@@ -487,7 +487,7 @@ BuntDB 支持基于 JSON 字段创建自定义索引，用于加速非主键查�
   "folder_id": "550e8400-e29b-41d4-a716-446655440000",
   "root": {
     "hash": "a1b2c3d4e5f6...",
-    "dir_mtime": "2026-06-22T10:00:00Z",
+    "mtime": "2026-06-22T10:00:00Z",
     "children": {
       "photo1.jpg": {
         "type": "file",
@@ -498,7 +498,7 @@ BuntDB 支持基于 JSON 字段创建自定义索引，用于加速非主键查�
       "子目录A": {
         "type": "dir",
         "hash": "d5e6f7a8...",
-        "dir_mtime": "2026-06-21T15:00:00Z",
+        "mtime": "2026-06-21T15:00:00Z",
         "children": {
           "img1.jpg": {
             "type": "file",
@@ -518,8 +518,7 @@ BuntDB 支持基于 JSON 字段创建自定义索引，用于加速非主键查�
 | `root` | 根目录节点 |
 | `*.type` | `"file"` 或 `"dir"` |
 | `*.hash` | 文件：`xxh64(relative_path + mtime + size)`，relative_path 为从文件夹根到该文件的相对路径（如 `子目录A/img1.jpg`）；目录：`xxh64(sorted(child_hashes))` |
-| `*.dir_mtime` | 仅目录节点，用于 dir_mtime + children 双重剪枝优化（详见 [媒体管理 - 扫描算法](../features/media-manager.md#merkle-tree-变化检测)） |
-| `*.mtime` | 仅文件节点，文件修改时间 |
+| `*.mtime` | 文件节点为文件修改时间；目录节点为目录修改时间（用于剪枝优化，详见 [媒体管理 - 扫描算法](../features/media-manager.md#merkle-tree-变化检测)） |
 | `*.size` | 仅文件节点，文件大小 |
 | `*.children` | 仅目录节点，Map，key 为文件/目录名 |
 

@@ -32,7 +32,11 @@ internal/
 
 - **错误逐层上抛**：store/util 返回 error 并用 `fmt.Errorf("xxx: %w", err)` 附加上下文；service 层是错误边界，统一决定返回给前端的错误信息。不用 panic 处理业务错误
 - **依赖注入**：service 通过 struct 字段持有 `*store.Store`，初始化在 main.go 完成组装后传入，不用全局变量
-- **指针语义表达可选**：struct 字段 `*T` 表示可选，Wails 生成 TypeScript 时映射为 `T | null`
+- **指针与 omitempty 规范**：
+  - **实体 struct**：必有值字段不加 `omitempty`（确保始终输出），可能为空的字段加 `omitempty`（空时省略）。不用指针，除非零值有歧义（如 `*time.Time` 表示"从未发生"区别于零时间，`*int` 表示"未知"区别于 0）
+  - **Create 请求**：值类型。必填字段不加 `omitempty`，可选字段加 `omitempty`，不传就用零值
+  - **Update 请求**：所有可更新字段用指针 + `omitempty`（`nil` = 不更新，非 `nil` = 更新）。`ID` 等定位字段为值类型不加 `omitempty`
+  - **`omitempty` 双向影响**：序列化时零值字段不输出；Wails 生成 TypeScript 时映射为可选属性（`field?: type`）
 - **日志用 `log/slog`**：结构化输出，如 `slog.Info("scan complete", "folder_id", id, "count", n)`。三个级别：Info（正常流程关键节点）、Warn（可恢复异常，如 Bleve 写入失败）、Error（不可恢复错误）
 
 ## 项目规则

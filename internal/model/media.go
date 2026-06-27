@@ -4,12 +4,12 @@ import "time"
 
 // MediaFolder 媒体文件夹注册表（存储在 BuntDB）
 type MediaFolder struct {
-	ID         string     `json:"id"`
-	Path       string     `json:"path"`
-	Name       string     `json:"name"`
-	FileCount  int        `json:"file_count"`
-	AddedAt    time.Time  `json:"added_at"`
-	LastScanAt *time.Time `json:"last_scan_at,omitempty"`
+	ID         string    `json:"id"`
+	Path       string    `json:"path"`
+	Name       string    `json:"name"`
+	FileCount  int       `json:"file_count"`
+	AddedAt    time.Time `json:"added_at"`
+	LastScanAt time.Time `json:"last_scan_at,omitempty"`
 }
 
 // MediaFile 单个媒体文件的元数据（存储在 media_meta.json 的 files map 中）
@@ -31,13 +31,13 @@ type MediaMeta struct {
 	Files    map[string]MediaFile `json:"files"`
 }
 
-// TreeNode Merkle Tree 中的节点（文件或目录）
+// TreeNode Merkle Tree 中的节点（文件或目录）。
+// Mtime 含义由 Type 决定：文件为文件修改时间，目录为目录修改时间（用于剪枝）。
 type TreeNode struct {
 	Type     string               `json:"type"`
 	Hash     string               `json:"hash"`
 	Mtime    *time.Time           `json:"mtime,omitempty"`
 	Size     *int64               `json:"size,omitempty"`
-	DirMtime *time.Time           `json:"dir_mtime,omitempty"`
 	Children map[string]*TreeNode `json:"children,omitempty"`
 }
 

@@ -10,7 +10,6 @@ import (
 	"collections/internal/model"
 	"collections/internal/util"
 
-	"github.com/blevesearch/bleve/v2"
 	"github.com/google/uuid"
 	"github.com/tidwall/buntdb"
 )
@@ -289,9 +288,7 @@ func (s *Store) BatchDeleteBookmarks(ids []string) error {
 	return nil
 }
 
-// ListBookmarks 分页查询书签列表。
-// 无搜索/标签且有 siteID 时走 BuntDB idx:bm_site 索引；
-// 有搜索或标签时走 Bleve（siteID 转换为 domain 过滤）。
+// ListBookmarks 按站点分页查询书签列表，走 BuntDB idx:bm_site 索引。
 func (s *Store) ListBookmarks(req model.BookmarkListReq) (*model.BookmarkListResult, error) {
 	if req.Page < 1 {
 		req.Page = 1
@@ -300,20 +297,11 @@ func (s *Store) ListBookmarks(req model.BookmarkListReq) (*model.BookmarkListRes
 		req.PageSize = 20
 	}
 
-	if req.Search == "" && len(req.Tags) == 0 {
-		if req.SiteID != "" {
-			return s.listBookmarksBySite(req)
-		}
-		return s.listBookmarksFromDB(req)
-	}
-	return s.listBookmarksFromBleve(req)
-}
-
-func (s *Store) listBookmarksFromDB(req model.BookmarkListReq) (*model.BookmarkListResult, error) {
 	var bookmarks []model.Bookmark
 
+	pivot, _ := json.Marshal(map[string]string{"site_id": req.SiteID})
 	err := s.db.View(func(tx *buntdb.Tx) error {
-		return tx.AscendKeys("bm:*", func(key, value string) bool {
+		return tx.AscendEqual("idx:bm_site", string(pivot), func(key, value string) bool {
 			var bm model.Bookmark
 			if err := json.Unmarshal([]byte(value), &bm); err != nil {
 				slog.Warn("skip corrupted bookmark", "key", key, "err", err)
@@ -344,115 +332,5 @@ func (s *Store) listBookmarksFromDB(req model.BookmarkListReq) (*model.BookmarkL
 		Items:   bookmarks[start:end],
 		Total:   total,
 		HasMore: end < total,
-	}, nil
-}
-
-func (s *Store) listBookmarksBySite(req model.BookmarkListReq) (*model.BookmarkListResult, error) {
-	var bookmarks []model.Bookmark
-
-	pivot, _ := json.Marshal(map[string]string{"site_id": req.SiteID})
-	err := s.db.View(func(tx *buntdb.Tx) error {
-		return tx.AscendEqual("idx:bm_site", string(pivot), func(key, value string) bool {
-			var bm model.Bookmark
-			if err := json.Unmarshal([]byte(value), &bm); err != nil {
-				slog.Warn("skip corrupted bookmark", "key", key, "err", err)
-				return true
-			}
-			bookmarks = append(bookmarks, bm)
-			return true
-		})
-	})
-	if err != nil {
-		return nil, fmt.Errorf("list bookmarks by site: %w", err)
-	}
-
-	sort.Slice(bookmarks, func(i, j int) bool {
-		return bookmarks[i].UpdatedAt.After(bookmarks[j].UpdatedAt)
-	})
-
-	total := len(bookmarks)
-	start := (req.Page - 1) * req.PageSize
-	if start >= total {
-		return &model.BookmarkListResult{Items: []model.Bookmark{}, Total: total, HasMore: false}, nil
-	}
-	end := start + req.PageSize
-	if end > total {
-		end = total
-	}
-	return &model.BookmarkListResult{
-		Items:   bookmarks[start:end],
-		Total:   total,
-		HasMore: end < total,
-	}, nil
-}
-
-func (s *Store) listBookmarksFromBleve(req model.BookmarkListReq) (*model.BookmarkListResult, error) {
-	typeQ := bleve.NewTermQuery("bookmark")
-	typeQ.SetField("_type")
-	conjunction := bleve.NewConjunctionQuery(typeQ)
-
-	if req.Search != "" {
-		titleQ := bleve.NewMatchQuery(req.Search)
-		titleQ.SetField("title")
-		descQ := bleve.NewMatchQuery(req.Search)
-		descQ.SetField("description")
-		domainQ := bleve.NewMatchQuery(req.Search)
-		domainQ.SetField("domain_text")
-		conjunction.AddQuery(bleve.NewDisjunctionQuery(titleQ, descQ, domainQ))
-	}
-
-	for _, tag := range req.Tags {
-		tagQ := bleve.NewTermQuery(tag)
-		tagQ.SetField("tags")
-		conjunction.AddQuery(tagQ)
-	}
-
-	if req.SiteID != "" {
-		site, err := s.GetSite(req.SiteID)
-		if err != nil {
-			return nil, fmt.Errorf("lookup site for filter: %w", err)
-		}
-		domainQ := bleve.NewTermQuery(site.Domain)
-		domainQ.SetField("domain")
-		conjunction.AddQuery(domainQ)
-	}
-
-	searchReq := bleve.NewSearchRequest(conjunction)
-	searchReq.SortBy([]string{"-updated_at"})
-	searchReq.From = (req.Page - 1) * req.PageSize
-	searchReq.Size = req.PageSize
-	searchReq.Fields = []string{}
-
-	result, err := s.Search(searchReq)
-	if err != nil {
-		return nil, fmt.Errorf("search bookmarks: %w", err)
-	}
-
-	bookmarks := make([]model.Bookmark, 0, len(result.Hits))
-	err = s.db.View(func(tx *buntdb.Tx) error {
-		for _, hit := range result.Hits {
-			val, err := tx.Get(hit.ID)
-			if err != nil {
-				slog.Warn("bookmark in index but not in db", "id", hit.ID, "err", err)
-				continue
-			}
-			var bm model.Bookmark
-			if err := json.Unmarshal([]byte(val), &bm); err != nil {
-				slog.Warn("corrupted bookmark data", "id", hit.ID, "err", err)
-				continue
-			}
-			bookmarks = append(bookmarks, bm)
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, fmt.Errorf("fetch bookmarks: %w", err)
-	}
-
-	total := int(result.Total)
-	return &model.BookmarkListResult{
-		Items:   bookmarks,
-		Total:   total,
-		HasMore: (req.Page-1)*req.PageSize+len(bookmarks) < total,
 	}, nil
 }

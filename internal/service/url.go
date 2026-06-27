@@ -135,8 +135,7 @@ func (u *URLService) ListSites(req model.SiteListReq) (*model.SiteListResult, er
 
 // CreateBookmark 创建书签。校验 URL 合法性，自动提取域名匹配站点，
 // 归一化标签并维护 url_tag 注册表 count。
-// 若 SiteID 非空则直接使用；否则按域名自动查找站点，
-// 未找到站点则存入临时队列而非创建书签。
+// 按域名自动查找站点，未找到站点则存入临时队列而非创建书签。
 func (u *URLService) CreateBookmark(req model.CreateBookmarkReq) (*model.Bookmark, error) {
 	if err := util.ValidateURL(req.URL); err != nil {
 		return nil, err
@@ -145,24 +144,22 @@ func (u *URLService) CreateBookmark(req model.CreateBookmarkReq) (*model.Bookmar
 		return nil, fmt.Errorf("书签标题不能为空")
 	}
 
-	if req.SiteID == "" {
-		domain, err := util.ExtractDomain(req.URL)
-		if err != nil {
-			return nil, err
-		}
-		site, err := u.Store.GetSiteByDomain(domain)
-		if err != nil {
-			return nil, fmt.Errorf("查询站点失败: %w", err)
-		}
-		if site == nil {
-			item, err := u.Store.AddToQueue(req.URL)
-			if err != nil {
-				return nil, fmt.Errorf("存入临时队列失败: %w", err)
-			}
-			return nil, fmt.Errorf("域名 %q 无对应站点，URL 已存入临时队列（ID: %s）", domain, item.ID)
-		}
-		req.SiteID = site.ID
+	domain, err := util.ExtractDomain(req.URL)
+	if err != nil {
+		return nil, err
 	}
+	site, err := u.Store.GetSiteByDomain(domain)
+	if err != nil {
+		return nil, fmt.Errorf("查询站点失败: %w", err)
+	}
+	if site == nil {
+		item, err := u.Store.AddToQueue(req.URL)
+		if err != nil {
+			return nil, fmt.Errorf("存入临时队列失败: %w", err)
+		}
+		return nil, fmt.Errorf("域名 %q 无对应站点，URL 已存入临时队列（ID: %s）", domain, item.ID)
+	}
+	req.SiteID = site.ID
 
 	tags, err := normalizeTags(req.Tags)
 	if err != nil {
@@ -409,7 +406,8 @@ func (u *URLService) LookupSiteByURL(req model.LookupSiteByURLReq) (*model.Looku
 	result := &model.LookupSiteResult{Domain: domain}
 	if site != nil {
 		result.Found = true
-		result.SiteID = site.ID
+		result.ID = site.ID
+		result.URL = site.URL
 	}
 	return result, nil
 }

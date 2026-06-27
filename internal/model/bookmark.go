@@ -28,10 +28,11 @@ func (b *Bookmark) EnsureSlices() {
 	}
 }
 
-// CreateBookmarkReq 创建书签请求
+// CreateBookmarkReq 创建书签请求。
+// SiteID 由后端从 URL 自动匹配，前端无需传递。
 type CreateBookmarkReq struct {
 	URL         string   `json:"url"`
-	SiteID      string   `json:"site_id"`
+	SiteID      string   `json:"-"`
 	Title       string   `json:"title"`
 	Description string   `json:"description,omitempty"`
 	Tags        []string `json:"tags,omitempty"`
@@ -46,13 +47,11 @@ type UpdateBookmarkReq struct {
 	Attachments *[]Attachment `json:"attachments,omitempty"`
 }
 
-// BookmarkListReq 书签列表请求
+// BookmarkListReq 书签列表请求（按站点加载书签）
 type BookmarkListReq struct {
-	Page     int      `json:"page"`
-	PageSize int      `json:"page_size"`
-	Search   string   `json:"search,omitempty"`
-	Tags     []string `json:"tags,omitempty"`
-	SiteID   string   `json:"site_id,omitempty"`
+	SiteID   string `json:"site_id"`
+	Page     int    `json:"page"`
+	PageSize int    `json:"page_size"`
 }
 
 // BookmarkListResult 书签列表响应

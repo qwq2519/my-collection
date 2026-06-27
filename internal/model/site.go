@@ -76,6 +76,7 @@ type LookupSiteByURLReq struct {
 // LookupSiteResult 站点查询结果
 type LookupSiteResult struct {
 	Found  bool   `json:"found"`
-	SiteID string `json:"site_id,omitempty"`
+	ID     string `json:"site_id,omitempty"`
+	URL    string `json:"url,omitempty"`
 	Domain string `json:"domain"`
 }
