@@ -7,12 +7,6 @@ import (
 	"strings"
 )
 
-// ValidateURL 校验 URL 是否合法，不合法返回错误描述
-func ValidateURL(rawURL string) error {
-	_, err := parseAndValidate(rawURL)
-	return err
-}
-
 // parseAndValidate 解析并校验 URL，返回已解析的 *url.URL 供后续复用
 func parseAndValidate(rawURL string) (*url.URL, error) {
 	if !strings.Contains(rawURL, "://") {
@@ -54,7 +48,13 @@ func normalizeHost(u *url.URL) string {
 	return strings.TrimPrefix(host, "www.")
 }
 
-// NormalizeURL 将 URL 归一化：去协议、去 www、去尾部斜杠、去 fragment、域名转小写
+// ValidateURL 校验 URL 是否合法，不合法返回错误描述
+func ValidateURL(rawURL string) error {
+	_, err := parseAndValidate(rawURL)
+	return err
+}
+
+// NormalizeURL 将 URL 归一化：去协议、去 www、去尾部斜杠、去 fragment、域名转小写，query参数排序
 func NormalizeURL(rawURL string) (string, error) {
 	u, err := parseAndValidate(rawURL)
 	if err != nil {

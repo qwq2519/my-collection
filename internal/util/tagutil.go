@@ -24,15 +24,12 @@ func ValidateTagName(name string) error {
 		}
 	}
 
-	temp := strings.ReplaceAll(name, "::", "")
-	if strings.Contains(temp, ":") {
+	name = strings.ReplaceAll(name, "::", "")
+	if strings.Contains(name, ":") {
 		return fmt.Errorf("标签名中不允许使用单独的 :")
 	}
 
 	for _, r := range name {
-		if r == ':' {
-			continue
-		}
 		if unicode.Is(unicode.Han, r) || unicode.IsLetter(r) || unicode.IsDigit(r) {
 			continue
 		}
