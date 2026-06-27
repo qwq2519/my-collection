@@ -20,17 +20,21 @@ type URLService struct {
 
 // ────────────────────── Site ──────────────────────
 
-// CreateSite 创建站点。校验 title 必填、domain 格式，
-// 归一化标签并维护 url_tag 注册表 count。
+// CreateSite 创建站点。校验 title 必填、URL 合法性，
+// 从 URL 自动提取 Domain，归一化标签并维护 url_tag 注册表 count。
 func (u *URLService) CreateSite(req model.CreateSiteReq) (*model.Site, error) {
 	if strings.TrimSpace(req.Title) == "" {
 		return nil, fmt.Errorf("站点标题不能为空")
 	}
-	if strings.TrimSpace(req.Domain) == "" {
-		return nil, fmt.Errorf("站点域名不能为空")
+	if strings.TrimSpace(req.URL) == "" {
+		return nil, fmt.Errorf("请提供完整的站点 URL（如 https://example.com）")
 	}
-	req.Domain = strings.ToLower(strings.TrimSpace(req.Domain))
-	req.Domain = strings.TrimPrefix(req.Domain, "www.")
+
+	domain, err := util.ExtractDomain(req.URL)
+	if err != nil {
+		return nil, fmt.Errorf("URL 格式不正确，请提供完整的 URL（如 https://example.com）")
+	}
+	req.Domain = domain
 
 	tags, err := normalizeTags(req.Tags)
 	if err != nil {
@@ -55,13 +59,24 @@ func (u *URLService) GetSite(id string) (*model.Site, error) {
 	return u.Store.GetSite(id)
 }
 
-// UpdateSite 更新站点。当 Tags 字段变化时维护 url_tag 注册表 count。
+// UpdateSite 更新站点。传入 URL 时自动重新提取 Domain。
+// 当 Tags 字段变化时维护 url_tag 注册表 count。
 func (u *URLService) UpdateSite(req model.UpdateSiteReq) (*model.Site, error) {
 	if req.ID == "" {
 		return nil, fmt.Errorf("站点 ID 不能为空")
 	}
 	if req.Title != nil && strings.TrimSpace(*req.Title) == "" {
 		return nil, fmt.Errorf("站点标题不能为空")
+	}
+	if req.URL != nil {
+		if strings.TrimSpace(*req.URL) == "" {
+			return nil, fmt.Errorf("站点 URL 不能为空，请提供完整的 URL（如 https://example.com）")
+		}
+		domain, err := util.ExtractDomain(*req.URL)
+		if err != nil {
+			return nil, fmt.Errorf("URL 格式不正确，请提供完整的 URL（如 https://example.com）")
+		}
+		req.Domain = &domain
 	}
 
 	var oldTags []string
@@ -311,10 +326,9 @@ func (u *URLService) ListBookmarks(req model.BookmarkListReq) (*model.BookmarkLi
 	return u.Store.ListBookmarks(req)
 }
 
-// cleanBookmarkAssets 删除书签关联的文件资源：封面、附件目录
+// cleanBookmarkAssets 删除书签关联的文件资源（附件目录）
 func (u *URLService) cleanBookmarkAssets(bm *model.Bookmark) {
 	assetsDir := filepath.Join(u.Store.PersistDir(), "url-assets")
-	u.cleanEntityCovers(assetsDir, bm.ID)
 	u.cleanEntityAttachments(assetsDir, bm.ID)
 }
 
@@ -373,6 +387,7 @@ func (u *URLService) ClearQueue() error {
 
 // LookupSiteByURL 根据 URL 查询对应站点。
 // 提取 URL 中的域名，查找是否有对应站点。
+// 在新增url前判断用户是否需要先创建site
 func (u *URLService) LookupSiteByURL(req model.LookupSiteByURLReq) (*model.LookupSiteResult, error) {
 	if strings.TrimSpace(req.URL) == "" {
 		return nil, fmt.Errorf("URL 不能为空")
@@ -448,7 +463,7 @@ func (u *URLService) adjustURLTagCounts(newTags, oldTags []string) {
 	}
 }
 
-// cleanSiteAssets 删除站点关联的文件资源：icon、封面、附件目录
+// cleanSiteAssets 删除站点关联的文件资源：icon、附件目录
 func (u *URLService) cleanSiteAssets(site *model.Site) {
 	persistDir := u.Store.PersistDir()
 	assetsDir := filepath.Join(persistDir, "url-assets")
@@ -460,19 +475,7 @@ func (u *URLService) cleanSiteAssets(site *model.Site) {
 		}
 	}
 
-	u.cleanEntityCovers(assetsDir, site.ID)
 	u.cleanEntityAttachments(assetsDir, site.ID)
-}
-
-// cleanEntityCovers 通配删除 covers/{entity_id}.* 封面文件
-func (u *URLService) cleanEntityCovers(assetsDir, entityID string) {
-	pattern := filepath.Join(assetsDir, "covers", entityID+".*")
-	matches, _ := filepath.Glob(pattern)
-	for _, m := range matches {
-		if err := os.Remove(m); err != nil && !os.IsNotExist(err) {
-			slog.Warn("failed to remove cover", "path", m, "err", err)
-		}
-	}
 }
 
 // cleanEntityAttachments 删除 attachments/{entity_id}/ 整个目录

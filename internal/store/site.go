@@ -59,9 +59,12 @@ func (s *Store) CreateSite(req model.CreateSiteReq) (*model.Site, error) {
 	site := &model.Site{
 		ID:            uuid.New().String(),
 		Title:         req.Title,
+		URL:           req.URL,
 		Domain:        req.Domain,
+		Icon:          req.Icon,
 		Description:   req.Description,
 		Tags:          req.Tags,
+		Attachments:   req.Attachments,
 		BookmarkCount: 0,
 		CreatedAt:     now,
 		UpdatedAt:     now,
@@ -148,6 +151,21 @@ func (s *Store) UpdateSite(req model.UpdateSiteReq) (*model.Site, error) {
 		if req.Title != nil {
 			site.Title = *req.Title
 		}
+		if req.URL != nil {
+			site.URL = *req.URL
+		}
+		if req.Domain != nil && *req.Domain != site.Domain {
+			pivot, _ := json.Marshal(map[string]string{"domain": *req.Domain})
+			var exists bool
+			tx.AscendEqual("idx:site_domain", string(pivot), func(key, value string) bool {
+				exists = true
+				return false
+			})
+			if exists {
+				return fmt.Errorf("域名 %q 对应的站点已存在", *req.Domain)
+			}
+			site.Domain = *req.Domain
+		}
 		if req.Description != nil {
 			site.Description = *req.Description
 		}
@@ -156,9 +174,6 @@ func (s *Store) UpdateSite(req model.UpdateSiteReq) (*model.Site, error) {
 		}
 		if req.Icon != nil {
 			site.Icon = *req.Icon
-		}
-		if req.Cover != nil {
-			site.Cover = *req.Cover
 		}
 		if req.Attachments != nil {
 			site.Attachments = *req.Attachments

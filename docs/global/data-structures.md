@@ -13,9 +13,7 @@ persist/
 ├── url-assets/                ← URL 模块资源（站点 + 书签相关文件）
 │   ├── icons/                 ← 站点图标（按域名命名，可重新抓取）
 │   │   └── {domain}.{ext}
-│   ├── covers/                ← 封面图（用户上传）
-│   │   └── {entity_id}.{ext}
-│   └── attachments/           ← 附件（用户上传的图片、视频、文本等）
+│   └── attachments/           ← 附件（封面、截图等，用户上传的图片、视频、文本）
 │       └── {entity_id}/
 │           ├── {filename}            ← 原始附件
 │           └── {filename}.thumb.jpg  ← 附件缩略图（图片/视频，后端上传时自动生成）
@@ -34,8 +32,7 @@ persist/
 - `main.db` + `media-folders/*/media_meta.json` 是核心数据，丢失不可恢复
 - `search.bleve/` 可从 main.db + media_meta.json 全量重建
 - `url-assets/icons/` 可通过重新抓取恢复
-- `url-assets/covers/` 是用户上传的封面图，删除则封面丢失
-- `url-assets/attachments/` 是用户上传的附件，删除则附件丢失
+- `url-assets/attachments/` 是用户上传的附件（含封面），删除则附件丢失
 - `thumbnails/` 可从源文件重新生成
 - `note-images/` 是笔记引用的图片实体，删除则笔记中图片丢失
 
@@ -43,9 +40,8 @@ persist/
 
 | 触发场景 | 清理动作 |
 |---------|---------|
-| 删除站点 | 删除 `icons/{domain}.*` + `covers/{entity_id}.*` + `attachments/{entity_id}/` 整个目录 |
-| 删除书签 | 删除 `covers/{entity_id}.*` + `attachments/{entity_id}/` 整个目录 |
-| 更换封面 | 上传新封面前先删除 `covers/{entity_id}.*`（通配删除旧文件，避免扩展名变化导致残留） |
+| 删除站点 | 删除 `icons/{domain}.*` + `attachments/{entity_id}/` 整个目录 |
+| 删除书签 | 删除 `attachments/{entity_id}/` 整个目录 |
 | 删除单个附件 | 删除 `attachments/{entity_id}/{filename}` + 对应的 `{filename}.thumb.jpg` |
 | 删除笔记 | 删除 `note-images/{note_id}/` 整个目录 |
 
@@ -88,7 +84,7 @@ Key:   site:{site_id}
   "description": "代码托管平台",
   "tags": ["开发", "工具::代码托管"],
   "attachments": [
-    { "filename": "screenshot.png", "label": "首页截图" }
+    { "filename": "screenshot.png", "label": "首页截图", "size": 204800, "uploaded_at": "2026-06-22T10:00:00Z" }
   ],
   "bookmark_count": 3,
   "created_at": "2026-06-22T10:00:00Z",
@@ -102,12 +98,13 @@ Key:   site:{site_id}
 | title | string | 是 | 显示名称 |
 | domain | string | 是 | 归一化后的完整域名（去 www），用于自动归组，**站点间唯一，创建后不可修改** |
 | icon | string | 否 | 图标文件名，存储在 `persist/url-assets/icons/`，以域名命名（如 `github.com.png`） |
-| cover | string | 否 | 封面图文件名，存储在 `persist/url-assets/covers/{entity_id}.{ext}`，列表页主展示图 |
 | description | string | 否 | 站点描述 |
 | tags | string[] | 否 | 标签列表，与书签共享同一套 URL 标签体系 |
-| attachments | object[] | 否 | 附件列表，文件存储在 `persist/url-assets/attachments/{entity_id}/` |
+| attachments | object[] | 否 | 附件列表，文件存储在 `persist/url-assets/attachments/{entity_id}/`，前端取第一个可预览的图片/视频作为封面 |
 | attachments[*].filename | string | 是 | 附件文件名 |
 | attachments[*].label | string | 否 | 附件描述/标注 |
+| attachments[*].size | int64 | 是 | 文件大小（字节），上传时由后端写入 |
+| attachments[*].uploaded_at | string | 是 | ISO 8601，上传时间 |
 | bookmark_count | int | 是 | 该站点下的书签数量，增删书签时同步维护 |
 | created_at | string | 是 | ISO 8601 |
 | updated_at | string | 是 | ISO 8601 |
@@ -146,11 +143,10 @@ Key:   bm:{bm_id}
   "domain": "github.com",
   "site_id": "a1b2c3d4-...",
   "title": "golang/go",
-  "cover": "e5f6a7b8.gif",
   "description": "Go 语言主仓库",
   "tags": ["go", "开源"],
   "attachments": [
-    { "filename": "demo.png", "label": "效果演示" }
+    { "filename": "demo.png", "label": "效果演示", "size": 102400, "uploaded_at": "2026-06-22T12:00:00Z" }
   ],
   "status": "alive",
   "created_at": "2026-06-22T12:00:00Z",
@@ -165,12 +161,13 @@ Key:   bm:{bm_id}
 | domain | string | 是 | 从 URL 提取并归一化的域名（去 www、转小写），创建时自动生成 |
 | site_id | string | 是 | 所属站点 ID，书签必须归属于已有站点 |
 | title | string | 是 | 页面标题 |
-| cover | string | 否 | 封面图文件名，存储在 `persist/url-assets/covers/{entity_id}.{ext}`，支持静态图和 GIF |
 | description | string | 否 | 页面描述 |
 | tags | string[] | 否 | 标签列表，独立于站点 |
-| attachments | object[] | 否 | 附件列表，文件存储在 `persist/url-assets/attachments/{entity_id}/` |
+| attachments | object[] | 否 | 附件列表，文件存储在 `persist/url-assets/attachments/{entity_id}/`，前端取第一个可预览的图片/视频作为封面 |
 | attachments[*].filename | string | 是 | 附件文件名 |
 | attachments[*].label | string | 否 | 附件描述/标注 |
+| attachments[*].size | int64 | 是 | 文件大小（字节），上传时由后端写入 |
+| attachments[*].uploaded_at | string | 是 | ISO 8601，上传时间 |
 | status | string | 是 | `"alive"` / `"dead"`，创建时默认 `"alive"`，后端自动设置 |
 | created_at | string | 是 | ISO 8601 |
 | updated_at | string | 是 | ISO 8601 |

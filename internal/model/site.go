@@ -6,9 +6,9 @@ import "time"
 type Site struct {
 	ID            string       `json:"id"`
 	Title         string       `json:"title"`
+	URL           string       `json:"url"`
 	Domain        string       `json:"domain"`
 	Icon          string       `json:"icon,omitempty"`
-	Cover         string       `json:"cover,omitempty"`
 	Description   string       `json:"description,omitempty"`
 	Tags          []string     `json:"tags"`
 	Attachments   []Attachment `json:"attachments"`
@@ -17,22 +17,28 @@ type Site struct {
 	UpdatedAt     time.Time    `json:"updated_at"`
 }
 
-// CreateSiteReq 创建站点请求
+// CreateSiteReq 创建站点请求。
+// URL 必填，Domain 由后端从 URL 自动提取，前端无需传递。
 type CreateSiteReq struct {
-	Title       string   `json:"title"`
-	Domain      string   `json:"domain"`
-	Description string   `json:"description,omitempty"`
-	Tags        []string `json:"tags,omitempty"`
+	Title       string       `json:"title"`
+	URL         string       `json:"url"`
+	Domain      string       `json:"domain,omitempty"`
+	Description string       `json:"description,omitempty"`
+	Tags        []string     `json:"tags,omitempty"`
+	Icon        string       `json:"icon,omitempty"`
+	Attachments []Attachment `json:"attachments,omitempty"`
 }
 
-// UpdateSiteReq 更新站点请求
+// UpdateSiteReq 更新站点请求。
+// 传入 URL 时后端自动重新提取 Domain，前端无需单独传 Domain。
 type UpdateSiteReq struct {
 	ID          string        `json:"id"`
 	Title       *string       `json:"title,omitempty"`
+	URL         *string       `json:"url,omitempty"`
+	Domain      *string       `json:"domain,omitempty"`
 	Description *string       `json:"description,omitempty"`
 	Tags        *[]string     `json:"tags,omitempty"`
 	Icon        *string       `json:"icon,omitempty"`
-	Cover       *string       `json:"cover,omitempty"`
 	Attachments *[]Attachment `json:"attachments,omitempty"`
 }
 

@@ -171,9 +171,6 @@ func (s *Store) UpdateBookmark(req model.UpdateBookmarkReq) (*model.Bookmark, er
 		if req.Tags != nil {
 			bm.Tags = *req.Tags
 		}
-		if req.Cover != nil {
-			bm.Cover = *req.Cover
-		}
 		if req.Attachments != nil {
 			bm.Attachments = *req.Attachments
 		}

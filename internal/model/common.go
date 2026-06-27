@@ -4,8 +4,10 @@ import "time"
 
 // Attachment 附件信息（站点/书签共用）
 type Attachment struct {
-	Filename string `json:"filename"`
-	Label    string `json:"label,omitempty"`
+	Filename   string    `json:"filename"`
+	Label      string    `json:"label,omitempty"`
+	Size       int64     `json:"size"`
+	UploadedAt time.Time `json:"uploaded_at"`
 }
 
 // UploadFileReq 统一文件上传请求（笔记图片、书签图标等小文件）。

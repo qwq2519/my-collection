@@ -9,7 +9,6 @@ type Bookmark struct {
 	Domain      string       `json:"domain"`
 	SiteID      string       `json:"site_id"`
 	Title       string       `json:"title"`
-	Cover       string       `json:"cover,omitempty"`
 	Description string       `json:"description,omitempty"`
 	Tags        []string     `json:"tags"`
 	Attachments []Attachment `json:"attachments"`
@@ -44,7 +43,6 @@ type UpdateBookmarkReq struct {
 	Title       *string       `json:"title,omitempty"`
 	Description *string       `json:"description,omitempty"`
 	Tags        *[]string     `json:"tags,omitempty"`
-	Cover       *string       `json:"cover,omitempty"`
 	Attachments *[]Attachment `json:"attachments,omitempty"`
 }
 
