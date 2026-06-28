@@ -215,8 +215,8 @@ func (s *Store) DeleteBookmark(id string) error {
 			return err
 		}
 		siteObj.BookmarkCount--
-		//TODO 隐患，应该打日志或者返回error
 		if siteObj.BookmarkCount < 0 {
+			slog.Warn("bookmark_count went negative, clamped to 0", "site_id", bm.SiteID, "raw", siteObj.BookmarkCount)
 			siteObj.BookmarkCount = 0
 		}
 		siteObj.UpdatedAt = time.Now()
@@ -263,6 +263,7 @@ func (s *Store) BatchDeleteBookmarks(siteID string, ids []string) error {
 		}
 		siteObj.BookmarkCount -= deleted
 		if siteObj.BookmarkCount < 0 {
+			slog.Warn("bookmark_count went negative, clamped to 0", "site_id", siteID, "raw", siteObj.BookmarkCount)
 			siteObj.BookmarkCount = 0
 		}
 		siteObj.UpdatedAt = time.Now()
