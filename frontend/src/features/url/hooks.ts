@@ -74,7 +74,11 @@ export function useSiteLookup(
     }
 
     // 验证是否为合法 URL 格式
-    try { new URL(urlValue) } catch { return }
+    try { new URL(urlValue) } catch {
+      setLookupState({ status: "idle" })
+      setNormalizedURL("")
+      return
+    }
 
     clearTimeout(timerRef.current)
     timerRef.current = setTimeout(async () => {
