@@ -1,12 +1,14 @@
-import { useCallback } from "react"
+import { useCallback, useState } from "react"
 import { SiteList } from "./SiteList"
 import { SiteDetail } from "./SiteDetail"
 import { BookmarkDetail } from "./BookmarkDetail"
+import { SiteForm } from "./SiteForm"
 import { useURLStore } from "@/stores/url"
 import { EmptyState } from "@/components/EmptyState"
 import { SearchBar } from "@/components/SearchBar"
 import { TagTreeFilter } from "@/components/TagTreeFilter"
-import { Globe } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Globe, Plus } from "lucide-react"
 
 /**
  * URL 收藏模块入口：顶部搜索栏 + 双栏布局。
@@ -19,6 +21,8 @@ export function URLPage() {
   const selectedTags = useURLStore((s) => s.selectedTags)
   const search = useURLStore((s) => s.search)
   const setSelectedTags = useURLStore((s) => s.setSelectedTags)
+  const loadSites = useURLStore((s) => s.loadSites)
+  const [showCreateSite, setShowCreateSite] = useState(false)
 
   // TODO: 标签列表后续从 TagService 获取，当前用搜索结果中出现的标签
   const allTags = useCollectedTags()
@@ -43,6 +47,15 @@ export function URLPage() {
           selectedTags={selectedTags}
           onChange={setSelectedTags}
         />
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 gap-1 shrink-0 text-xs"
+          onClick={() => setShowCreateSite(true)}
+        >
+          <Plus size={14} />
+          新建站点
+        </Button>
       </div>
 
       {/* 双栏内容 */}
@@ -61,11 +74,18 @@ export function URLPage() {
 
         {/* 右栏：详情面板 */}
         <div className="flex-1 overflow-hidden">
-          {detailView.type === "none" && (
+          {showCreateSite ? (
+            <SiteForm
+              onSave={() => { setShowCreateSite(false); loadSites() }}
+              onCancel={() => setShowCreateSite(false)}
+            />
+          ) : detailView.type === "none" ? (
             <EmptyState icon={Globe} message="选择一个站点查看详情" className="h-full" />
+          ) : detailView.type === "site" ? (
+            <SiteDetail />
+          ) : (
+            <BookmarkDetail />
           )}
-          {detailView.type === "site" && <SiteDetail />}
-          {detailView.type === "bookmark" && <BookmarkDetail />}
         </div>
       </div>
     </div>

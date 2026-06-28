@@ -1,21 +1,40 @@
+import { useState } from "react"
 import { useURLStore } from "@/stores/url"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { ArrowLeft, ExternalLink, Loader2, FileText, ImageIcon, Video } from "lucide-react"
+import { ArrowLeft, ExternalLink, Loader2, FileText, ImageIcon, Video, Pencil } from "lucide-react"
+import { BookmarkForm } from "./BookmarkForm"
 
 /**
- * 书签详情面板：完整书签信息 + 附件列表 + 返回按钮。
+ * 书签详情面板：展示态 / 编辑态。
  */
 export function BookmarkDetail() {
   const bm = useURLStore((s) => s.currentBookmark)
   const backToSite = useURLStore((s) => s.backToSite)
+  const refreshCurrentSite = useURLStore((s) => s.refreshCurrentSite)
+  const selectBookmark = useURLStore((s) => s.selectBookmark)
+  const [editing, setEditing] = useState(false)
 
   if (!bm) {
     return (
       <div className="flex items-center justify-center h-full">
         <Loader2 size={20} className="animate-spin text-muted-foreground" />
       </div>
+    )
+  }
+
+  if (editing) {
+    return (
+      <BookmarkForm
+        bookmark={bm}
+        onSave={() => {
+          setEditing(false)
+          selectBookmark(bm.id)
+          refreshCurrentSite()
+        }}
+        onCancel={() => setEditing(false)}
+      />
     )
   }
 
@@ -26,7 +45,10 @@ export function BookmarkDetail() {
         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={backToSite}>
           <ArrowLeft size={16} />
         </Button>
-        <span className="text-xs text-muted-foreground">返回站点</span>
+        <span className="text-xs text-muted-foreground flex-1">返回站点</span>
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditing(true)}>
+          <Pencil size={14} />
+        </Button>
       </div>
 
       {/* 书签信息 */}

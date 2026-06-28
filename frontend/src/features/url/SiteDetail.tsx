@@ -1,14 +1,17 @@
+import { useState } from "react"
 import { useURLStore } from "@/stores/url"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { EmptyState } from "@/components/EmptyState"
-import { Globe, LayoutGrid, List, Loader2, ExternalLink, Bookmark } from "lucide-react"
+import { Globe, LayoutGrid, List, Loader2, ExternalLink, Bookmark, Pencil, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { SiteForm } from "./SiteForm"
+import { BookmarkForm } from "./BookmarkForm"
 import type { Bookmark as BookmarkType } from "../../../bindings/collections/internal/model"
 
 /**
- * 站点详情面板：上半部分站点信息，下半部分书签网格/列表。
+ * 站点详情面板：展示态 / 编辑态 / 新建书签态。
  */
 export function SiteDetail() {
   const site = useURLStore((s) => s.currentSite)
@@ -17,12 +20,36 @@ export function SiteDetail() {
   const viewMode = useURLStore((s) => s.bookmarkViewMode)
   const setViewMode = useURLStore((s) => s.setBookmarkViewMode)
   const selectBookmark = useURLStore((s) => s.selectBookmark)
+  const refreshCurrentSite = useURLStore((s) => s.refreshCurrentSite)
+
+  const [mode, setMode] = useState<"view" | "edit-site" | "add-bookmark">("view")
 
   if (!site) {
     return (
       <div className="flex items-center justify-center h-full">
         <Loader2 size={20} className="animate-spin text-muted-foreground" />
       </div>
+    )
+  }
+
+  // 编辑站点
+  if (mode === "edit-site") {
+    return (
+      <SiteForm
+        site={site}
+        onSave={() => { setMode("view"); refreshCurrentSite() }}
+        onCancel={() => setMode("view")}
+      />
+    )
+  }
+
+  // 新建书签
+  if (mode === "add-bookmark") {
+    return (
+      <BookmarkForm
+        onSave={() => { setMode("view"); refreshCurrentSite() }}
+        onCancel={() => setMode("view")}
+      />
     )
   }
 
@@ -53,6 +80,14 @@ export function SiteDetail() {
               <ExternalLink size={10} />
             </a>
           </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 shrink-0"
+            onClick={() => setMode("edit-site")}
+          >
+            <Pencil size={14} />
+          </Button>
         </div>
 
         {site.description && (
@@ -70,11 +105,21 @@ export function SiteDetail() {
 
       <Separator />
 
-      {/* 书签区域标题 + 视图切换 */}
+      {/* 书签区域标题 + 添加按钮 + 视图切换 */}
       <div className="flex items-center justify-between px-6 py-2">
-        <span className="text-sm text-muted-foreground">
-          书签 ({site.bookmark_count})
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">
+            书签 ({site.bookmark_count})
+          </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            onClick={() => setMode("add-bookmark")}
+          >
+            <Plus size={14} />
+          </Button>
+        </div>
         <div className="flex gap-1">
           <Button
             variant={viewMode === "grid" ? "secondary" : "ghost"}
