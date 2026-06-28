@@ -6,7 +6,7 @@ import { Separator } from "@/components/ui/separator"
 import { EmptyState } from "@/components/EmptyState"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
 import { Globe, LayoutGrid, List, Loader2, ExternalLink, Bookmark, Pencil, Plus, Trash2 } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn, IMAGE_EXTS, VIDEO_EXTS, isPreviewableExt } from "@/lib/utils"
 import { SiteForm } from "./SiteForm"
 import { BookmarkForm } from "./BookmarkForm"
 import { BatchToolbar } from "./BatchToolbar"
@@ -330,14 +330,10 @@ function BookmarkListView({
 
 // ─── 工具函数 ─────────────────────────────────────────────────
 
-/** 从附件中取第一个可预览的图片/视频作为封面 */
-const imageExts = new Set(["jpg", "jpeg", "png", "gif", "webp", "bmp", "avif", "svg"])
-const videoExts = new Set(["mp4", "mkv", "avi", "mov", "webm", "wmv", "flv"])
-
 function getCoverAttachment(bm: BookmarkType) {
   if (!bm.attachments || bm.attachments.length === 0) return null
   return bm.attachments.find((a) => {
     const ext = a.filename.split(".").pop()?.toLowerCase() ?? ""
-    return imageExts.has(ext) || videoExts.has(ext)
+    return isPreviewableExt(ext)
   }) ?? null
 }

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
 import { ArrowLeft, ExternalLink, Loader2, FileText, ImageIcon, Video, Pencil, Trash2 } from "lucide-react"
+import { IMAGE_EXTS, VIDEO_EXTS, isPreviewableExt } from "@/lib/utils"
 import { BookmarkForm } from "./BookmarkForm"
 import { URLService } from "../../../bindings/collections/internal/service"
 
@@ -121,12 +122,10 @@ export function BookmarkDetail() {
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
               {bm.attachments.map((att) => {
                 const ext = att.filename.split(".").pop()?.toLowerCase() ?? ""
-                const isImage = imageExts.has(ext)
-                const isVideo = videoExts.has(ext)
 
                 return (
                   <div key={att.filename} className="rounded-md border overflow-hidden">
-                    {isImage || isVideo ? (
+                    {isPreviewableExt(ext) ? (
                       <div className="aspect-[16/10] bg-muted overflow-hidden">
                         <img
                           src={`/persist/url-assets/attachments/${bm.id}/${att.filename}.thumb.jpg`}
@@ -161,12 +160,9 @@ export function BookmarkDetail() {
 
 // ─── 辅助 ──────────────────────────────────────────────────────
 
-const imageExts = new Set(["jpg", "jpeg", "png", "gif", "webp", "bmp", "avif", "svg"])
-const videoExts = new Set(["mp4", "mkv", "avi", "mov", "webm", "wmv", "flv"])
-
 function AttachmentIcon({ ext }: { ext: string }) {
-  if (imageExts.has(ext)) return <ImageIcon size={12} className="shrink-0 text-muted-foreground" />
-  if (videoExts.has(ext)) return <Video size={12} className="shrink-0 text-muted-foreground" />
+  if (IMAGE_EXTS.has(ext)) return <ImageIcon size={12} className="shrink-0 text-muted-foreground" />
+  if (VIDEO_EXTS.has(ext)) return <Video size={12} className="shrink-0 text-muted-foreground" />
   return <FileText size={12} className="shrink-0 text-muted-foreground" />
 }
 

@@ -2,10 +2,8 @@ import { useCallback, useEffect, useRef, useState, type ClipboardEvent, type Dra
 import { Button } from "@/components/ui/button"
 import { Upload, X, Loader2, FileText, ImageIcon, Video, Clipboard } from "lucide-react"
 import { UploadService } from "../../bindings/collections/internal/service"
-import { cn, extractError } from "@/lib/utils"
+import { cn, extractError, IMAGE_EXTS, VIDEO_EXTS } from "@/lib/utils"
 
-const IMAGE_EXTS = new Set(["jpg", "jpeg", "png", "gif", "webp", "bmp", "avif", "svg"])
-const VIDEO_EXTS = new Set(["mp4", "mkv", "avi", "mov", "webm", "wmv", "flv"])
 const TEXT_EXTS = new Set(["txt"])
 const ALL_EXTS = new Set([...IMAGE_EXTS, ...VIDEO_EXTS, ...TEXT_EXTS])
 

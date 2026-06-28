@@ -23,3 +23,10 @@ export function extractError(e: unknown, fallback = "operation failed"): string 
   }
   return e.message || fallback
 }
+
+export const IMAGE_EXTS = new Set(["jpg", "jpeg", "png", "gif", "webp", "bmp", "avif", "svg"])
+export const VIDEO_EXTS = new Set(["mp4", "mkv", "avi", "mov", "webm", "wmv", "flv"])
+
+export function isPreviewableExt(ext: string): boolean {
+  return IMAGE_EXTS.has(ext) || VIDEO_EXTS.has(ext)
+}
