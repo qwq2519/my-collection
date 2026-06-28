@@ -1,0 +1,87 @@
+@import "tailwindcss";
+
+/*
+ * shadcn/ui CSS 变量：所有组件通过这些变量引用颜色。
+ * 默认主题为 ink（水墨），运行时由 useTheme hook 动态覆盖。
+ * 变量值为 HSL 三元组（不含 hsl() 包裹），使用时写 hsl(var(--xxx))。
+ */
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-sidebar-background: hsl(var(--sidebar-background));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/*
+ * ink 主题默认值 — 纯灰阶，最克制的配色。
+ * 其他主题（stone / sage / indigo）在 useTheme hook 中通过 JS 动态覆盖。
+ */
+:root {
+  --background: 0 0% 100%;
+  --foreground: 220 10% 12%;
+  --primary: 220 10% 28%;
+  --primary-foreground: 0 0% 98%;
+  --secondary: 220 5% 96%;
+  --secondary-foreground: 220 10% 25%;
+  --muted: 220 5% 96%;
+  --muted-foreground: 220 5% 46%;
+  --accent: 220 5% 94%;
+  --accent-foreground: 220 10% 12%;
+  --destructive: 0 60% 50%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 220 5% 90%;
+  --input: 220 5% 88%;
+  --ring: 220 10% 28%;
+  --card: 0 0% 100%;
+  --card-foreground: 220 10% 12%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 220 10% 12%;
+  --sidebar-background: 220 5% 97%;
+  --sidebar-foreground: 220 10% 12%;
+  --sidebar-accent: 220 5% 93%;
+  --sidebar-accent-foreground: 220 10% 12%;
+  --sidebar-border: 220 5% 91%;
+  --radius: 0.5rem;
+}
+
+/*
+ * 全局基础样式：桌面应用不需要滚动条闪烁，
+ * 使用 border-box 和 antialiased 字体渲染。
+ */
+@layer base {
+  * {
+    @apply border-border;
+    box-sizing: border-box;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    margin: 0;
+    overflow: hidden;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+}
