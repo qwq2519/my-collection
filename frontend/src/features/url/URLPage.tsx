@@ -11,51 +11,20 @@ import { Button } from "@/components/ui/button"
 import { Globe, Plus } from "lucide-react"
 
 /**
- * URL 收藏模块入口：顶部搜索栏 + 双栏布局。
- * 搜索栏包含关键词搜索和标签筛选，两者取交集。
+ * URL 收藏模块入口：搜索栏 + 左列表右详情双栏布局。
  */
 export function URLPage() {
   const detailView = useURLStore((s) => s.detailView)
   const searchMode = useURLStore((s) => s.searchMode)
-  const searchQuery = useURLStore((s) => s.searchQuery)
-  const selectedTags = useURLStore((s) => s.selectedTags)
-  const search = useURLStore((s) => s.search)
-  const setSelectedTags = useURLStore((s) => s.setSelectedTags)
   const loadSites = useURLStore((s) => s.loadSites)
   const [showCreateSite, setShowCreateSite] = useState(false)
 
-  // TODO: 标签列表后续从 TagService 获取，当前用搜索结果中出现的标签
-  const allTags = useCollectedTags()
-
   return (
     <div className="flex flex-col h-full">
-      {/* 顶部搜索栏 */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b shrink-0">
-        <SearchBar
-          value={searchQuery}
-          onChange={search}
-          placeholder="搜索站点和书签..."
-          className="flex-1"
-        />
-        <TagTreeFilter
-          allTags={allTags}
-          selectedTags={selectedTags}
-          onChange={setSelectedTags}
-        />
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 gap-1 shrink-0 text-xs"
-          onClick={() => setShowCreateSite(true)}
-        >
-          <Plus size={14} />
-          新建站点
-        </Button>
-      </div>
+      <SearchToolbar onCreateSite={() => setShowCreateSite(true)} />
 
-      {/* 双栏内容 */}
       <div className="flex flex-1 overflow-hidden">
-        {/* 左栏：站点列表 / 搜索结果 */}
+        {/* 左栏：站点列表 */}
         <div className="w-[260px] shrink-0 border-r flex flex-col">
           <div className="px-3 py-2 border-b">
             <h2 className="text-sm font-semibold text-foreground">
@@ -87,10 +56,43 @@ export function URLPage() {
   )
 }
 
-/**
- * 从当前站点列表和搜索结果中收集所有标签，
- * 供标签筛选面板使用。后续接入 TagService 后替换。
- */
+// ─── 搜索工具栏：关键词搜索 + 标签筛选 + 新建按钮 ──────────
+
+function SearchToolbar({ onCreateSite }: { onCreateSite: () => void }) {
+  const searchQuery = useURLStore((s) => s.searchQuery)
+  const selectedTags = useURLStore((s) => s.selectedTags)
+  const search = useURLStore((s) => s.search)
+  const setSelectedTags = useURLStore((s) => s.setSelectedTags)
+  const allTags = useCollectedTags()
+
+  return (
+    <div className="flex items-center gap-2 px-3 py-2 border-b shrink-0">
+      <SearchBar
+        value={searchQuery}
+        onChange={search}
+        placeholder="搜索站点和书签..."
+        className="flex-1"
+      />
+      <TagTreeFilter
+        allTags={allTags}
+        selectedTags={selectedTags}
+        onChange={setSelectedTags}
+      />
+      <Button
+        variant="outline"
+        size="sm"
+        className="h-8 gap-1 shrink-0 text-xs"
+        onClick={onCreateSite}
+      >
+        <Plus size={14} />
+        新建站点
+      </Button>
+    </div>
+  )
+}
+
+// ─── 从当前数据中收集标签（后续替换为 TagService） ───────────
+
 function useCollectedTags(): string[] {
   const sites = useURLStore((s) => s.sites)
   const searchResults = useURLStore((s) => s.searchResults)
