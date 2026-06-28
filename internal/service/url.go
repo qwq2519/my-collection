@@ -156,11 +156,7 @@ func (u *URLService) CreateBookmark(req model.CreateBookmarkReq) (_ *model.Bookm
 		return nil, fmt.Errorf("查询站点失败: %w", err)
 	}
 	if site == nil {
-		item, err := u.Store.AddToQueue(req.URL)
-		if err != nil {
-			return nil, fmt.Errorf("存入临时队列失败: %w", err)
-		}
-		return nil, fmt.Errorf("域名 %q 无对应站点，URL 已存入临时队列（ID: %s）", domain, item.ID)
+		return nil, fmt.Errorf("域名 %q 无对应站点，请先创建站点", domain)
 	}
 	req.SiteID = site.ID
 
