@@ -95,6 +95,8 @@ func (s *Store) SearchURL(req model.SearchURLReq) (*model.SearchURLResult, error
 	}
 
 	searchReq := bleve.NewSearchRequest(conjunction)
+	// TODO: 硬编码 10000 全量取出后内存分组排序，数据量大时有性能隐患。
+	// 优化方案：结合 Bleve 分页 + 按需加载，或引入游标式搜索。
 	searchReq.Size = 10000
 	searchReq.Fields = []string{}
 
@@ -103,10 +105,11 @@ func (s *Store) SearchURL(req model.SearchURLReq) (*model.SearchURLResult, error
 		return nil, fmt.Errorf("search url: %w", err)
 	}
 
-	siteHitSet := make(map[string]bool)
-	bmBySite := make(map[string][]string)
-
+	var items []model.SiteWithBookmarks
 	err = s.db.View(func(tx *buntdb.Tx) error {
+		siteHitSet := make(map[string]bool)
+		bmBySite := make(map[string][]string)
+
 		for _, hit := range result.Hits {
 			if strings.HasPrefix(hit.ID, "site:") {
 				siteID := strings.TrimPrefix(hit.ID, "site:")
@@ -120,22 +123,15 @@ func (s *Store) SearchURL(req model.SearchURLReq) (*model.SearchURLResult, error
 				bmBySite[bm.SiteID] = append(bmBySite[bm.SiteID], bmID)
 			}
 		}
-		return nil
-	})
-	if err != nil {
-		return nil, fmt.Errorf("group search results: %w", err)
-	}
 
-	allSiteIDs := make(map[string]bool)
-	for id := range siteHitSet {
-		allSiteIDs[id] = true
-	}
-	for siteID := range bmBySite {
-		allSiteIDs[siteID] = true
-	}
+		allSiteIDs := make(map[string]bool)
+		for id := range siteHitSet {
+			allSiteIDs[id] = true
+		}
+		for siteID := range bmBySite {
+			allSiteIDs[siteID] = true
+		}
 
-	var items []model.SiteWithBookmarks
-	err = s.db.View(func(tx *buntdb.Tx) error {
 		for siteID := range allSiteIDs {
 			site, err := getSiteTx(tx, siteID)
 			if err != nil {
@@ -160,7 +156,7 @@ func (s *Store) SearchURL(req model.SearchURLReq) (*model.SearchURLResult, error
 		return nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("fetch search results: %w", err)
+		return nil, fmt.Errorf("search url: group and fetch: %w", err)
 	}
 
 	sort.Slice(items, func(i, j int) bool {
