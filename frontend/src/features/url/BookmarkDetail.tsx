@@ -8,6 +8,7 @@ import { ArrowLeft, ExternalLink, Loader2, FileText, ImageIcon, Video, Pencil, T
 import { IMAGE_EXTS, VIDEO_EXTS, isPreviewableExt } from "@/lib/utils"
 import { toast } from "sonner"
 import { BookmarkForm } from "./BookmarkForm"
+import { ThumbnailImage } from "./BookmarkViews"
 import { URLService } from "../../../bindings/collections/internal/service"
 import type { Bookmark } from "../../../bindings/collections/internal/model"
 
@@ -172,18 +173,7 @@ function AttachmentGallery({ bookmarkId, attachments }: { bookmarkId: string; at
             <div key={att.filename} className="rounded-md border overflow-hidden">
               {isPreviewableExt(ext) && (
                 <div className="aspect-[16/10] bg-muted overflow-hidden">
-                  <img
-                    src={`/persist/url-assets/attachments/${bookmarkId}/${att.filename}.thumb.jpg`}
-                    alt={att.label || att.filename}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      const img = e.currentTarget
-                      if (!img.dataset.fallback) {
-                        img.dataset.fallback = "1"
-                        img.src = `/persist/url-assets/attachments/${bookmarkId}/${att.filename}`
-                      }
-                    }}
-                  />
+                  <ThumbnailImage bookmarkId={bookmarkId} filename={att.filename} />
                 </div>
               )}
               <div className="px-2 py-1.5 flex items-center gap-1.5">

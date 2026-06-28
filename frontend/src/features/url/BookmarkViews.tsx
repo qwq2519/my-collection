@@ -10,7 +10,9 @@
  *       → BookmarkGrid / BookmarkListView（本文件）
  */
 
-import { cn, isPreviewableExt } from "@/lib/utils"
+import { useState } from "react"
+import { cn, isPreviewableExt, VIDEO_EXTS } from "@/lib/utils"
+import { Video } from "lucide-react"
 import type { Bookmark } from "../../../bindings/collections/internal/model"
 
 // ─── 书签网格视图 ─────────────────────────────────────────────
@@ -93,22 +95,39 @@ export function BookmarkListView({
   )
 }
 
-// ─── 缩略图（自动 fallback 到原图） ──────────────────────────
+// ─── 缩略图（自动 fallback 到原图或视频图标） ───────────────
 //
-// 优先加载 .thumb.jpg 缩略图，如果不存在则 fallback 到原始文件。
-// onError 中用 dataset.fallback 标记避免无限循环。
+// 优先加载 .thumb.jpg 缩略图。如果缩略图不存在：
+// - 图片文件：fallback 到原始文件
+// - 视频文件：显示通用视频图标（视频无法在 img 标签中渲染）
 
 export function ThumbnailImage({ bookmarkId, filename }: { bookmarkId: string; filename: string }) {
+  const ext = filename.split(".").pop()?.toLowerCase() ?? ""
+  const isVideo = VIDEO_EXTS.has(ext)
+  const [fallback, setFallback] = useState<"none" | "original" | "icon">("none")
+
+  if (fallback === "icon") {
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        <Video size={32} className="text-muted-foreground/50" />
+      </div>
+    )
+  }
+
   return (
     <img
-      src={`/persist/url-assets/attachments/${bookmarkId}/${filename}.thumb.jpg`}
+      src={
+        fallback === "original"
+          ? `/persist/url-assets/attachments/${bookmarkId}/${filename}`
+          : `/persist/url-assets/attachments/${bookmarkId}/${filename}.thumb.jpg`
+      }
       alt=""
       className="w-full h-full object-cover"
-      onError={(e) => {
-        const img = e.currentTarget
-        if (!img.dataset.fallback) {
-          img.dataset.fallback = "1"
-          img.src = `/persist/url-assets/attachments/${bookmarkId}/${filename}`
+      onError={() => {
+        if (fallback === "none") {
+          setFallback(isVideo ? "icon" : "original")
+        } else {
+          setFallback("icon")
         }
       }}
     />
