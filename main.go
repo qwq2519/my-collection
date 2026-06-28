@@ -30,6 +30,7 @@ func main() {
 
 	// 2. 创建 Service，注入 Store
 	urlService := &service.URLService{Store: s}
+	uploadService := &service.UploadService{Store: s}
 
 	// 3. 创建 Wails 应用
 	app := application.New(application.Options{
@@ -37,6 +38,7 @@ func main() {
 		Description: "个人资料收藏与管理工具",
 		Services: []application.Service{
 			application.NewService(urlService),
+			application.NewService(uploadService),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
