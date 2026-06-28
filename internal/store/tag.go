@@ -284,7 +284,6 @@ func (s *Store) MergeURLTag(req model.MergeTagReq) (int, error) {
 			json.Unmarshal([]byte(tv), &existing)
 			targetTag.CreatedAt = existing.CreatedAt
 		}
-		targetTag.Count = targetCount
 		v, _ := json.Marshal(&targetTag)
 		tx.Set("url_tag:"+req.Target, string(v), nil)
 
