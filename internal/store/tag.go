@@ -24,9 +24,6 @@ func (s *Store) GetTag(prefix, name string) (*model.Tag, error) {
 		}
 		return json.Unmarshal([]byte(val), &tag)
 	})
-	if err == buntdb.ErrNotFound {
-		return nil, nil
-	}
 	if err != nil {
 		return nil, err
 	}
