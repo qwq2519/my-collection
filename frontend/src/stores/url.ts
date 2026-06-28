@@ -323,8 +323,9 @@ export const useURLStore = create<URLState>((set, get) => ({
   },
 
   loadMoreSearch: async () => {
-    const { searchHasMore, searchLoading, searchPage, searchResults, searchQuery, selectedTags } = get()
+    const { searchHasMore, searchLoading, searchPage, searchQuery, selectedTags } = get()
     if (!searchHasMore || searchLoading) return
+    const version = searchVersion
     set({ searchLoading: true })
     try {
       const nextPage = searchPage + 1
@@ -334,14 +335,16 @@ export const useURLStore = create<URLState>((set, get) => ({
         page: nextPage,
         page_size: PAGE_SIZE,
       })
+      if (searchVersion !== version) return
+      const current = get().searchResults
       set({
-        searchResults: [...searchResults, ...(result?.items ?? [])],
+        searchResults: [...current, ...(result?.items ?? [])],
         searchTotal: result?.total ?? 0,
         searchPage: nextPage,
         searchHasMore: result?.has_more ?? false,
       })
     } finally {
-      set({ searchLoading: false })
+      if (searchVersion === version) set({ searchLoading: false })
     }
   },
 
