@@ -271,10 +271,14 @@ func (s *Store) listSitesFromBleve(req model.SiteListReq) (*model.SiteListResult
 		conjunction.AddQuery(bleve.NewDisjunctionQuery(titleQ, descQ, domainQ))
 	}
 
-	for _, tag := range req.Tags {
-		tagQ := bleve.NewTermQuery(tag)
-		tagQ.SetField("tags")
-		conjunction.AddQuery(tagQ)
+	if len(req.Tags) > 0 {
+		tagOr := bleve.NewDisjunctionQuery()
+		for _, tag := range req.Tags {
+			tagQ := bleve.NewTermQuery(tag)
+			tagQ.SetField("tags")
+			tagOr.AddQuery(tagQ)
+		}
+		conjunction.AddQuery(tagOr)
 	}
 
 	searchReq := bleve.NewSearchRequest(conjunction)

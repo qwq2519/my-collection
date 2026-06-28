@@ -296,10 +296,14 @@ func (s *Store) listMediaFromBleve(req model.MediaListReq) (*model.MediaListResu
 		fnQ.SetField("filename")
 		conjunction.AddQuery(fnQ)
 	}
-	for _, tag := range req.Tags {
-		tagQ := bleve.NewTermQuery(tag)
-		tagQ.SetField("tags")
-		conjunction.AddQuery(tagQ)
+	if len(req.Tags) > 0 {
+		tagOr := bleve.NewDisjunctionQuery()
+		for _, tag := range req.Tags {
+			tagQ := bleve.NewTermQuery(tag)
+			tagQ.SetField("tags")
+			tagOr.AddQuery(tagQ)
+		}
+		conjunction.AddQuery(tagOr)
 	}
 
 	searchReq := bleve.NewSearchRequest(conjunction)
