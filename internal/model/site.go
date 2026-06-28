@@ -42,12 +42,10 @@ type UpdateSiteReq struct {
 	Attachments *[]Attachment `json:"attachments,omitempty"`
 }
 
-// SiteListReq 站点列表请求
+// SiteListReq 站点列表请求（纯列表，不含搜索；搜索走 SearchURL）
 type SiteListReq struct {
-	Page     int      `json:"page"`
-	PageSize int      `json:"page_size"`
-	Search   string   `json:"search,omitempty"`
-	Tags     []string `json:"tags,omitempty"`
+	Page     int `json:"page"`
+	PageSize int `json:"page_size"`
 }
 
 // SiteListResult 站点列表响应
@@ -55,6 +53,27 @@ type SiteListResult struct {
 	Items   []Site `json:"items"`
 	Total   int    `json:"total"`
 	HasMore bool   `json:"has_more"`
+}
+
+// SearchURLReq 统一搜索请求（同时搜索站点和书签，按站点分组返回）
+type SearchURLReq struct {
+	Search   string   `json:"search,omitempty"`
+	Tags     []string `json:"tags,omitempty"`
+	Page     int      `json:"page"`
+	PageSize int      `json:"page_size"`
+}
+
+// SiteWithBookmarks 搜索结果中的站点项（含命中的书签）
+type SiteWithBookmarks struct {
+	Site      Site       `json:"site"`
+	Bookmarks []Bookmark `json:"bookmarks"`
+}
+
+// SearchURLResult 统一搜索结果
+type SearchURLResult struct {
+	Items   []SiteWithBookmarks `json:"items"`
+	Total   int                 `json:"total"`
+	HasMore bool                `json:"has_more"`
 }
 
 // EnsureSlices 确保切片字段非 nil，避免 JSON 序列化为 null。

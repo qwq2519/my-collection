@@ -130,10 +130,17 @@ func (u *URLService) DeleteSite(id string) (err error) {
 	return nil
 }
 
-// ListSites 分页查询站点列表
+// ListSites 分页查询站点列表（纯列表，不含搜索）
 func (u *URLService) ListSites(req model.SiteListReq) (_ *model.SiteListResult, err error) {
 	defer logError(&err)
 	return u.Store.ListSites(req)
+}
+
+// SearchURL 统一搜索站点和书签，按站点分组返回。
+// 同时匹配站点和书签的 title/description/domain，命中的书签归入所属站点。
+func (u *URLService) SearchURL(req model.SearchURLReq) (_ *model.SearchURLResult, err error) {
+	defer logError(&err)
+	return u.Store.SearchURL(req)
 }
 
 // ────────────────────── Bookmark ──────────────────────

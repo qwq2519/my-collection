@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"sort"
+	"strings"
 
 	"collections/internal/model"
 
@@ -11,7 +13,7 @@ import (
 	"github.com/tidwall/buntdb"
 )
 
-// ListSites 分页查询站点列表。无搜索/标签时走 BuntDB 全量扫描，否则走 Bleve。
+// ListSites 分页查询站点列表，按 updated_at 降序。纯列表，不含搜索。
 func (s *Store) ListSites(req model.SiteListReq) (*model.SiteListResult, error) {
 	if req.Page < 1 {
 		req.Page = 1
@@ -20,14 +22,6 @@ func (s *Store) ListSites(req model.SiteListReq) (*model.SiteListResult, error) 
 		req.PageSize = 20
 	}
 
-	if req.Search == "" && len(req.Tags) == 0 {
-		return s.listSitesFromDB(req)
-	}
-	return s.listSitesFromBleve(req)
-}
-
-func (s *Store) listSitesFromDB(req model.SiteListReq) (*model.SiteListResult, error) {
-	// TODO: 页满后仍继续遍历所有记录以统计 total，数据量增大后考虑维护独立 count key
 	skip := (req.Page - 1) * req.PageSize
 	total := 0
 	sites := make([]model.Site, 0, req.PageSize)
@@ -61,9 +55,25 @@ func (s *Store) listSitesFromDB(req model.SiteListReq) (*model.SiteListResult, e
 	}, nil
 }
 
-func (s *Store) listSitesFromBleve(req model.SiteListReq) (*model.SiteListResult, error) {
-	typeQ := bleve.NewTermQuery("site")
-	typeQ.SetField("_type")
+// SearchURL 同时搜索站点和书签，将书签结果按所属站点分组返回。
+// 站点自身命中或其下书签命中均会出现在结果中。
+func (s *Store) SearchURL(req model.SearchURLReq) (*model.SearchURLResult, error) {
+	if req.Page < 1 {
+		req.Page = 1
+	}
+	if req.PageSize < 1 {
+		req.PageSize = 20
+	}
+	if req.Search == "" && len(req.Tags) == 0 {
+		return nil, fmt.Errorf("请提供搜索关键词或标签")
+	}
+
+	siteTypeQ := bleve.NewTermQuery("site")
+	siteTypeQ.SetField("_type")
+	bmTypeQ := bleve.NewTermQuery("bookmark")
+	bmTypeQ.SetField("_type")
+	typeQ := bleve.NewDisjunctionQuery(siteTypeQ, bmTypeQ)
+
 	conjunction := bleve.NewConjunctionQuery(typeQ)
 
 	if req.Search != "" {
@@ -77,51 +87,101 @@ func (s *Store) listSitesFromBleve(req model.SiteListReq) (*model.SiteListResult
 	}
 
 	if len(req.Tags) > 0 {
-		tagOr := bleve.NewDisjunctionQuery()
 		for _, tag := range req.Tags {
 			tagQ := bleve.NewTermQuery(tag)
 			tagQ.SetField("tags")
-			tagOr.AddQuery(tagQ)
+			conjunction.AddQuery(tagQ)
 		}
-		conjunction.AddQuery(tagOr)
 	}
 
 	searchReq := bleve.NewSearchRequest(conjunction)
-	searchReq.SortBy([]string{"-updated_at"})
-	searchReq.From = (req.Page - 1) * req.PageSize
-	searchReq.Size = req.PageSize
+	searchReq.Size = 10000
 	searchReq.Fields = []string{}
 
 	result, err := s.Search(searchReq)
 	if err != nil {
-		return nil, fmt.Errorf("search sites: %w", err)
+		return nil, fmt.Errorf("search url: %w", err)
 	}
 
-	sites := make([]model.Site, 0, len(result.Hits))
+	siteHitSet := make(map[string]bool)
+	bmBySite := make(map[string][]string)
+
 	err = s.db.View(func(tx *buntdb.Tx) error {
 		for _, hit := range result.Hits {
-			val, err := tx.Get(hit.ID)
-			if err != nil {
-				slog.Warn("site in index but not in db", "id", hit.ID, "err", err)
-				continue
+			if strings.HasPrefix(hit.ID, "site:") {
+				siteID := strings.TrimPrefix(hit.ID, "site:")
+				siteHitSet[siteID] = true
+			} else if strings.HasPrefix(hit.ID, "bm:") {
+				bmID := strings.TrimPrefix(hit.ID, "bm:")
+				bm, err := getBookmarkTx(tx, bmID)
+				if err != nil {
+					continue
+				}
+				bmBySite[bm.SiteID] = append(bmBySite[bm.SiteID], bmID)
 			}
-			var site model.Site
-			if err := json.Unmarshal([]byte(val), &site); err != nil {
-				slog.Warn("corrupted site data", "id", hit.ID, "err", err)
-				continue
-			}
-			sites = append(sites, site)
 		}
 		return nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("fetch sites: %w", err)
+		return nil, fmt.Errorf("group search results: %w", err)
 	}
 
-	total := int(result.Total)
-	return &model.SiteListResult{
-		Items:   sites,
+	allSiteIDs := make(map[string]bool)
+	for id := range siteHitSet {
+		allSiteIDs[id] = true
+	}
+	for siteID := range bmBySite {
+		allSiteIDs[siteID] = true
+	}
+
+	var items []model.SiteWithBookmarks
+	err = s.db.View(func(tx *buntdb.Tx) error {
+		for siteID := range allSiteIDs {
+			site, err := getSiteTx(tx, siteID)
+			if err != nil {
+				slog.Warn("skip missing site in search", "site_id", siteID)
+				continue
+			}
+			item := model.SiteWithBookmarks{
+				Site:      *site,
+				Bookmarks: make([]model.Bookmark, 0),
+			}
+			if bmIDs, ok := bmBySite[siteID]; ok {
+				for _, bmID := range bmIDs {
+					bm, err := getBookmarkTx(tx, bmID)
+					if err != nil {
+						continue
+					}
+					item.Bookmarks = append(item.Bookmarks, *bm)
+				}
+			}
+			items = append(items, item)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("fetch search results: %w", err)
+	}
+
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].Site.UpdatedAt.After(items[j].Site.UpdatedAt)
+	})
+
+	total := len(items)
+	start := (req.Page - 1) * req.PageSize
+	if start >= total {
+		return &model.SearchURLResult{
+			Items: []model.SiteWithBookmarks{}, Total: total, HasMore: false,
+		}, nil
+	}
+	end := start + req.PageSize
+	if end > total {
+		end = total
+	}
+
+	return &model.SearchURLResult{
+		Items:   items[start:end],
 		Total:   total,
-		HasMore: (req.Page-1)*req.PageSize+len(sites) < total,
+		HasMore: end < total,
 	}, nil
 }
