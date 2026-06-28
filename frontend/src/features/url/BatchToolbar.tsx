@@ -47,9 +47,13 @@ export function BatchToolbar({
 
   const handleBatchDelete = async () => {
     if (count === 0) return
-    await URLService.BatchDeleteBookmarks(siteId, Array.from(selectedIds))
-    toast.success(`已删除 ${count} 条书签`)
-    onDone()
+    try {
+      await URLService.BatchDeleteBookmarks(siteId, Array.from(selectedIds))
+      toast.success(`已删除 ${count} 条书签`)
+      onDone()
+    } catch (e: unknown) {
+      toast.error(extractError(e))
+    }
   }
 
   const handleBatchTag = async () => {
