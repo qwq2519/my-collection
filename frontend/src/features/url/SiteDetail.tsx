@@ -1,5 +1,5 @@
-import { useState } from "react"
-import { useURLStore } from "@/stores/url"
+import { useEffect, useState } from "react"
+import { useURLStore, getActiveSiteId } from "@/stores/url"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
@@ -31,8 +31,14 @@ import type { Site } from "../../../bindings/collections/internal/model"
  */
 export function SiteDetail() {
   const site = useURLStore((s) => s.currentSite)
+  const detailView = useURLStore((s) => s.detailView)
   const refreshCurrentSite = useURLStore((s) => s.refreshCurrentSite)
   const [mode, setMode] = useState<"view" | "edit-site" | "add-bookmark">("view")
+
+  const siteId = getActiveSiteId(detailView)
+  useEffect(() => {
+    setMode("view")
+  }, [siteId])
 
   if (!site) {
     return (
