@@ -249,9 +249,9 @@ func (u *URLService) DeleteBookmark(id string) (err error) {
 	return nil
 }
 
-// BatchDeleteBookmarks 批量删除书签。汇总所有被删除书签的标签后
+// BatchDeleteBookmarks 批量删除同一站点下的书签。汇总所有被删除书签的标签后
 // 一次性更新 url_tag 注册表 count，并逐个清理文件资源。
-func (u *URLService) BatchDeleteBookmarks(ids []string) (err error) {
+func (u *URLService) BatchDeleteBookmarks(siteID string, ids []string) (err error) {
 	defer logError(&err)
 	if len(ids) == 0 {
 		return nil
@@ -267,7 +267,7 @@ func (u *URLService) BatchDeleteBookmarks(ids []string) (err error) {
 		bookmarks = append(bookmarks, bm)
 	}
 
-	if err := u.Store.BatchDeleteBookmarks(ids); err != nil {
+	if err := u.Store.BatchDeleteBookmarks(siteID, ids); err != nil {
 		return err
 	}
 

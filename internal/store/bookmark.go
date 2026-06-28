@@ -216,6 +216,7 @@ func (s *Store) DeleteBookmark(id string) error {
 			return err
 		}
 		siteObj.BookmarkCount--
+		//TODO 隐患，应该打日志或者返回error
 		if siteObj.BookmarkCount < 0 {
 			siteObj.BookmarkCount = 0
 		}
@@ -233,44 +234,40 @@ func (s *Store) DeleteBookmark(id string) error {
 	return nil
 }
 
-// BatchDeleteBookmarks 批量删除书签，按站点汇总后一次性更新 bookmark_count。
-func (s *Store) BatchDeleteBookmarks(ids []string) error {
+// BatchDeleteBookmarks 批量删除同一站点下的书签，更新该站点的 bookmark_count。
+func (s *Store) BatchDeleteBookmarks(siteID string, ids []string) error {
 	if len(ids) == 0 {
 		return nil
 	}
 
-	siteDeltas := make(map[string]int)
+	deleted := 0
 
 	err := s.db.Update(func(tx *buntdb.Tx) error {
 		for _, id := range ids {
-			bm, err := getBookmarkTx(tx, id)
-			if err != nil {
-				slog.Warn("skip missing bookmark in batch delete", "id", id)
-				continue
-			}
-			siteDeltas[bm.SiteID]++
 			if _, err := tx.Delete("bm:" + id); err != nil {
+				if err == buntdb.ErrNotFound {
+					slog.Warn("skip missing bookmark in batch delete", "id", id)
+					continue
+				}
 				return fmt.Errorf("delete bookmark %s: %w", id, err)
 			}
+			deleted++
 		}
 
-		now := time.Now()
-		for siteID, delta := range siteDeltas {
-			siteObj, err := getSiteTx(tx, siteID)
-			if err != nil {
-				slog.Warn("site not found for count update", "site_id", siteID)
-				continue
-			}
-			siteObj.BookmarkCount -= delta
-			if siteObj.BookmarkCount < 0 {
-				siteObj.BookmarkCount = 0
-			}
-			siteObj.UpdatedAt = now
-			if err := setSiteTx(tx, siteObj); err != nil {
-				return fmt.Errorf("update site %s: %w", siteID, err)
-			}
+		if deleted == 0 {
+			return nil
 		}
-		return nil
+		siteObj, err := getSiteTx(tx, siteID)
+		if err != nil {
+			return fmt.Errorf("get site %s: %w", siteID, err)
+		}
+		siteObj.BookmarkCount -= deleted
+		//TODO 隐患
+		if siteObj.BookmarkCount < 0 {
+			siteObj.BookmarkCount = 0
+		}
+		siteObj.UpdatedAt = time.Now()
+		return setSiteTx(tx, siteObj)
 	})
 	if err != nil {
 		return err
@@ -279,13 +276,11 @@ func (s *Store) BatchDeleteBookmarks(ids []string) error {
 	for _, id := range ids {
 		s.DeleteDoc("bm:"+id, "bookmark")
 	}
-	for siteID := range siteDeltas {
-		if site, err := s.GetSite(siteID); err == nil {
-			s.IndexDoc("site:"+site.ID, siteBleveFields(site))
-		}
+	if site, err := s.GetSite(siteID); err == nil {
+		s.IndexDoc("site:"+site.ID, siteBleveFields(site))
 	}
 
-	slog.Info("bookmarks batch deleted", "count", len(ids), "sites_affected", len(siteDeltas))
+	slog.Info("bookmarks batch deleted", "count", deleted, "site_id", siteID)
 	return nil
 }
 
