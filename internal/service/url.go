@@ -296,20 +296,17 @@ func (u *URLService) BatchTagBookmarks(ids []string, tagsToAdd []string) (err er
 		}
 
 		merged, added := mergeTags(bm.Tags, tags)
-		if added == 0 {
+		if len(added) == 0 {
 			continue
 		}
 
-		for _, t := range tags {
-			if util.StringIndex(bm.Tags, t) < 0 {
-				deltas[t]++
-			}
+		for _, t := range added {
+			deltas[t]++
 		}
 
-		newTags := merged
 		if _, err := u.Store.UpdateBookmark(model.UpdateBookmarkReq{
 			ID:   id,
-			Tags: &newTags,
+			Tags: &merged,
 		}); err != nil {
 			slog.Warn("failed to update bookmark tags", "id", id, "err", err)
 		}
@@ -335,21 +332,20 @@ func (u *URLService) cleanBookmarkAssets(bm *model.Bookmark) {
 	u.cleanEntityAttachments(assetsDir, bm.ID)
 }
 
-// mergeTags 将 toAdd 追加到 existing 中（去重），返回合并后的切片和实际追加数量
-func mergeTags(existing, toAdd []string) ([]string, int) {
+// mergeTags 将 toAdd 追加到 existing 中（去重），返回合并后的切片和实际新增的 tag 列表
+func mergeTags(existing, toAdd []string) (merged, added []string) {
 	set := make(map[string]struct{}, len(existing))
 	for _, t := range existing {
 		set[t] = struct{}{}
 	}
 
-	merged := make([]string, len(existing))
+	merged = make([]string, len(existing))
 	copy(merged, existing)
-	added := 0
 	for _, t := range toAdd {
 		if _, ok := set[t]; !ok {
 			merged = append(merged, t)
 			set[t] = struct{}{}
-			added++
+			added = append(added, t)
 		}
 	}
 	return merged, added
