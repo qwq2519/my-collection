@@ -145,6 +145,7 @@ func (s *Store) ListNotes(req model.NoteListReq) (*model.NoteListResult, error) 
 }
 
 func (s *Store) listNotesFromDB(req model.NoteListReq) (*model.NoteListResult, error) {
+	// TODO: 页满后仍继续遍历所有记录以统计 total，数据量增大后考虑维护独立 count key
 	skip := (req.Page - 1) * req.PageSize
 	total := 0
 	notes := make([]model.Note, 0, req.PageSize)

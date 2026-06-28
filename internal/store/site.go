@@ -223,6 +223,7 @@ func (s *Store) ListSites(req model.SiteListReq) (*model.SiteListResult, error) 
 }
 
 func (s *Store) listSitesFromDB(req model.SiteListReq) (*model.SiteListResult, error) {
+	// TODO: 页满后仍继续遍历所有记录以统计 total，数据量增大后考虑维护独立 count key
 	skip := (req.Page - 1) * req.PageSize
 	total := 0
 	sites := make([]model.Site, 0, req.PageSize)
