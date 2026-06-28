@@ -205,6 +205,7 @@ export const useURLStore = create<URLState>((set, get) => ({
         URLService.GetSite(siteId),
         URLService.ListBookmarks({ site_id: siteId, page: 1, page_size: PAGE_SIZE }),
       ])
+      if (getActiveSiteId(get().detailView) !== siteId) return
       set({
         currentSite: site ?? null,
         bookmarks: bmResult?.items ?? [],
@@ -212,7 +213,9 @@ export const useURLStore = create<URLState>((set, get) => ({
         bookmarksHasMore: bmResult?.has_more ?? false,
       })
     } finally {
-      set({ bookmarksLoading: false })
+      if (getActiveSiteId(get().detailView) === siteId) {
+        set({ bookmarksLoading: false })
+      }
     }
   },
 
