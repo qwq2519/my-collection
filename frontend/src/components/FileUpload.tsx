@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ClipboardEvent, type Dra
 import { Button } from "@/components/ui/button"
 import { Upload, X, Loader2, FileText, ImageIcon, Video, Clipboard } from "lucide-react"
 import { UploadService } from "../../bindings/collections/internal/service"
-import { cn } from "@/lib/utils"
+import { cn, extractError } from "@/lib/utils"
 
 const IMAGE_EXTS = new Set(["jpg", "jpeg", "png", "gif", "webp", "bmp", "avif", "svg"])
 const VIDEO_EXTS = new Set(["mp4", "mkv", "avi", "mov", "webm", "wmv", "flv"])
@@ -78,7 +78,7 @@ export function FileUpload({ scene, entityId, files, onChange, className }: File
       }
       onChange([...files, ...newFiles])
     } catch (e: any) {
-      setError(e?.message ?? "上传失败")
+      setError(extractError(e))
     } finally {
       setUploading(false)
     }
@@ -147,7 +147,7 @@ export function FileUpload({ scene, entityId, files, onChange, className }: File
       await UploadService.DeleteAttachment(entityId, filename)
       onChange(files.filter((f) => f.filename !== filename))
     } catch (e: any) {
-      setError(e?.message ?? "删除失败")
+      setError(extractError(e))
     }
   }
 

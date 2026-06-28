@@ -31,6 +31,7 @@ internal/
 ## Go 开发实践
 
 - **错误逐层上抛**：store/util 返回 error 并用 `fmt.Errorf("xxx: %w", err)` 附加上下文；service 层是错误边界，统一决定返回给前端的错误信息。不用 panic 处理业务错误
+- **错误信息统一英文**：所有面向前端的 error message 使用简洁英文（如 `"site title required"`、`"bookmark not found"`），前端原样展示。日志用 `slog` 记录完整 error chain 供后端排错
 - **依赖注入**：service 通过 struct 字段持有 `*store.Store`，初始化在 main.go 完成组装后传入，不用全局变量
 - **指针与 omitempty 规范**：
   - **实体 struct**：必有值字段不加 `omitempty`（确保始终输出），可能为空的字段加 `omitempty`（空时省略）。不用指针，除非零值有歧义（如 `*time.Time` 表示"从未发生"区别于零时间，`*int` 表示"未知"区别于 0）

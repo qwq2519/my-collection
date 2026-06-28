@@ -10,33 +10,33 @@ import (
 // parseAndValidate 解析并校验 URL，返回已解析的 *url.URL 供后续复用
 func parseAndValidate(rawURL string) (*url.URL, error) {
 	if !strings.Contains(rawURL, "://") {
-		return nil, fmt.Errorf("URL 格式不正确")
+		return nil, fmt.Errorf("invalid URL format")
 	}
 
 	u, err := url.Parse(rawURL)
 	if err != nil {
-		return nil, fmt.Errorf("URL 格式不正确")
+		return nil, fmt.Errorf("invalid URL format")
 	}
 
 	if u.Scheme != "http" && u.Scheme != "https" {
-		return nil, fmt.Errorf("仅支持 http/https 链接")
+		return nil, fmt.Errorf("only http/https supported")
 	}
 
 	if u.User != nil {
-		return nil, fmt.Errorf("不支持带认证的 URL")
+		return nil, fmt.Errorf("URL with credentials not supported")
 	}
 
 	host := u.Hostname()
 	if host == "" {
-		return nil, fmt.Errorf("URL 缺少域名")
+		return nil, fmt.Errorf("URL missing hostname")
 	}
 
 	if u.Port() != "" {
-		return nil, fmt.Errorf("不支持带端口的 URL")
+		return nil, fmt.Errorf("URL with port not supported")
 	}
 
 	if net.ParseIP(host) != nil || host == "localhost" {
-		return nil, fmt.Errorf("不支持 IP 地址")
+		return nil, fmt.Errorf("IP address not supported")
 	}
 
 	return u, nil

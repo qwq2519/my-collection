@@ -8,3 +8,18 @@ import { twMerge } from "tailwind-merge"
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
+
+/**
+ * Extract error message from Wails CallError or plain Error.
+ * Wails wraps Go errors as JSON: {"message":"...","cause":"...","kind":"RuntimeError"}
+ */
+export function extractError(e: unknown, fallback = "operation failed"): string {
+  if (!(e instanceof Error)) return fallback
+  try {
+    const parsed = JSON.parse(e.message)
+    if (parsed?.message) return parsed.message
+  } catch {
+    // not JSON, use as-is
+  }
+  return e.message || fallback
+}

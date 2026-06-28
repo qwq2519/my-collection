@@ -40,21 +40,21 @@ type UploadService struct {
 func (u *UploadService) UploadFile(req model.UploadFileReq) (_ *model.UploadFileResult, err error) {
 	defer logError(&err)
 	if req.Scene == "" {
-		return nil, fmt.Errorf("scene 不能为空")
+		return nil, fmt.Errorf("scene required")
 	}
 	if req.Filename == "" {
-		return nil, fmt.Errorf("文件名不能为空")
+		return nil, fmt.Errorf("filename required")
 	}
 	if len(req.Data) == 0 {
-		return nil, fmt.Errorf("文件内容为空")
+		return nil, fmt.Errorf("file data empty")
 	}
 	if len(req.Data) > maxUploadSize {
-		return nil, fmt.Errorf("文件大小超过上限 %dMB", maxUploadSize>>20)
+		return nil, fmt.Errorf("file exceeds %dMB limit", maxUploadSize>>20)
 	}
 
 	ext := strings.ToLower(filepath.Ext(req.Filename))
 	if !isAllowedUploadExt(req.Scene, ext) {
-		return nil, fmt.Errorf("不支持的文件格式: %s", ext)
+		return nil, fmt.Errorf("unsupported file format: %s", ext)
 	}
 
 	persistDir := u.Store.PersistDir()
@@ -65,10 +65,10 @@ func (u *UploadService) UploadFile(req model.UploadFileReq) (_ *model.UploadFile
 		filename := req.EntityID + ext
 		savePath, err := util.SafePath(dir, filename)
 		if err != nil {
-			return nil, fmt.Errorf("非法文件名: %w", err)
+			return nil, fmt.Errorf("invalid filename: %w", err)
 		}
 		if err := util.AtomicWrite(savePath, req.Data, 0644); err != nil {
-			return nil, fmt.Errorf("保存文件失败: %w", err)
+			return nil, fmt.Errorf("save file failed: %w", err)
 		}
 		return &model.UploadFileResult{Path: filename}, nil
 
@@ -76,10 +76,10 @@ func (u *UploadService) UploadFile(req model.UploadFileReq) (_ *model.UploadFile
 		baseDir := filepath.Join(persistDir, "url-assets", "attachments")
 		savePath, err := util.SafePath(baseDir, filepath.Join(req.EntityID, req.Filename))
 		if err != nil {
-			return nil, fmt.Errorf("非法路径: %w", err)
+			return nil, fmt.Errorf("invalid path: %w", err)
 		}
 		if err := util.AtomicWrite(savePath, req.Data, 0644); err != nil {
-			return nil, fmt.Errorf("保存文件失败: %w", err)
+			return nil, fmt.Errorf("save file failed: %w", err)
 		}
 		if isImageExt(ext) {
 			generateThumbnail(savePath)
@@ -95,15 +95,15 @@ func (u *UploadService) UploadFile(req model.UploadFileReq) (_ *model.UploadFile
 		filename := hashStr + ext
 		savePath, err := util.SafePath(baseDir, filepath.Join(req.EntityID, filename))
 		if err != nil {
-			return nil, fmt.Errorf("非法路径: %w", err)
+			return nil, fmt.Errorf("invalid path: %w", err)
 		}
 		if err := util.AtomicWrite(savePath, req.Data, 0644); err != nil {
-			return nil, fmt.Errorf("保存文件失败: %w", err)
+			return nil, fmt.Errorf("save file failed: %w", err)
 		}
 		return &model.UploadFileResult{Path: filepath.ToSlash(filepath.Join("note-images", req.EntityID, filename))}, nil
 
 	default:
-		return nil, fmt.Errorf("未知的上传场景: %s", req.Scene)
+		return nil, fmt.Errorf("unknown upload scene: %s", req.Scene)
 	}
 }
 
@@ -111,18 +111,18 @@ func (u *UploadService) UploadFile(req model.UploadFileReq) (_ *model.UploadFile
 func (u *UploadService) DeleteAttachment(entityID, filename string) (err error) {
 	defer logError(&err)
 	if entityID == "" {
-		return fmt.Errorf("实体 ID 不能为空")
+		return fmt.Errorf("entity ID required")
 	}
 	if filename == "" {
-		return fmt.Errorf("文件名不能为空")
+		return fmt.Errorf("filename required")
 	}
 	baseDir := filepath.Join(u.Store.PersistDir(), "url-assets", "attachments")
 	src, err := util.SafePath(baseDir, filepath.Join(entityID, filename))
 	if err != nil {
-		return fmt.Errorf("非法路径: %w", err)
+		return fmt.Errorf("invalid path: %w", err)
 	}
 	if err := os.Remove(src); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("删除附件失败: %w", err)
+		return fmt.Errorf("delete attachment failed: %w", err)
 	}
 	thumb := src + ".thumb.jpg"
 	os.Remove(thumb)

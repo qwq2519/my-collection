@@ -38,11 +38,11 @@ func (s *Store) RenameURLTag(req model.RenameTagReq) (int, error) {
 
 	err := s.db.Update(func(tx *buntdb.Tx) error {
 		if _, err := tx.Get("url_tag:" + req.NewName); err == nil {
-			return fmt.Errorf("标签 %q 已存在，请使用合并", req.NewName)
+			return fmt.Errorf("tag %q already exists, use merge instead", req.NewName)
 		}
 		oldVal, err := tx.Get("url_tag:" + req.OldName)
 		if err == buntdb.ErrNotFound {
-			return fmt.Errorf("标签 %q 不存在", req.OldName)
+			return fmt.Errorf("tag %q not found", req.OldName)
 		}
 		if err != nil {
 			return err
@@ -110,7 +110,7 @@ func (s *Store) MergeURLTag(req model.MergeTagReq) (int, error) {
 
 	err := s.db.Update(func(tx *buntdb.Tx) error {
 		if _, err := tx.Get("url_tag:" + req.Source); err == buntdb.ErrNotFound {
-			return fmt.Errorf("源标签 %q 不存在", req.Source)
+			return fmt.Errorf("source tag %q not found", req.Source)
 		}
 
 		siteKVs, bmKVs := s.collectURLEntities(tx)

@@ -73,7 +73,7 @@ func SafePath(baseDir, target string) (string, error) {
 	}
 
 	if !strings.HasPrefix(absTarget, absBase+string(filepath.Separator)) && absTarget != absBase {
-		return "", fmt.Errorf("路径越界: %s", target)
+		return "", fmt.Errorf("path traversal: %s", target)
 	}
 
 	return absTarget, nil

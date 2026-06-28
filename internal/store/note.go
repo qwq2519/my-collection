@@ -58,7 +58,7 @@ func (s *Store) GetNote(id string) (*model.Note, error) {
 	err := s.db.View(func(tx *buntdb.Tx) error {
 		val, err := tx.Get("note:" + id)
 		if err == buntdb.ErrNotFound {
-			return fmt.Errorf("笔记不存在")
+			return fmt.Errorf("note not found")
 		}
 		if err != nil {
 			return err
@@ -78,7 +78,7 @@ func (s *Store) UpdateNote(req model.UpdateNoteReq) (*model.Note, error) {
 	err := s.db.Update(func(tx *buntdb.Tx) error {
 		val, err := tx.Get("note:" + req.ID)
 		if err == buntdb.ErrNotFound {
-			return fmt.Errorf("笔记不存在")
+			return fmt.Errorf("note not found")
 		}
 		if err != nil {
 			return err
@@ -116,7 +116,7 @@ func (s *Store) DeleteNote(id string) error {
 	err := s.db.Update(func(tx *buntdb.Tx) error {
 		_, err := tx.Delete("note:" + id)
 		if err == buntdb.ErrNotFound {
-			return fmt.Errorf("笔记不存在")
+			return fmt.Errorf("note not found")
 		}
 		return err
 	})

@@ -8,6 +8,7 @@ import { Loader2, Download } from "lucide-react"
 import { URLService } from "../../../bindings/collections/internal/service"
 import type { Site } from "../../../bindings/collections/internal/model"
 import { TagInput } from "@/components/TagInput"
+import { extractError } from "@/lib/utils"
 import { FileUpload } from "@/components/FileUpload"
 
 const siteSchema = z.object({
@@ -97,10 +98,10 @@ export function SiteForm({ site, onSave, onCancel }: SiteFormProps) {
         if (meta.description) setValue("description", meta.description)
         if (meta.icon) setFetchedIcon(meta.icon)
       } else {
-        setError("未获取到元数据")
+        setError("no metadata found")
       }
     } catch (e: any) {
-      setError("抓取失败：" + (e?.message ?? "网络异常"))
+      setError("fetch failed: " + extractError(e))
     } finally {
       setFetching(false)
     }
@@ -129,7 +130,7 @@ export function SiteForm({ site, onSave, onCancel }: SiteFormProps) {
       }
       onSave()
     } catch (e: any) {
-      setError(e?.message ?? "保存失败")
+      setError(extractError(e))
     } finally {
       setSaving(false)
     }

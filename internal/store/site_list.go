@@ -64,7 +64,7 @@ func (s *Store) SearchURL(req model.SearchURLReq) (*model.SearchURLResult, error
 		req.PageSize = 20
 	}
 	if req.Search == "" && len(req.Tags) == 0 {
-		return nil, fmt.Errorf("请提供搜索关键词或标签")
+		return nil, fmt.Errorf("search keyword or tags required")
 	}
 
 	siteTypeQ := bleve.NewTermQuery("site")

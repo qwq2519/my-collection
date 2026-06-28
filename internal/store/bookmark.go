@@ -29,7 +29,7 @@ func bmBleveFields(bm *model.Bookmark) map[string]interface{} {
 func getBookmarkTx(tx *buntdb.Tx, id string) (*model.Bookmark, error) {
 	val, err := tx.Get("bm:" + id)
 	if err == buntdb.ErrNotFound {
-		return nil, fmt.Errorf("书签不存在")
+		return nil, fmt.Errorf("bookmark not found")
 	}
 	if err != nil {
 		return nil, err
@@ -69,7 +69,7 @@ func checkBookmarkDupTx(tx *buntdb.Tx, siteID, normalizedURL string) error {
 		return true
 	})
 	if dup {
-		return fmt.Errorf("该 URL 已收藏")
+		return fmt.Errorf("URL already bookmarked")
 	}
 	return nil
 }
@@ -133,7 +133,7 @@ func (s *Store) GetBookmark(id string) (*model.Bookmark, error) {
 	err := s.db.View(func(tx *buntdb.Tx) error {
 		val, err := tx.Get("bm:" + id)
 		if err == buntdb.ErrNotFound {
-			return fmt.Errorf("书签不存在")
+			return fmt.Errorf("bookmark not found")
 		}
 		if err != nil {
 			return err

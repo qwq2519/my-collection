@@ -76,7 +76,7 @@ func (s *Store) CreateSite(req model.CreateSiteReq) (*model.Site, error) {
 			return false
 		})
 		if exists {
-			return fmt.Errorf("域名 %q 对应的站点已存在", req.Domain)
+			return fmt.Errorf("site already exists for domain %q", req.Domain)
 		}
 		return setSiteTx(tx, site)
 	})
@@ -177,7 +177,7 @@ func (s *Store) DeleteSite(id string) error {
 			return err
 		}
 		if site.BookmarkCount > 0 {
-			return fmt.Errorf("站点下仍有 %d 条书签，请先删除所有书签", site.BookmarkCount)
+			return fmt.Errorf("site still has %d bookmarks, delete them first", site.BookmarkCount)
 		}
 		_, err = tx.Delete("site:" + id)
 		return err

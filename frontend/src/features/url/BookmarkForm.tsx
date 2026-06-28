@@ -8,6 +8,7 @@ import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react"
 import { URLService } from "../../../bindings/collections/internal/service"
 import type { Bookmark } from "../../../bindings/collections/internal/model"
 import { TagInput } from "@/components/TagInput"
+import { extractError } from "@/lib/utils"
 
 const bookmarkSchema = z.object({
   url: z.string().min(1, "请输入 URL"),
@@ -117,7 +118,7 @@ export function BookmarkForm({ bookmark, onSave, onCancel }: BookmarkFormProps) 
       }
       onSave()
     } catch (e: any) {
-      setError(e?.message ?? "保存失败")
+      setError(extractError(e))
     } finally {
       setSaving(false)
     }

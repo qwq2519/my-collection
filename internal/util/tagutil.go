@@ -13,20 +13,20 @@ import (
 func ValidateTagName(name string) error {
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return fmt.Errorf("标签名不能为空")
+		return fmt.Errorf("tag name required")
 	}
 
 	if strings.Contains(name, "::") {
 		for _, seg := range strings.Split(name, "::") {
 			if strings.TrimSpace(seg) == "" {
-				return fmt.Errorf("标签层级之间不能为空")
+				return fmt.Errorf("empty segment between ::")
 			}
 		}
 	}
 
 	name = strings.ReplaceAll(name, "::", "")
 	if strings.Contains(name, ":") {
-		return fmt.Errorf("标签名中不允许使用单独的 :")
+		return fmt.Errorf("single colon not allowed in tag name")
 	}
 
 	for _, r := range name {
@@ -36,7 +36,7 @@ func ValidateTagName(name string) error {
 		if r == ' ' || r == '-' || r == '_' {
 			continue
 		}
-		return fmt.Errorf("标签名包含不允许的字符: %c", r)
+		return fmt.Errorf("invalid character in tag name: %c", r)
 	}
 
 	return nil

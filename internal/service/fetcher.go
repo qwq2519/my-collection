@@ -34,7 +34,7 @@ var fetchClient = &http.Client{Timeout: fetchTimeout}
 func (u *URLService) FetchMetadata(req model.FetchMetaReq) (_ *model.FetchMetaResult, err error) {
 	defer logError(&err)
 	if strings.TrimSpace(req.URL) == "" {
-		return nil, fmt.Errorf("URL 不能为空")
+		return nil, fmt.Errorf("URL required")
 	}
 	if err := util.ValidateURL(req.URL); err != nil {
 		return nil, err

@@ -25,15 +25,15 @@ type URLService struct {
 func (u *URLService) CreateSite(req model.CreateSiteReq) (_ *model.Site, err error) {
 	defer logError(&err)
 	if strings.TrimSpace(req.Title) == "" {
-		return nil, fmt.Errorf("站点标题不能为空")
+		return nil, fmt.Errorf("site title required")
 	}
 	if strings.TrimSpace(req.URL) == "" {
-		return nil, fmt.Errorf("请提供完整的站点 URL（如 https://example.com）")
+		return nil, fmt.Errorf("site URL required")
 	}
 
 	domain, err := util.ExtractDomain(req.URL)
 	if err != nil {
-		return nil, fmt.Errorf("URL 格式不正确，请提供完整的 URL（如 https://example.com）")
+		return nil, fmt.Errorf("invalid URL: %w", err)
 	}
 	req.Domain = domain
 
@@ -56,7 +56,7 @@ func (u *URLService) CreateSite(req model.CreateSiteReq) (_ *model.Site, err err
 func (u *URLService) GetSite(id string) (_ *model.Site, err error) {
 	defer logError(&err)
 	if id == "" {
-		return nil, fmt.Errorf("站点 ID 不能为空")
+		return nil, fmt.Errorf("site ID required")
 	}
 	return u.Store.GetSite(id)
 }
@@ -66,10 +66,10 @@ func (u *URLService) GetSite(id string) (_ *model.Site, err error) {
 func (u *URLService) UpdateSite(req model.UpdateSiteReq) (_ *model.Site, err error) {
 	defer logError(&err)
 	if req.ID == "" {
-		return nil, fmt.Errorf("站点 ID 不能为空")
+		return nil, fmt.Errorf("site ID required")
 	}
 	if req.Title != nil && strings.TrimSpace(*req.Title) == "" {
-		return nil, fmt.Errorf("站点标题不能为空")
+		return nil, fmt.Errorf("site title required")
 	}
 
 	var oldTags []string
@@ -103,7 +103,7 @@ func (u *URLService) UpdateSite(req model.UpdateSiteReq) (_ *model.Site, err err
 func (u *URLService) DeleteSite(id string) (err error) {
 	defer logError(&err)
 	if id == "" {
-		return fmt.Errorf("站点 ID 不能为空")
+		return fmt.Errorf("site ID required")
 	}
 
 	site, err := u.Store.GetSite(id)
@@ -143,7 +143,7 @@ func (u *URLService) CreateBookmark(req model.CreateBookmarkReq) (_ *model.Bookm
 		return nil, err
 	}
 	if strings.TrimSpace(req.Title) == "" {
-		return nil, fmt.Errorf("书签标题不能为空")
+		return nil, fmt.Errorf("bookmark title required")
 	}
 
 	domain, err := util.ExtractDomain(req.URL)
@@ -152,10 +152,10 @@ func (u *URLService) CreateBookmark(req model.CreateBookmarkReq) (_ *model.Bookm
 	}
 	site, err := u.Store.GetSiteByDomain(domain)
 	if err != nil {
-		return nil, fmt.Errorf("查询站点失败: %w", err)
+		return nil, fmt.Errorf("lookup site failed: %w", err)
 	}
 	if site == nil {
-		return nil, fmt.Errorf("域名 %q 无对应站点，请先创建站点", domain)
+		return nil, fmt.Errorf("no site for domain %q, create one first", domain)
 	}
 	req.SiteID = site.ID
 	req.Domain = domain
@@ -179,7 +179,7 @@ func (u *URLService) CreateBookmark(req model.CreateBookmarkReq) (_ *model.Bookm
 func (u *URLService) GetBookmark(id string) (_ *model.Bookmark, err error) {
 	defer logError(&err)
 	if id == "" {
-		return nil, fmt.Errorf("书签 ID 不能为空")
+		return nil, fmt.Errorf("bookmark ID required")
 	}
 	return u.Store.GetBookmark(id)
 }
@@ -188,10 +188,10 @@ func (u *URLService) GetBookmark(id string) (_ *model.Bookmark, err error) {
 func (u *URLService) UpdateBookmark(req model.UpdateBookmarkReq) (_ *model.Bookmark, err error) {
 	defer logError(&err)
 	if req.ID == "" {
-		return nil, fmt.Errorf("书签 ID 不能为空")
+		return nil, fmt.Errorf("bookmark ID required")
 	}
 	if req.Title != nil && strings.TrimSpace(*req.Title) == "" {
-		return nil, fmt.Errorf("书签标题不能为空")
+		return nil, fmt.Errorf("bookmark title required")
 	}
 
 	var oldTags []string
@@ -225,7 +225,7 @@ func (u *URLService) UpdateBookmark(req model.UpdateBookmarkReq) (_ *model.Bookm
 func (u *URLService) DeleteBookmark(id string) (err error) {
 	defer logError(&err)
 	if id == "" {
-		return fmt.Errorf("书签 ID 不能为空")
+		return fmt.Errorf("bookmark ID required")
 	}
 
 	bm, err := u.Store.GetBookmark(id)
@@ -369,7 +369,7 @@ func (u *URLService) NormalizeURL(rawURL string) (string, error) {
 func (u *URLService) LookupSiteByURL(req model.LookupSiteByURLReq) (_ *model.LookupSiteResult, err error) {
 	defer logError(&err)
 	if strings.TrimSpace(req.URL) == "" {
-		return nil, fmt.Errorf("URL 不能为空")
+		return nil, fmt.Errorf("URL required")
 	}
 	if err := util.ValidateURL(req.URL); err != nil {
 		return nil, err
@@ -382,7 +382,7 @@ func (u *URLService) LookupSiteByURL(req model.LookupSiteByURLReq) (_ *model.Loo
 
 	site, err := u.Store.GetSiteByDomain(domain)
 	if err != nil {
-		return nil, fmt.Errorf("查询站点失败: %w", err)
+		return nil, fmt.Errorf("lookup site failed: %w", err)
 	}
 
 	result := &model.LookupSiteResult{Domain: domain}
@@ -405,7 +405,7 @@ func normalizeTags(tags []string) ([]string, error) {
 	result := make([]string, 0, len(tags))
 	for _, t := range tags {
 		if err := util.ValidateTagName(t); err != nil {
-			return nil, fmt.Errorf("标签 %q: %w", t, err)
+			return nil, fmt.Errorf("tag %q: %w", t, err)
 		}
 		normalized := util.NormalizeTagName(t)
 		if _, ok := seen[normalized]; ok {

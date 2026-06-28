@@ -6,7 +6,7 @@ import { Separator } from "@/components/ui/separator"
 import { EmptyState } from "@/components/EmptyState"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
 import { Globe, LayoutGrid, List, Loader2, ExternalLink, Bookmark, Pencil, Plus, Trash2 } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn, extractError } from "@/lib/utils"
 import { SiteForm } from "./SiteForm"
 import { BookmarkForm } from "./BookmarkForm"
 import { BatchToolbar } from "./BatchToolbar"
@@ -55,7 +55,7 @@ export function SiteDetail() {
       loadSites()
       useURLStore.setState({ detailView: { type: "none" }, currentSite: null })
     } catch (e: any) {
-      setDeleteError(e?.message ?? "删除失败")
+      setDeleteError(extractError(e))
     }
   }
 
