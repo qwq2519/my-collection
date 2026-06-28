@@ -1,5 +1,6 @@
 import { useAppStore } from "@/stores/app"
 import { URLPage } from "@/features/url/URLPage"
+import { SettingsPage } from "@/features/settings/SettingsPage"
 
 /**
  * 内容区容器：根据当前页面渲染对应功能模块。
@@ -14,7 +15,7 @@ export function ContentArea() {
       {currentPage === "notes" && <Placeholder label="笔记" />}
       {currentPage === "media" && <Placeholder label="媒体" />}
       {currentPage === "tags" && <Placeholder label="标签管理" />}
-      {currentPage === "settings" && <Placeholder label="设置" />}
+      {currentPage === "settings" && <SettingsPage />}
     </main>
   )
 }
