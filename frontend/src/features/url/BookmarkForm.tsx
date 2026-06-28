@@ -9,6 +9,7 @@ import { URLService } from "../../../bindings/collections/internal/service"
 import type { Bookmark } from "../../../bindings/collections/internal/model"
 import { TagInput } from "@/components/TagInput"
 import { extractError } from "@/lib/utils"
+import { toast } from "sonner"
 
 const bookmarkSchema = z.object({
   url: z.string().min(1, "请输入 URL"),
@@ -118,9 +119,12 @@ export function BookmarkForm({ bookmark, onSave, onCancel, onCreateSite }: Bookm
           tags: tags.length > 0 ? tags : undefined,
         })
       }
+      toast.success(isEdit ? "书签已更新" : "书签已创建")
       onSave()
-    } catch (e: any) {
-      setError(extractError(e))
+    } catch (e: unknown) {
+      const msg = extractError(e)
+      setError(msg)
+      toast.error(msg)
     } finally {
       setSaving(false)
     }

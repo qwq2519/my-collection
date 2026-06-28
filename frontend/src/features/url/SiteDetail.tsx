@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/EmptyState"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
 import { Globe, LayoutGrid, List, Loader2, ExternalLink, Bookmark, Pencil, Plus, Trash2 } from "lucide-react"
 import { cn, isPreviewableExt } from "@/lib/utils"
+import { toast } from "sonner"
 import { SiteForm } from "./SiteForm"
 import { BookmarkForm } from "./BookmarkForm"
 import { BatchToolbar } from "./BatchToolbar"
@@ -65,6 +66,7 @@ function SiteHeader({ site, onEdit }: { site: Site; onEdit: () => void }) {
 
   const handleDelete = async () => {
     await URLService.DeleteSite(site.id)
+    toast.success("站点已删除")
     loadSites()
     useURLStore.setState({ detailView: { type: "none" }, currentSite: null })
   }

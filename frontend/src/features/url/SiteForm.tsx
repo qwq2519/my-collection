@@ -9,6 +9,7 @@ import { URLService } from "../../../bindings/collections/internal/service"
 import type { Site } from "../../../bindings/collections/internal/model"
 import { TagInput } from "@/components/TagInput"
 import { extractError } from "@/lib/utils"
+import { toast } from "sonner"
 import { FileUpload } from "@/components/FileUpload"
 
 const siteSchema = z.object({
@@ -128,9 +129,12 @@ export function SiteForm({ site, onSave, onCancel }: SiteFormProps) {
           icon: fetchedIcon || undefined,
         })
       }
+      toast.success(isEdit ? "站点已更新" : "站点已创建")
       onSave()
-    } catch (e: any) {
-      setError(extractError(e))
+    } catch (e: unknown) {
+      const msg = extractError(e)
+      setError(msg)
+      toast.error(msg)
     } finally {
       setSaving(false)
     }

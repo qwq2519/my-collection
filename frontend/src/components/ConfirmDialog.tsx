@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Loader2 } from "lucide-react"
 import { extractError } from "@/lib/utils"
+import { toast } from "sonner"
 
 interface ConfirmDialogProps {
   open: boolean
@@ -48,7 +49,9 @@ export function ConfirmDialog({
       await onConfirm()
       onOpenChange(false)
     } catch (e: unknown) {
-      setError(extractError(e))
+      const msg = extractError(e)
+      setError(msg)
+      toast.error(msg)
     } finally {
       setLoading(false)
     }

@@ -12,6 +12,7 @@ import {
 import { Trash2, Tags, X, Loader2 } from "lucide-react"
 import { URLService } from "../../../bindings/collections/internal/service"
 import { extractError } from "@/lib/utils"
+import { toast } from "sonner"
 
 interface BatchToolbarProps {
   siteId: string
@@ -47,6 +48,7 @@ export function BatchToolbar({
   const handleBatchDelete = async () => {
     if (count === 0) return
     await URLService.BatchDeleteBookmarks(siteId, Array.from(selectedIds))
+    toast.success(`已删除 ${count} 条书签`)
     onDone()
   }
 
@@ -56,11 +58,14 @@ export function BatchToolbar({
     setTagError("")
     try {
       await URLService.BatchTagBookmarks(Array.from(selectedIds), tagsToAdd)
+      toast.success(`已为 ${count} 条书签添加标签`)
       setShowTagDialog(false)
       setTagsToAdd([])
       onDone()
     } catch (e: unknown) {
-      setTagError(extractError(e))
+      const msg = extractError(e)
+      setTagError(msg)
+      toast.error(msg)
     } finally {
       setLoading(false)
     }

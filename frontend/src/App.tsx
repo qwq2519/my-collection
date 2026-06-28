@@ -1,10 +1,10 @@
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { Toaster } from "@/components/ui/sonner"
 import { Sidebar } from "@/components/layout/Sidebar"
 import { ContentArea } from "@/components/layout/ContentArea"
 import { useTheme } from "@/hooks/useTheme"
 
 function App() {
-  // 应用启动时注入当前主题 CSS 变量
   useTheme()
 
   return (
@@ -13,6 +13,7 @@ function App() {
         <Sidebar />
         <ContentArea />
       </div>
+      <Toaster position="bottom-right" duration={3000} />
     </TooltipProvider>
   )
 }
