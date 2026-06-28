@@ -54,14 +54,14 @@ func ValidateURL(rawURL string) error {
 	return err
 }
 
-// NormalizeURL 将 URL 归一化：去协议、去 www、去尾部斜杠、去 fragment、域名转小写，query参数排序
+// NormalizeURL 将 URL 归一化：保留协议、去 www、去尾部斜杠、去 fragment、域名转小写，query参数排序
 func NormalizeURL(rawURL string) (string, error) {
 	u, err := parseAndValidate(rawURL)
 	if err != nil {
 		return "", err
 	}
 
-	result := normalizeHost(u) + strings.TrimSuffix(u.Path, "/")
+	result := u.Scheme + "://" + normalizeHost(u) + strings.TrimSuffix(u.Path, "/")
 	if u.RawQuery != "" {
 		result += "?" + u.Query().Encode()
 	}

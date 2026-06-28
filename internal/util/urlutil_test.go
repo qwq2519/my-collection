@@ -30,13 +30,13 @@ func TestNormalizeURL(t *testing.T) {
 		input string
 		want  string
 	}{
-		{"https://github.com/golang/go", "github.com/golang/go"},
-		{"http://www.example.com/page/", "example.com/page"},
-		{"https://GitHub.COM/Go", "github.com/Go"},
-		{"https://example.com/page#section", "example.com/page"},
-		{"https://example.com/page?a=1&b=2", "example.com/page?a=1&b=2"},
-		{"https://example.com/page?b=2&a=1", "example.com/page?a=1&b=2"},
-		{"https://www.example.com/", "example.com"},
+		{"https://github.com/golang/go", "https://github.com/golang/go"},
+		{"http://www.example.com/page/", "http://example.com/page"},
+		{"https://GitHub.COM/Go", "https://github.com/Go"},
+		{"https://example.com/page#section", "https://example.com/page"},
+		{"https://example.com/page?a=1&b=2", "https://example.com/page?a=1&b=2"},
+		{"https://example.com/page?b=2&a=1", "https://example.com/page?a=1&b=2"},
+		{"https://www.example.com/", "https://example.com"},
 	}
 
 	for _, tt := range tests {
