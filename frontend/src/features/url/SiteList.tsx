@@ -1,4 +1,4 @@
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { cn, formatRelativeTime } from "@/lib/utils"
 import { useURLStore, getActiveSiteId } from "@/stores/url"
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll"
@@ -160,16 +160,7 @@ function SiteListItem({
       )}
     >
       <div className="pt-0.5 shrink-0">
-        {icon ? (
-          <img
-            src={`/persist/url-assets/icons/${icon}`}
-            alt=""
-            className="w-4 h-4 rounded-sm"
-            onError={(e) => { e.currentTarget.style.display = "none" }}
-          />
-        ) : (
-          <Globe size={16} className="text-muted-foreground" />
-        )}
+        <SiteListIcon icon={icon} />
       </div>
       <div className="flex-1 min-w-0 space-y-0.5">
         <div className="text-sm font-medium truncate">{title}</div>
@@ -194,6 +185,19 @@ function SiteListItem({
         )}
       </div>
     </button>
+  )
+}
+
+function SiteListIcon({ icon }: { icon?: string }) {
+  const [failed, setFailed] = useState(false)
+  if (!icon || failed) return <Globe size={16} className="text-muted-foreground" />
+  return (
+    <img
+      src={`/persist/url-assets/icons/${icon}`}
+      alt=""
+      className="w-4 h-4 rounded-sm"
+      onError={() => setFailed(true)}
+    />
   )
 }
 

@@ -240,14 +240,15 @@ function BookmarkSection({ site, onAddBookmark }: { site: Site; onAddBookmark: (
 // ─── 站点图标（带 fallback） ──────────────────────────────────
 
 function SiteIcon({ icon, size }: { icon?: string; size: number }) {
-  if (!icon) return <Globe size={size} className="shrink-0 text-muted-foreground mt-0.5" />
+  const [failed, setFailed] = useState(false)
+  if (!icon || failed) return <Globe size={size} className="shrink-0 text-muted-foreground mt-0.5" />
   return (
     <img
       src={`/persist/url-assets/icons/${icon}`}
       alt=""
       className="rounded-md shrink-0 mt-0.5"
       style={{ width: size, height: size }}
-      onError={(e) => { e.currentTarget.style.display = "none" }}
+      onError={() => setFailed(true)}
     />
   )
 }
