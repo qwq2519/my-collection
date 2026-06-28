@@ -55,3 +55,18 @@ type ScanComplete struct {
 	Removed  int    `json:"removed"`
 	Modified int    `json:"modified"`
 }
+
+// FetchMetaReq 元数据抓取请求
+type FetchMetaReq struct {
+	URL string `json:"url"`
+}
+
+// FetchMetaResult 元数据抓取结果。
+// Icon 为已保存的文件名（如 "github.com.png"），为空表示未获取到。
+// OGImage 为远程图片 URL，由前端决定是否展示或下载。
+type FetchMetaResult struct {
+	Title       string `json:"title,omitempty"`
+	Description string `json:"description,omitempty"`
+	Icon        string `json:"icon,omitempty"`
+	OGImage     string `json:"og_image,omitempty"`
+}
