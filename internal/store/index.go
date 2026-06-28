@@ -131,7 +131,10 @@ func (m *IndexManager) Search(req *bleve.SearchRequest) (*bleve.SearchResult, er
 
 // rebuild 全量重建索引：备份旧索引 → 创建新索引 → 批量写入 → 删除备份。
 // 失败时自动恢复旧索引，避免搜索功能完全不可用。
-// 目前不支持全量重建，所以这个函数暂时用不上
+//
+// NOTE: 目前未启用全量重建，保留此函数供后续实现全量重建功能时使用。
+//
+//nolint:unused
 func (m *IndexManager) rebuild(docs []BleveDoc) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

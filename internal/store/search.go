@@ -426,6 +426,9 @@ func (s *Store) ClearDirtyByType(docType string) {
 
 // --- 辅助函数 ---
 
+// NOTE: 目前仅在 IndexManager.rebuild 中使用，rebuild 未启用故此函数也暂未调用。
+//
+//nolint:unused
 func batchIndex(idx bleve.Index, docs []BleveDoc) error {
 	batch := idx.NewBatch()
 	for i, doc := range docs {
