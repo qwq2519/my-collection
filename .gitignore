@@ -6,9 +6,15 @@
 bin/
 *.syso
 
+# Runtime data (database, search index, uploads)
+persist/
+
 # Frontend dependencies and build output
 frontend/node_modules/
 frontend/dist/
+
+# Wails auto-generated TypeScript bindings
+frontend/bindings/
 
 # Wails packaging downloads and generated build folders
 build/linux/appimage/build/
