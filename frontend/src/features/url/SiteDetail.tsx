@@ -258,8 +258,8 @@ function BookmarkGrid({
               {cover ? (
                 <ThumbnailImage bookmarkId={bm.id} filename={cover.filename} />
               ) : (
-                <span className="text-xs text-muted-foreground px-2 text-center truncate">
-                  {bm.title}
+                <span className="text-2xl font-medium text-muted-foreground/50 select-none">
+                  {bm.title.charAt(0)}
                 </span>
               )}
             </div>
@@ -302,15 +302,7 @@ function BookmarkListView({
             {batchMode && (
               <input type="checkbox" checked={isSelected} readOnly className="rounded shrink-0" />
             )}
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium truncate">{bm.title}</div>
-              <div className="text-xs text-muted-foreground truncate">{bm.url}</div>
-            </div>
-            {bm.tags && bm.tags.length > 0 && (
-              <span className="text-xs text-muted-foreground shrink-0">
-                {bm.tags.length} 标签
-              </span>
-            )}
+            <div className="text-sm font-medium truncate">{bm.title}</div>
           </button>
         )
       })}
