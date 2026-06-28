@@ -12,7 +12,12 @@ import (
 	"github.com/tidwall/buntdb"
 )
 
-// AddToQueue 将 URL 加入临时队列
+// AddToQueue 将 URL 加入临时队列。
+//
+// TODO: 入队去重 —— 对 rawURL 做归一化后，同时校验：
+//  1. 队列中是否已有相同归一化 URL（遍历 queue:* 逐条归一化比对）
+//  2. 已有书签中是否已收藏该 URL（复用 util.NormalizeURL + 按域名查站点 + 遍历同站点书签）
+//     已存在则拒绝入队并提示。
 func (s *Store) AddToQueue(rawURL string) (*model.QueueItem, error) {
 	item := &model.QueueItem{
 		ID:      uuid.New().String(),

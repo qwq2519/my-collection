@@ -370,7 +370,8 @@ func mergeTags(existing, toAdd []string) ([]string, int) {
 
 // ────────────────────── Queue ──────────────────────
 
-// AddToQueue 将 URL 加入临时队列
+// AddToQueue 将 URL 加入临时队列。
+// TODO: 入队去重（归一化 URL 后校验队列 + 已有书签，重复则拒绝）
 func (u *URLService) AddToQueue(rawURL string) (_ *model.QueueItem, err error) {
 	defer logError(&err)
 	if strings.TrimSpace(rawURL) == "" {
