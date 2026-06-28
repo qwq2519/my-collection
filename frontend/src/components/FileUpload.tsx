@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ClipboardEvent, type DragEvent } from "react"
 import { Button } from "@/components/ui/button"
-import { Upload, X, Loader2, FileText, ImageIcon, Video, Clipboard } from "lucide-react"
+import { Upload, X, Loader2, FileText, ImageIcon, Video, Clipboard, GripVertical } from "lucide-react"
 import { UploadService } from "../../bindings/collections/internal/service"
 import { cn, extractError, IMAGE_EXTS, VIDEO_EXTS } from "@/lib/utils"
 
@@ -45,6 +45,8 @@ export function FileUpload({ scene, entityId, files, onChange, className }: File
   const [dragOver, setDragOver] = useState(false)
   const [error, setError] = useState("")
   const [focused, setFocused] = useState(false)
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
+  const [overIndex, setOverIndex] = useState<number | null>(null)
 
   const uploadFiles = useCallback(async (fileList: File[]) => {
     setError("")
@@ -140,6 +142,20 @@ export function FileUpload({ scene, entityId, files, onChange, className }: File
     return () => document.removeEventListener("paste", handler)
   }, [focused, handlePaste])
 
+  const handleReorderDrop = useCallback(() => {
+    if (dragIndex === null || overIndex === null || dragIndex === overIndex) {
+      setDragIndex(null)
+      setOverIndex(null)
+      return
+    }
+    const reordered = [...files]
+    const [moved] = reordered.splice(dragIndex, 1)
+    reordered.splice(overIndex, 0, moved)
+    onChange(reordered)
+    setDragIndex(null)
+    setOverIndex(null)
+  }, [dragIndex, overIndex, files, onChange])
+
   const handleDelete = async (filename: string) => {
     try {
       await UploadService.DeleteAttachment(entityId, filename)
@@ -196,11 +212,24 @@ export function FileUpload({ scene, entityId, files, onChange, className }: File
 
       {/* 已上传文件列表 */}
       {files.length > 0 && (
-        <div className="flex flex-col gap-1">
-          {files.map((f) => {
+        <div className="flex flex-col">
+          {files.map((f, idx) => {
             const ext = f.filename.split(".").pop()?.toLowerCase() ?? ""
             return (
-              <div key={f.filename} className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-muted/50">
+              <div
+                key={f.filename}
+                draggable
+                onDragStart={() => setDragIndex(idx)}
+                onDragOver={(e) => { e.preventDefault(); setOverIndex(idx) }}
+                onDragEnd={() => { setDragIndex(null); setOverIndex(null) }}
+                onDrop={(e) => { e.preventDefault(); handleReorderDrop() }}
+                className={cn(
+                  "flex items-center gap-2 px-2 py-1 rounded-md hover:bg-muted/50",
+                  dragIndex === idx && "opacity-50",
+                  overIndex === idx && dragIndex !== null && dragIndex !== idx && "border-t border-primary",
+                )}
+              >
+                <GripVertical size={14} className="shrink-0 text-muted-foreground/50 cursor-grab" />
                 <FileTypeIcon ext={ext} />
                 <span className="flex-1 text-xs truncate">{f.filename}</span>
                 <Button
