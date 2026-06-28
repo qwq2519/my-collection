@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useState } from "react"
 import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -11,6 +11,7 @@ import { TagInput } from "@/components/TagInput"
 import { extractError } from "@/lib/utils"
 import { toast } from "sonner"
 import { FileUpload } from "@/components/FileUpload"
+import { useURLNormalize } from "./hooks"
 
 const siteSchema = z.object({
   title: z.string().min(1, "标题不能为空"),
@@ -39,7 +40,6 @@ export function SiteForm({ site, onSave, onCancel }: SiteFormProps) {
   const [fetching, setFetching] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
-  const [normalizedURL, setNormalizedURL] = useState("")
   const [fetchedIcon, setFetchedIcon] = useState<string>(site?.icon ?? "")
 
   // 附件（编辑模式）
@@ -63,25 +63,7 @@ export function SiteForm({ site, onSave, onCancel }: SiteFormProps) {
   })
 
   const urlValue = watch("url")
-
-  // URL 标准化：防抖调用后端 NormalizeURL
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>()
-  useEffect(() => {
-    if (!urlValue || urlValue.trim().length < 8) {
-      setNormalizedURL("")
-      return
-    }
-    clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(async () => {
-      try {
-        const result = await URLService.NormalizeURL(urlValue.trim())
-        setNormalizedURL(result ?? "")
-      } catch {
-        setNormalizedURL("")
-      }
-    }, 400)
-    return () => clearTimeout(debounceRef.current)
-  }, [urlValue])
+  const normalizedURL = useURLNormalize(urlValue)
 
   /** 抓取页面元数据，回填 title、description、icon */
   const handleFetch = useCallback(async () => {

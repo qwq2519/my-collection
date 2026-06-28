@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react"
+import { useState } from "react"
 import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -10,6 +10,7 @@ import type { Bookmark } from "../../../bindings/collections/internal/model"
 import { TagInput } from "@/components/TagInput"
 import { extractError } from "@/lib/utils"
 import { toast } from "sonner"
+import { useSiteLookup } from "./hooks"
 
 const bookmarkSchema = z.object({
   url: z.string().min(1, "请输入 URL"),
@@ -38,14 +39,6 @@ export function BookmarkForm({ bookmark, onSave, onCancel, onCreateSite }: Bookm
   const [tags, setTags] = useState<string[]>(bookmark?.tags ?? [])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
-  const [normalizedURL, setNormalizedURL] = useState("")
-
-  const [lookupState, setLookupState] = useState<
-    | { status: "idle" }
-    | { status: "checking" }
-    | { status: "found"; domain: string }
-    | { status: "not_found"; domain: string }
-  >({ status: "idle" })
 
   const {
     control,
@@ -62,43 +55,7 @@ export function BookmarkForm({ bookmark, onSave, onCancel, onCreateSite }: Bookm
   })
 
   const urlValue = watch("url")
-
-  // URL 标准化 + 站点匹配（防抖）
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>()
-  useEffect(() => {
-    if (isEdit || !urlValue || urlValue.trim().length < 8) {
-      setLookupState({ status: "idle" })
-      setNormalizedURL("")
-      return
-    }
-    try { new URL(urlValue) } catch { return }
-
-    clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(async () => {
-      // 标准化
-      try {
-        const norm = await URLService.NormalizeURL(urlValue.trim())
-        setNormalizedURL(norm ?? "")
-      } catch {
-        setNormalizedURL("")
-      }
-
-      // 站点匹配
-      setLookupState({ status: "checking" })
-      try {
-        const result = await URLService.LookupSiteByURL({ url: urlValue })
-        if (result?.found) {
-          setLookupState({ status: "found", domain: result.domain })
-        } else {
-          setLookupState({ status: "not_found", domain: result?.domain ?? "" })
-        }
-      } catch {
-        setLookupState({ status: "idle" })
-      }
-    }, 500)
-
-    return () => clearTimeout(debounceRef.current)
-  }, [urlValue, isEdit])
+  const { normalizedURL, lookupState } = useSiteLookup(urlValue, !isEdit)
 
   const onSubmit = async (values: BookmarkFormValues) => {
     setSaving(true)
