@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react"
+import { useKeyboardNav } from "./useKeyboardNav"
 import { SiteList } from "./SiteList"
 import { SiteDetail } from "./SiteDetail"
 import { BookmarkDetail } from "./BookmarkDetail"
@@ -27,6 +28,8 @@ export function URLPage() {
   const searchMode = useURLStore((s) => s.searchMode)
   const loadSites = useURLStore((s) => s.loadSites)
   const [createMode, setCreateMode] = useState<CreateMode>(null)
+
+  useKeyboardNav()
 
   const handleCreated = () => {
     setCreateMode(null)

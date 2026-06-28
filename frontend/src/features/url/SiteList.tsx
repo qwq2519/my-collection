@@ -114,11 +114,12 @@ function SearchResultList() {
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">
-      {results.map((item) => {
+      {results.map((item, index) => {
         const hitCount = item.bookmarks.length
         return (
           <SiteListItem
             key={item.site.id}
+            index={index}
             title={item.site.title}
             icon={item.site.icon}
             domain={item.site.domain}
@@ -150,6 +151,7 @@ function SiteListItem({
   tags,
   selected,
   onClick,
+  index,
 }: {
   title: string
   icon?: string
@@ -160,6 +162,7 @@ function SiteListItem({
   tags?: string[]
   selected: boolean
   onClick: () => void
+  index?: number
 }) {
   const timeStr = formatRelativeTime(updatedAt)
   const visibleTags = tags?.slice(0, 3) ?? []
@@ -172,6 +175,7 @@ function SiteListItem({
   return (
     <button
       onClick={onClick}
+      data-site-index={index}
       className={cn(
         "flex gap-2 px-3 py-2 text-left rounded-md mx-1 transition-colors duration-150",
         selected ? "bg-muted font-medium" : "hover:bg-muted/50"
