@@ -12,6 +12,11 @@ export type DetailView =
   | { type: "site"; siteId: string }
   | { type: "bookmark"; bookmarkId: string; siteId: string }
 
+/** 从 DetailView 中提取当前 siteId（站点或书签视图都有） */
+export function getActiveSiteId(view: DetailView): string | null {
+  return view.type === "none" ? null : view.siteId
+}
+
 /** 书签展示模式 */
 export type BookmarkViewMode = "grid" | "list"
 
@@ -190,9 +195,7 @@ export const useURLStore = create<URLState>((set, get) => ({
 
   selectBookmark: async (bookmarkId) => {
     const { detailView } = get()
-    const siteId = detailView.type === "site" ? detailView.siteId
-      : detailView.type === "bookmark" ? detailView.siteId
-      : ""
+    const siteId = getActiveSiteId(detailView) ?? ""
     set({ detailView: { type: "bookmark", bookmarkId, siteId }, currentBookmark: null })
     try {
       const bm = await URLService.GetBookmark(bookmarkId)
@@ -215,10 +218,7 @@ export const useURLStore = create<URLState>((set, get) => ({
   setBookmarkViewMode: (mode) => set({ bookmarkViewMode: mode }),
 
   refreshCurrentSite: async () => {
-    const { detailView } = get()
-    const siteId = detailView.type === "site" ? detailView.siteId
-      : detailView.type === "bookmark" ? detailView.siteId
-      : null
+    const siteId = getActiveSiteId(get().detailView)
     if (!siteId) return
 
     // 同时刷新站点列表和当前站点详情

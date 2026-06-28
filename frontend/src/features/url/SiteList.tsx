@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from "react"
 import { cn } from "@/lib/utils"
-import { useURLStore } from "@/stores/url"
+import { useURLStore, getActiveSiteId } from "@/stores/url"
 import { EmptyState } from "@/components/EmptyState"
 import { Globe, Loader2, Search } from "lucide-react"
 
@@ -24,10 +24,7 @@ function DefaultSiteList() {
   const loadMore = useURLStore((s) => s.loadMoreSites)
   const selectSite = useURLStore((s) => s.selectSite)
 
-  const selectedSiteId =
-    detailView.type === "site" ? detailView.siteId
-    : detailView.type === "bookmark" ? detailView.siteId
-    : null
+  const selectedSiteId = getActiveSiteId(detailView)
 
   useEffect(() => {
     loadSites()
@@ -90,10 +87,7 @@ function SearchResultList() {
   const loadMore = useURLStore((s) => s.loadMoreSearch)
   const selectResult = useURLStore((s) => s.selectSearchResult)
 
-  const selectedSiteId =
-    detailView.type === "site" ? detailView.siteId
-    : detailView.type === "bookmark" ? detailView.siteId
-    : null
+  const selectedSiteId = getActiveSiteId(detailView)
 
   const sentinelRef = useRef<HTMLDivElement>(null)
   const loadMoreRef = useRef(loadMore)
