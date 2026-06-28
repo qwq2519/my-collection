@@ -63,6 +63,8 @@ export type BookmarkViewMode = "grid" | "list"
 
 const PAGE_SIZE = 50
 
+let searchVersion = 0
+
 // ─── State 接口 ──────────────────────────────────────────────
 
 interface URLState {
@@ -299,6 +301,7 @@ export const useURLStore = create<URLState>((set, get) => ({
       get().clearSearch()
       return
     }
+    const version = ++searchVersion
     set({ searchMode: true, searchQuery: query, searchLoading: true, detailView: { type: "none" } })
     try {
       const result = await URLService.SearchURL({
@@ -307,6 +310,7 @@ export const useURLStore = create<URLState>((set, get) => ({
         page: 1,
         page_size: PAGE_SIZE,
       })
+      if (searchVersion !== version) return
       set({
         searchResults: result?.items ?? [],
         searchTotal: result?.total ?? 0,
@@ -314,7 +318,7 @@ export const useURLStore = create<URLState>((set, get) => ({
         searchHasMore: result?.has_more ?? false,
       })
     } finally {
-      set({ searchLoading: false })
+      if (searchVersion === version) set({ searchLoading: false })
     }
   },
 
