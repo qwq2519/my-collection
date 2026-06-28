@@ -24,6 +24,37 @@ export function extractError(e: unknown, fallback = "operation failed"): string 
   return e.message || fallback
 }
 
+/**
+ * 将时间戳格式化为中文相对时间。
+ * 规则：<1min "刚刚"，<1h "N分钟前"，<24h "N小时前"，<30d "N天前"，>=30d "YYYY/M/D"
+ */
+export function formatRelativeTime(input: string | Date | null | undefined): string {
+  if (!input) return ""
+  const date = input instanceof Date ? input : new Date(input)
+  if (isNaN(date.getTime())) return ""
+
+  const now = Date.now()
+  const diff = now - date.getTime()
+  if (diff < 0) return "刚刚"
+
+  const seconds = Math.floor(diff / 1000)
+  if (seconds < 60) return "刚刚"
+
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}分钟前`
+
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}小时前`
+
+  const days = Math.floor(hours / 24)
+  if (days < 30) return `${days}天前`
+
+  const y = date.getFullYear()
+  const m = date.getMonth() + 1
+  const d = date.getDate()
+  return `${y}/${m}/${d}`
+}
+
 export const IMAGE_EXTS = new Set(["jpg", "jpeg", "png", "gif", "webp", "bmp", "avif", "svg"])
 export const VIDEO_EXTS = new Set(["mp4", "mkv", "avi", "mov", "webm", "wmv", "flv"])
 

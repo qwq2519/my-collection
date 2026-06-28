@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react"
-import { cn } from "@/lib/utils"
+import { cn, formatRelativeTime } from "@/lib/utils"
 import { useURLStore, getActiveSiteId } from "@/stores/url"
 import { EmptyState } from "@/components/EmptyState"
+import { Badge } from "@/components/ui/badge"
 import { Globe, Loader2, Search } from "lucide-react"
 
 /**
@@ -56,12 +57,16 @@ function DefaultSiteList() {
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">
-      {sites.map((site) => (
+      {sites.map((site, index) => (
         <SiteListItem
           key={site.id}
+          index={index}
           title={site.title}
           icon={site.icon}
+          domain={site.domain}
           count={site.bookmark_count}
+          updatedAt={site.updated_at}
+          tags={site.tags}
           selected={selectedSiteId === site.id}
           onClick={() => selectSite(site.id)}
         />
@@ -116,8 +121,11 @@ function SearchResultList() {
             key={item.site.id}
             title={item.site.title}
             icon={item.site.icon}
+            domain={item.site.domain}
             count={hitCount}
             countLabel={hitCount > 0 ? `${hitCount} 命中` : undefined}
+            updatedAt={item.site.updated_at}
+            tags={item.site.tags}
             selected={selectedSiteId === item.site.id}
             onClick={() => selectResult(item)}
           />
@@ -135,42 +143,74 @@ function SearchResultList() {
 function SiteListItem({
   title,
   icon,
+  domain,
   count,
   countLabel,
+  updatedAt,
+  tags,
   selected,
   onClick,
 }: {
   title: string
   icon?: string
+  domain?: string
   count: number
   countLabel?: string
+  updatedAt?: string | Date | null
+  tags?: string[]
   selected: boolean
   onClick: () => void
 }) {
+  const timeStr = formatRelativeTime(updatedAt)
+  const visibleTags = tags?.slice(0, 3) ?? []
+
+  const secondaryParts: string[] = []
+  if (domain) secondaryParts.push(domain)
+  secondaryParts.push(countLabel ?? `${count} 书签`)
+  if (timeStr) secondaryParts.push(timeStr)
+
   return (
     <button
       onClick={onClick}
       className={cn(
-        "flex items-center gap-2 px-3 py-2 text-left rounded-md mx-1 transition-colors duration-150",
+        "flex gap-2 px-3 py-2 text-left rounded-md mx-1 transition-colors duration-150",
         selected ? "bg-muted font-medium" : "hover:bg-muted/50"
       )}
     >
-      {icon ? (
-        <img
-          src={`/persist/url-assets/icons/${icon}`}
-          alt=""
-          className="w-4 h-4 rounded-sm shrink-0"
-          onError={(e) => { e.currentTarget.style.display = "none" }}
-        />
-      ) : (
-        <Globe size={16} className="shrink-0 text-muted-foreground" />
-      )}
-      <div className="flex-1 min-w-0">
-        <div className="text-sm truncate">{title}</div>
+      <div className="pt-0.5 shrink-0">
+        {icon ? (
+          <img
+            src={`/persist/url-assets/icons/${icon}`}
+            alt=""
+            className="w-4 h-4 rounded-sm"
+            onError={(e) => { e.currentTarget.style.display = "none" }}
+          />
+        ) : (
+          <Globe size={16} className="text-muted-foreground" />
+        )}
       </div>
-      <span className="text-xs text-muted-foreground shrink-0">
-        {countLabel ?? count}
-      </span>
+      <div className="flex-1 min-w-0 space-y-0.5">
+        <div className="text-sm font-medium truncate">{title}</div>
+        <div className="text-xs text-muted-foreground truncate">
+          {secondaryParts.join(" · ")}
+        </div>
+        {visibleTags.length > 0 && (
+          <div className="flex gap-1 flex-wrap">
+            {visibleTags.map((tag) => (
+              <Badge
+                key={tag}
+                variant="secondary"
+                className="text-xs px-1.5 py-0 h-4 font-normal"
+              >
+                {tag}
+              </Badge>
+            ))}
+            {tags && tags.length > 3 && (
+              <span className="text-xs text-muted-foreground">+{tags.length - 3}</span>
+            )}
+          </div>
+        )}
+      </div>
     </button>
   )
 }
