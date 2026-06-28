@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 import { SiteList } from "./SiteList"
 import { SiteDetail } from "./SiteDetail"
 import { BookmarkDetail } from "./BookmarkDetail"
@@ -101,10 +101,12 @@ function useCollectedTags(): string[] {
   const searchResults = useURLStore((s) => s.searchResults)
   const searchMode = useURLStore((s) => s.searchMode)
 
-  const source = searchMode ? searchResults.map((r) => r.site) : sites
-  const tagSet = new Set<string>()
-  for (const site of source) {
-    if (site.tags) site.tags.forEach((t) => tagSet.add(t))
-  }
-  return Array.from(tagSet).sort()
+  return useMemo(() => {
+    const source = searchMode ? searchResults.map((r) => r.site) : sites
+    const tagSet = new Set<string>()
+    for (const site of source) {
+      if (site.tags) site.tags.forEach((t) => tagSet.add(t))
+    }
+    return Array.from(tagSet).sort()
+  }, [sites, searchResults, searchMode])
 }
