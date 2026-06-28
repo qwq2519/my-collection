@@ -15,9 +15,9 @@ type IndexState int
 
 const (
 	IndexClosed     IndexState = iota // 已关闭或未初始化
-	IndexOpen                        // 正常可用
-	IndexRebuilding                  // 重建中，读写暂不可用
-	IndexError                       // 打开/创建失败
+	IndexOpen                         // 正常可用
+	IndexRebuilding                   // 重建中，读写暂不可用
+	IndexError                        // 打开/创建失败
 )
 
 func (s IndexState) String() string {
@@ -131,6 +131,7 @@ func (m *IndexManager) Search(req *bleve.SearchRequest) (*bleve.SearchResult, er
 
 // rebuild 全量重建索引：备份旧索引 → 创建新索引 → 批量写入 → 删除备份。
 // 失败时自动恢复旧索引，避免搜索功能完全不可用。
+// 目前不支持全量重建，所以这个函数暂时用不上
 func (m *IndexManager) rebuild(docs []BleveDoc) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
