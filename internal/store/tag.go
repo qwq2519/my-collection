@@ -16,23 +16,21 @@ import (
 
 // GetTag 按名称查询标签。未找到返回 (nil, nil)。
 func (s *Store) GetTag(prefix, name string) (*model.Tag, error) {
-	var tag *model.Tag
+	var tag model.Tag
 	err := s.db.View(func(tx *buntdb.Tx) error {
 		val, err := tx.Get(prefix + ":" + name)
 		if err != nil {
 			return err
 		}
-		if err := json.Unmarshal([]byte(val), tag); err != nil {
-			return err
-		}
-		return nil
+		return json.Unmarshal([]byte(val), &tag)
 	})
-
+	if err == buntdb.ErrNotFound {
+		return nil, nil
+	}
 	if err != nil {
 		return nil, err
 	}
-
-	return tag, err
+	return &tag, nil
 }
 
 // ListTags 全量返回指定前缀的标签列表，按名称字典序排序
