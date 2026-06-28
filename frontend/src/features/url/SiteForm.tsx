@@ -141,7 +141,7 @@ export function SiteForm({ site, onSave, onCancel }: SiteFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4 px-6 py-5 overflow-y-auto h-full">
+    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4 px-6 py-5 overflow-y-auto">
       <h2 className="text-base font-semibold">
         {isEdit ? "编辑站点" : "新建站点"}
       </h2>

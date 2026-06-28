@@ -9,18 +9,29 @@ import { EmptyState } from "@/components/EmptyState"
 import { SearchBar } from "@/components/SearchBar"
 import { TagTreeFilter } from "@/components/TagTreeFilter"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Globe, Plus, Bookmark } from "lucide-react"
 
 type CreateMode = null | "site" | "bookmark"
 
 /**
  * URL 收藏模块入口：搜索栏 + 左列表右详情双栏布局。
+ * 新建站点/书签用弹窗，不替换右栏内容。
  */
 export function URLPage() {
   const detailView = useURLStore((s) => s.detailView)
   const searchMode = useURLStore((s) => s.searchMode)
   const loadSites = useURLStore((s) => s.loadSites)
   const [createMode, setCreateMode] = useState<CreateMode>(null)
+
+  const handleCreated = () => {
+    setCreateMode(null)
+    loadSites()
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -42,52 +53,61 @@ export function URLPage() {
           </div>
         </div>
 
-        {/* 右栏：详情面板 */}
+        {/* 右栏：始终展示详情，不被创建表单替换 */}
         <div className="flex-1 overflow-hidden">
-          <RightPanel createMode={createMode} setCreateMode={setCreateMode} />
+          {detailView.type === "none" ? (
+            <EmptyState icon={Globe} message="选择一个站点查看详情" className="h-full" />
+          ) : detailView.type === "site" ? (
+            <SiteDetail />
+          ) : (
+            <BookmarkDetail />
+          )}
         </div>
       </div>
+
+      {/* 创建弹窗：覆盖在当前内容之上，关闭后右栏不变 */}
+      <CreateFormDialog
+        mode={createMode}
+        onClose={() => setCreateMode(null)}
+        onCreated={handleCreated}
+        onSwitchToSite={() => setCreateMode("site")}
+      />
     </div>
   )
 }
 
-// ─── 右栏面板：创建态 / 详情态 / 空态 ────────────────────────
+// ─── 创建表单弹窗 ─────────────────────────────────────────────
 
-function RightPanel({
-  createMode,
-  setCreateMode,
+function CreateFormDialog({
+  mode,
+  onClose,
+  onCreated,
+  onSwitchToSite,
 }: {
-  createMode: CreateMode
-  setCreateMode: (mode: CreateMode) => void
+  mode: CreateMode
+  onClose: () => void
+  onCreated: () => void
+  onSwitchToSite: () => void
 }) {
-  const detailView = useURLStore((s) => s.detailView)
-  const loadSites = useURLStore((s) => s.loadSites)
-
-  const handleSaved = () => {
-    setCreateMode(null)
-    loadSites()
-  }
-  const handleCancel = () => setCreateMode(null)
-
-  if (createMode === "site") {
-    return <SiteForm onSave={handleSaved} onCancel={handleCancel} />
-  }
-
-  if (createMode === "bookmark") {
-    return (
-      <BookmarkForm
-        onSave={handleSaved}
-        onCancel={handleCancel}
-        onCreateSite={() => setCreateMode("site")}
-      />
-    )
-  }
-
-  if (detailView.type === "none") {
-    return <EmptyState icon={Globe} message="选择一个站点查看详情" className="h-full" />
-  }
-
-  return detailView.type === "site" ? <SiteDetail /> : <BookmarkDetail />
+  return (
+    <Dialog open={mode !== null} onOpenChange={(open) => { if (!open) onClose() }}>
+      <DialogContent className="sm:max-w-[500px] p-0 max-h-[85vh] overflow-y-auto">
+        <DialogTitle className="sr-only">
+          {mode === "site" ? "新建站点" : "新建书签"}
+        </DialogTitle>
+        {mode === "site" && (
+          <SiteForm onSave={onCreated} onCancel={onClose} />
+        )}
+        {mode === "bookmark" && (
+          <BookmarkForm
+            onSave={onCreated}
+            onCancel={onClose}
+            onCreateSite={onSwitchToSite}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
+  )
 }
 
 // ─── 搜索工具栏：搜索 + 标签筛选 + 新建按钮 ─────────────────
