@@ -58,6 +58,7 @@ export function BookmarkDetail() {
 
 function BookmarkNav({ bm, onEdit }: { bm: Bookmark; onEdit: () => void }) {
   const backToSite = useURLStore((s) => s.backToSite)
+  const currentSite = useURLStore((s) => s.currentSite)
   const refreshCurrentSite = useURLStore((s) => s.refreshCurrentSite)
   const [showDelete, setShowDelete] = useState(false)
 
@@ -73,7 +74,16 @@ function BookmarkNav({ bm, onEdit }: { bm: Bookmark; onEdit: () => void }) {
       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={backToSite}>
         <ArrowLeft size={16} />
       </Button>
-      <span className="text-xs text-muted-foreground flex-1">返回站点</span>
+      <div className="flex items-center gap-1 flex-1 min-w-0 text-xs text-muted-foreground">
+        <span
+          className="hover:text-foreground cursor-pointer shrink-0"
+          onClick={backToSite}
+        >
+          {currentSite?.name ?? "站点"}
+        </span>
+        <span className="shrink-0">&gt;</span>
+        <span className="truncate">{bm.title}</span>
+      </div>
       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}>
         <Pencil size={14} />
       </Button>
