@@ -36,12 +36,15 @@ interface URLState {
   bookmarkViewMode: BookmarkViewMode
   currentBookmark: Bookmark | null
 
-  // ─── 搜索态（阶段三实现，先预留字段） ──────────────
+  // ─── 搜索与筛选 ──────────────────────────────────
   searchMode: boolean
   searchQuery: string
   searchResults: SiteWithBookmarks[]
   searchTotal: number
   searchHasMore: boolean
+  searchPage: number
+  searchLoading: boolean
+  selectedTags: string[]
 
   // ─── 操作方法 ───────────────────────────────────
   /** 加载第一页站点 */
@@ -64,6 +67,17 @@ interface URLState {
 
   /** 刷新当前站点数据（创建/编辑/删除后调用） */
   refreshCurrentSite: () => Promise<void>
+
+  /** 执行搜索（关键词 + 标签筛选取交集） */
+  search: (query: string) => Promise<void>
+  /** 加载更多搜索结果 */
+  loadMoreSearch: () => Promise<void>
+  /** 清除搜索，恢复默认站点列表 */
+  clearSearch: () => void
+  /** 选中搜索结果中的站点（展示命中的书签） */
+  selectSearchResult: (item: SiteWithBookmarks) => void
+  /** 设置标签筛选 */
+  setSelectedTags: (tags: string[]) => void
 }
 
 export const useURLStore = create<URLState>((set, get) => ({
@@ -88,6 +102,9 @@ export const useURLStore = create<URLState>((set, get) => ({
   searchResults: [],
   searchTotal: 0,
   searchHasMore: false,
+  searchPage: 1,
+  searchLoading: false,
+  selectedTags: [],
 
   loadSites: async () => {
     set({ sitesLoading: true })
@@ -217,5 +234,92 @@ export const useURLStore = create<URLState>((set, get) => ({
     })
     // 刷新左侧站点列表
     get().loadSites()
+  },
+
+  search: async (query) => {
+    const { selectedTags } = get()
+    // 无关键词且无标签筛选时退出搜索模式
+    if (!query.trim() && selectedTags.length === 0) {
+      get().clearSearch()
+      return
+    }
+    set({ searchMode: true, searchQuery: query, searchLoading: true, detailView: { type: "none" } })
+    try {
+      const result = await URLService.SearchURL({
+        search: query.trim() || undefined,
+        tags: selectedTags.length > 0 ? selectedTags : undefined,
+        page: 1,
+        page_size: PAGE_SIZE,
+      })
+      set({
+        searchResults: result?.items ?? [],
+        searchTotal: result?.total ?? 0,
+        searchPage: 1,
+        searchHasMore: result?.has_more ?? false,
+      })
+    } finally {
+      set({ searchLoading: false })
+    }
+  },
+
+  loadMoreSearch: async () => {
+    const { searchHasMore, searchLoading, searchPage, searchResults, searchQuery, selectedTags } = get()
+    if (!searchHasMore || searchLoading) return
+    set({ searchLoading: true })
+    try {
+      const nextPage = searchPage + 1
+      const result = await URLService.SearchURL({
+        search: searchQuery.trim() || undefined,
+        tags: selectedTags.length > 0 ? selectedTags : undefined,
+        page: nextPage,
+        page_size: PAGE_SIZE,
+      })
+      set({
+        searchResults: [...searchResults, ...(result?.items ?? [])],
+        searchTotal: result?.total ?? 0,
+        searchPage: nextPage,
+        searchHasMore: result?.has_more ?? false,
+      })
+    } finally {
+      set({ searchLoading: false })
+    }
+  },
+
+  clearSearch: () => {
+    set({
+      searchMode: false,
+      searchQuery: "",
+      searchResults: [],
+      searchTotal: 0,
+      searchHasMore: false,
+      searchPage: 1,
+      searchLoading: false,
+      selectedTags: [],
+      detailView: { type: "none" },
+    })
+  },
+
+  selectSearchResult: (item) => {
+    set({
+      detailView: { type: "site", siteId: item.site.id },
+      currentSite: item.site,
+      bookmarks: item.bookmarks,
+      bookmarksTotal: item.bookmarks.length,
+      bookmarksPage: 1,
+      bookmarksHasMore: false,
+      bookmarksLoading: false,
+      currentBookmark: null,
+    })
+  },
+
+  setSelectedTags: (tags) => {
+    set({ selectedTags: tags })
+    const { searchQuery } = get()
+    // 标签变更时重新搜索
+    if (tags.length > 0 || searchQuery.trim()) {
+      get().search(searchQuery)
+    } else {
+      get().clearSearch()
+    }
   },
 }))
