@@ -1,8 +1,19 @@
+import { TooltipProvider } from "@/components/ui/tooltip"
+import { Sidebar } from "@/components/layout/Sidebar"
+import { ContentArea } from "@/components/layout/ContentArea"
+import { useTheme } from "@/hooks/useTheme"
+
 function App() {
+  // 应用启动时注入当前主题 CSS 变量
+  useTheme()
+
   return (
-    <div className="flex items-center justify-center h-screen text-muted-foreground">
-      <p className="text-sm">资料收藏夹</p>
-    </div>
+    <TooltipProvider delayDuration={300}>
+      <div className="flex h-screen w-screen overflow-hidden">
+        <Sidebar />
+        <ContentArea />
+      </div>
+    </TooltipProvider>
   )
 }
 
