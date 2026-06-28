@@ -23,6 +23,8 @@ interface BookmarkFormProps {
   bookmark?: Bookmark | null
   onSave: () => void
   onCancel: () => void
+  /** 当域名无对应站点时，提供快速切换到创建站点的入口 */
+  onCreateSite?: () => void
 }
 
 /**
@@ -30,7 +32,7 @@ interface BookmarkFormProps {
  * 创建时输入 URL 后自动调用 LookupSiteByURL 检查域名是否有对应站点，
  * 并实时展示标准化后的 URL。
  */
-export function BookmarkForm({ bookmark, onSave, onCancel }: BookmarkFormProps) {
+export function BookmarkForm({ bookmark, onSave, onCancel, onCreateSite }: BookmarkFormProps) {
   const isEdit = !!bookmark
   const [tags, setTags] = useState<string[]>(bookmark?.tags ?? [])
   const [saving, setSaving] = useState(false)
@@ -170,10 +172,21 @@ export function BookmarkForm({ bookmark, onSave, onCancel }: BookmarkFormProps) 
           </p>
         )}
         {!isEdit && lookupState.status === "not_found" && (
-          <p className="text-xs text-destructive flex items-center gap-1">
-            <AlertCircle size={12} />
-            无对应站点（{lookupState.domain}），请先创建站点
-          </p>
+          <div className="flex flex-col gap-1">
+            <p className="text-xs text-destructive flex items-center gap-1">
+              <AlertCircle size={12} />
+              无对应站点（{lookupState.domain}）
+            </p>
+            {onCreateSite && (
+              <button
+                type="button"
+                onClick={onCreateSite}
+                className="text-xs text-primary hover:underline self-start"
+              >
+                去创建站点 →
+              </button>
+            )}
+          </div>
         )}
       </div>
 

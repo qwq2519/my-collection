@@ -3,12 +3,15 @@ import { SiteList } from "./SiteList"
 import { SiteDetail } from "./SiteDetail"
 import { BookmarkDetail } from "./BookmarkDetail"
 import { SiteForm } from "./SiteForm"
+import { BookmarkForm } from "./BookmarkForm"
 import { useURLStore } from "@/stores/url"
 import { EmptyState } from "@/components/EmptyState"
 import { SearchBar } from "@/components/SearchBar"
 import { TagTreeFilter } from "@/components/TagTreeFilter"
 import { Button } from "@/components/ui/button"
-import { Globe, Plus } from "lucide-react"
+import { Globe, Plus, Bookmark } from "lucide-react"
+
+type CreateMode = null | "site" | "bookmark"
 
 /**
  * URL 收藏模块入口：搜索栏 + 左列表右详情双栏布局。
@@ -17,11 +20,14 @@ export function URLPage() {
   const detailView = useURLStore((s) => s.detailView)
   const searchMode = useURLStore((s) => s.searchMode)
   const loadSites = useURLStore((s) => s.loadSites)
-  const [showCreateSite, setShowCreateSite] = useState(false)
+  const [createMode, setCreateMode] = useState<CreateMode>(null)
 
   return (
     <div className="flex flex-col h-full">
-      <SearchToolbar onCreateSite={() => setShowCreateSite(true)} />
+      <SearchToolbar
+        onCreateSite={() => setCreateMode("site")}
+        onCreateBookmark={() => setCreateMode("bookmark")}
+      />
 
       <div className="flex flex-1 overflow-hidden">
         {/* 左栏：站点列表 */}
@@ -38,27 +44,61 @@ export function URLPage() {
 
         {/* 右栏：详情面板 */}
         <div className="flex-1 overflow-hidden">
-          {showCreateSite ? (
-            <SiteForm
-              onSave={() => { setShowCreateSite(false); loadSites() }}
-              onCancel={() => setShowCreateSite(false)}
-            />
-          ) : detailView.type === "none" ? (
-            <EmptyState icon={Globe} message="选择一个站点查看详情" className="h-full" />
-          ) : detailView.type === "site" ? (
-            <SiteDetail />
-          ) : (
-            <BookmarkDetail />
-          )}
+          <RightPanel createMode={createMode} setCreateMode={setCreateMode} />
         </div>
       </div>
     </div>
   )
 }
 
-// ─── 搜索工具栏：关键词搜索 + 标签筛选 + 新建按钮 ──────────
+// ─── 右栏面板：创建态 / 详情态 / 空态 ────────────────────────
 
-function SearchToolbar({ onCreateSite }: { onCreateSite: () => void }) {
+function RightPanel({
+  createMode,
+  setCreateMode,
+}: {
+  createMode: CreateMode
+  setCreateMode: (mode: CreateMode) => void
+}) {
+  const detailView = useURLStore((s) => s.detailView)
+  const loadSites = useURLStore((s) => s.loadSites)
+
+  const handleSaved = () => {
+    setCreateMode(null)
+    loadSites()
+  }
+  const handleCancel = () => setCreateMode(null)
+
+  if (createMode === "site") {
+    return <SiteForm onSave={handleSaved} onCancel={handleCancel} />
+  }
+
+  if (createMode === "bookmark") {
+    return (
+      <BookmarkForm
+        onSave={handleSaved}
+        onCancel={handleCancel}
+        onCreateSite={() => setCreateMode("site")}
+      />
+    )
+  }
+
+  if (detailView.type === "none") {
+    return <EmptyState icon={Globe} message="选择一个站点查看详情" className="h-full" />
+  }
+
+  return detailView.type === "site" ? <SiteDetail /> : <BookmarkDetail />
+}
+
+// ─── 搜索工具栏：搜索 + 标签筛选 + 新建按钮 ─────────────────
+
+function SearchToolbar({
+  onCreateSite,
+  onCreateBookmark,
+}: {
+  onCreateSite: () => void
+  onCreateBookmark: () => void
+}) {
   const searchQuery = useURLStore((s) => s.searchQuery)
   const selectedTags = useURLStore((s) => s.selectedTags)
   const search = useURLStore((s) => s.search)
@@ -79,13 +119,20 @@ function SearchToolbar({ onCreateSite }: { onCreateSite: () => void }) {
         onChange={setSelectedTags}
       />
       <Button
-        variant="outline"
-        size="sm"
+        variant="outline" size="sm"
         className="h-8 gap-1 shrink-0 text-xs"
         onClick={onCreateSite}
       >
         <Plus size={14} />
-        新建站点
+        站点
+      </Button>
+      <Button
+        variant="outline" size="sm"
+        className="h-8 gap-1 shrink-0 text-xs"
+        onClick={onCreateBookmark}
+      >
+        <Bookmark size={14} />
+        书签
       </Button>
     </div>
   )
