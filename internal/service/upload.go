@@ -24,7 +24,10 @@ import (
 	_ "golang.org/x/image/webp"
 )
 
-const thumbMaxDim = 300
+const (
+	thumbMaxDim   = 300
+	maxUploadSize = 10 << 20 // 10 MB
+)
 
 // UploadService 统一文件上传，按 scene 路由到 persist 子目录。
 type UploadService struct {
@@ -33,6 +36,7 @@ type UploadService struct {
 
 // UploadFile 上传文件。按 scene 路由到对应 persist 子目录，
 // 图片附件自动生成缩略图（{filename}.thumb.jpg）。
+// 文件大小上限 10MB。
 func (u *UploadService) UploadFile(req model.UploadFileReq) (_ *model.UploadFileResult, err error) {
 	defer logError(&err)
 	if req.Scene == "" {
@@ -43,6 +47,9 @@ func (u *UploadService) UploadFile(req model.UploadFileReq) (_ *model.UploadFile
 	}
 	if len(req.Data) == 0 {
 		return nil, fmt.Errorf("文件内容为空")
+	}
+	if len(req.Data) > maxUploadSize {
+		return nil, fmt.Errorf("文件大小超过上限 %dMB", maxUploadSize>>20)
 	}
 
 	ext := strings.ToLower(filepath.Ext(req.Filename))
@@ -55,17 +62,22 @@ func (u *UploadService) UploadFile(req model.UploadFileReq) (_ *model.UploadFile
 	switch req.Scene {
 	case "site-icon":
 		dir := filepath.Join(persistDir, "url-assets", "icons")
-		os.MkdirAll(dir, 0755)
 		filename := req.EntityID + ext
-		if err := util.AtomicWrite(filepath.Join(dir, filename), req.Data, 0644); err != nil {
+		savePath, err := util.SafePath(dir, filename)
+		if err != nil {
+			return nil, fmt.Errorf("非法文件名: %w", err)
+		}
+		if err := util.AtomicWrite(savePath, req.Data, 0644); err != nil {
 			return nil, fmt.Errorf("保存文件失败: %w", err)
 		}
 		return &model.UploadFileResult{Path: filename}, nil
 
 	case "site-attachment", "bm-attachment":
-		dir := filepath.Join(persistDir, "url-assets", "attachments", req.EntityID)
-		os.MkdirAll(dir, 0755)
-		savePath := filepath.Join(dir, req.Filename)
+		baseDir := filepath.Join(persistDir, "url-assets", "attachments")
+		savePath, err := util.SafePath(baseDir, filepath.Join(req.EntityID, req.Filename))
+		if err != nil {
+			return nil, fmt.Errorf("非法路径: %w", err)
+		}
 		if err := util.AtomicWrite(savePath, req.Data, 0644); err != nil {
 			return nil, fmt.Errorf("保存文件失败: %w", err)
 		}
@@ -77,12 +89,14 @@ func (u *UploadService) UploadFile(req model.UploadFileReq) (_ *model.UploadFile
 		return &model.UploadFileResult{Path: req.Filename}, nil
 
 	case "note-image":
-		dir := filepath.Join(persistDir, "note-images", req.EntityID)
-		os.MkdirAll(dir, 0755)
+		baseDir := filepath.Join(persistDir, "note-images")
 		hash := sha256.Sum256(req.Data)
-		hashStr := hex.EncodeToString(hash[:])[:16]
+		hashStr := hex.EncodeToString(hash[:])[:32]
 		filename := hashStr + ext
-		savePath := filepath.Join(dir, filename)
+		savePath, err := util.SafePath(baseDir, filepath.Join(req.EntityID, filename))
+		if err != nil {
+			return nil, fmt.Errorf("非法路径: %w", err)
+		}
 		if err := util.AtomicWrite(savePath, req.Data, 0644); err != nil {
 			return nil, fmt.Errorf("保存文件失败: %w", err)
 		}
@@ -96,8 +110,17 @@ func (u *UploadService) UploadFile(req model.UploadFileReq) (_ *model.UploadFile
 // DeleteAttachment 删除单个附件及其缩略图
 func (u *UploadService) DeleteAttachment(entityID, filename string) (err error) {
 	defer logError(&err)
-	dir := filepath.Join(u.Store.PersistDir(), "url-assets", "attachments", entityID)
-	src := filepath.Join(dir, filename)
+	if entityID == "" {
+		return fmt.Errorf("实体 ID 不能为空")
+	}
+	if filename == "" {
+		return fmt.Errorf("文件名不能为空")
+	}
+	baseDir := filepath.Join(u.Store.PersistDir(), "url-assets", "attachments")
+	src, err := util.SafePath(baseDir, filepath.Join(entityID, filename))
+	if err != nil {
+		return fmt.Errorf("非法路径: %w", err)
+	}
 	if err := os.Remove(src); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("删除附件失败: %w", err)
 	}
@@ -154,9 +177,9 @@ func fitDimensions(w, h, maxDim int) (int, int) {
 		return w, h
 	}
 	if w > h {
-		return maxDim, h * maxDim / w
+		return maxDim, max(h*maxDim/w, 1)
 	}
-	return w * maxDim / h, maxDim
+	return max(w*maxDim/h, 1), maxDim
 }
 
 // --- 扩展名校验 ---
