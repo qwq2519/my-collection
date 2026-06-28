@@ -71,6 +71,10 @@ func openBleve(persistDir string) (bleve.Index, error) {
 
 // NewIndexManager 打开或创建 Bleve 索引
 func NewIndexManager(persistDir string) (*IndexManager, error) {
+	if err := initGse(); err != nil {
+		return nil, err
+	}
+
 	m := &IndexManager{
 		persistDir: persistDir,
 		state:      IndexClosed,
