@@ -6,7 +6,7 @@ import { Separator } from "@/components/ui/separator"
 import { EmptyState } from "@/components/EmptyState"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
 import { Globe, LayoutGrid, List, Loader2, ExternalLink, Bookmark, Pencil, Plus, Trash2 } from "lucide-react"
-import { cn, extractError } from "@/lib/utils"
+import { cn } from "@/lib/utils"
 import { SiteForm } from "./SiteForm"
 import { BookmarkForm } from "./BookmarkForm"
 import { BatchToolbar } from "./BatchToolbar"
@@ -28,7 +28,6 @@ export function SiteDetail() {
 
   const [mode, setMode] = useState<"view" | "edit-site" | "add-bookmark">("view")
   const [showDeleteSite, setShowDeleteSite] = useState(false)
-  const [deleteError, setDeleteError] = useState("")
 
   // 批量选择状态
   const [batchMode, setBatchMode] = useState(false)
@@ -48,15 +47,9 @@ export function SiteDetail() {
 
   const handleDeleteSite = async () => {
     if (!site) return
-    setDeleteError("")
-    try {
-      await URLService.DeleteSite(site.id)
-      setShowDeleteSite(false)
-      loadSites()
-      useURLStore.setState({ detailView: { type: "none" }, currentSite: null })
-    } catch (e: any) {
-      setDeleteError(extractError(e))
-    }
+    await URLService.DeleteSite(site.id)
+    loadSites()
+    useURLStore.setState({ detailView: { type: "none" }, currentSite: null })
   }
 
   if (!site) {
@@ -145,7 +138,7 @@ export function SiteDetail() {
         open={showDeleteSite}
         onOpenChange={setShowDeleteSite}
         title="删除站点"
-        description={deleteError || `确定删除「${site.title}」？站点下仍有书签时无法删除。`}
+        description={`确定删除「${site.title}」？站点下仍有书签时无法删除。`}
         confirmLabel="删除"
         onConfirm={handleDeleteSite}
       />

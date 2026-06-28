@@ -21,14 +21,9 @@ export function BookmarkDetail() {
 
   const handleDelete = async () => {
     if (!bm) return
-    try {
-      await URLService.DeleteBookmark(bm.id)
-      setShowDelete(false)
-      backToSite()
-      refreshCurrentSite()
-    } catch {
-      // 错误由 ConfirmDialog 内部处理
-    }
+    await URLService.DeleteBookmark(bm.id)
+    backToSite()
+    refreshCurrentSite()
   }
 
   if (!bm) {

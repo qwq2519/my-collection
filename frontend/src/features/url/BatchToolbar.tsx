@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog"
 import { Trash2, Tags, X, Loader2 } from "lucide-react"
 import { URLService } from "../../../bindings/collections/internal/service"
+import { extractError } from "@/lib/utils"
 
 interface BatchToolbarProps {
   siteId: string
@@ -39,33 +40,27 @@ export function BatchToolbar({
   const [showTagDialog, setShowTagDialog] = useState(false)
   const [tagsToAdd, setTagsToAdd] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
+  const [tagError, setTagError] = useState("")
 
   const count = selectedIds.size
 
   const handleBatchDelete = async () => {
     if (count === 0) return
-    setLoading(true)
-    try {
-      await URLService.BatchDeleteBookmarks(siteId, Array.from(selectedIds))
-      setShowDeleteConfirm(false)
-      onDone()
-    } catch {
-      // 错误静默处理
-    } finally {
-      setLoading(false)
-    }
+    await URLService.BatchDeleteBookmarks(siteId, Array.from(selectedIds))
+    onDone()
   }
 
   const handleBatchTag = async () => {
     if (count === 0 || tagsToAdd.length === 0) return
     setLoading(true)
+    setTagError("")
     try {
       await URLService.BatchTagBookmarks(Array.from(selectedIds), tagsToAdd)
       setShowTagDialog(false)
       setTagsToAdd([])
       onDone()
-    } catch {
-      // 错误静默处理
+    } catch (e: unknown) {
+      setTagError(extractError(e))
     } finally {
       setLoading(false)
     }
@@ -124,6 +119,7 @@ export function BatchToolbar({
             为选中的 {count} 条书签追加标签（不覆盖已有标签）
           </p>
           <TagInput value={tagsToAdd} onChange={setTagsToAdd} placeholder="输入标签后按回车" />
+          {tagError && <p className="text-sm text-destructive">{tagError}</p>}
           <DialogFooter>
             <Button variant="ghost" size="sm" onClick={() => setShowTagDialog(false)}>
               取消
