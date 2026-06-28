@@ -89,12 +89,43 @@ const ink: ThemePreset = {
   },
 }
 
-// TODO: 后续新增更多主题预设（需拉开色差，让用户能明显感知切换效果）
+/** 石板蓝 — 冷调蓝灰，高对比度，清晰的视觉结构。 */
+const slate: ThemePreset = {
+  key: "slate",
+  label: "石板蓝",
+  description: "冷调蓝灰，清晰醒目",
+  colors: {
+    "--background": "0 0% 100%",
+    "--foreground": "224 71% 4%",
+    "--primary": "221 83% 53%",
+    "--primary-foreground": "210 20% 98%",
+    "--secondary": "220 15% 95%",
+    "--secondary-foreground": "220 20% 18%",
+    "--muted": "220 15% 95%",
+    "--muted-foreground": "220 9% 46%",
+    "--accent": "220 15% 93%",
+    "--accent-foreground": "224 71% 4%",
+    "--destructive": "0 72% 51%",
+    "--destructive-foreground": "0 0% 98%",
+    "--border": "220 13% 87%",
+    "--input": "220 13% 85%",
+    "--ring": "221 83% 53%",
+    "--card": "0 0% 100%",
+    "--card-foreground": "224 71% 4%",
+    "--popover": "0 0% 100%",
+    "--popover-foreground": "224 71% 4%",
+    "--sidebar-background": "220 20% 94%",
+    "--sidebar-foreground": "224 71% 4%",
+    "--sidebar-accent": "220 16% 90%",
+    "--sidebar-accent-foreground": "224 71% 4%",
+    "--sidebar-border": "220 13% 87%",
+  },
+}
 
 // ─── 注册表 ────────────────────────────────────────────────────
 
 /** 所有可用主题，按展示顺序排列 */
-export const themePresets: ThemePreset[] = [ink]
+export const themePresets: ThemePreset[] = [ink, slate]
 
 /** 默认主题 key */
 export const DEFAULT_THEME_KEY = "ink"
