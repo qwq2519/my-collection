@@ -3,8 +3,10 @@ import { useURLStore } from "@/stores/url"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { ArrowLeft, ExternalLink, Loader2, FileText, ImageIcon, Video, Pencil } from "lucide-react"
+import { ConfirmDialog } from "@/components/ConfirmDialog"
+import { ArrowLeft, ExternalLink, Loader2, FileText, ImageIcon, Video, Pencil, Trash2 } from "lucide-react"
 import { BookmarkForm } from "./BookmarkForm"
+import { URLService } from "../../../bindings/collections/internal/service"
 
 /**
  * 书签详情面板：展示态 / 编辑态。
@@ -15,6 +17,19 @@ export function BookmarkDetail() {
   const refreshCurrentSite = useURLStore((s) => s.refreshCurrentSite)
   const selectBookmark = useURLStore((s) => s.selectBookmark)
   const [editing, setEditing] = useState(false)
+  const [showDelete, setShowDelete] = useState(false)
+
+  const handleDelete = async () => {
+    if (!bm) return
+    try {
+      await URLService.DeleteBookmark(bm.id)
+      setShowDelete(false)
+      backToSite()
+      refreshCurrentSite()
+    } catch {
+      // 错误由 ConfirmDialog 内部处理
+    }
+  }
 
   if (!bm) {
     return (
@@ -49,7 +64,19 @@ export function BookmarkDetail() {
         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditing(true)}>
           <Pencil size={14} />
         </Button>
+        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => setShowDelete(true)}>
+          <Trash2 size={14} />
+        </Button>
       </div>
+
+      <ConfirmDialog
+        open={showDelete}
+        onOpenChange={setShowDelete}
+        title="删除书签"
+        description={`确定删除「${bm.title}」？此操作不可撤销。`}
+        confirmLabel="删除"
+        onConfirm={handleDelete}
+      />
 
       {/* 书签信息 */}
       <div className="px-6 pt-5 pb-4">

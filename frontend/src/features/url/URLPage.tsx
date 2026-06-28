@@ -1,14 +1,15 @@
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { SiteList } from "./SiteList"
 import { SiteDetail } from "./SiteDetail"
 import { BookmarkDetail } from "./BookmarkDetail"
 import { SiteForm } from "./SiteForm"
+import { TempQueue } from "./TempQueue"
 import { useURLStore } from "@/stores/url"
 import { EmptyState } from "@/components/EmptyState"
 import { SearchBar } from "@/components/SearchBar"
 import { TagTreeFilter } from "@/components/TagTreeFilter"
 import { Button } from "@/components/ui/button"
-import { Globe, Plus } from "lucide-react"
+import { Globe, Plus, Inbox } from "lucide-react"
 
 /**
  * URL 收藏模块入口：顶部搜索栏 + 双栏布局。
@@ -22,7 +23,12 @@ export function URLPage() {
   const search = useURLStore((s) => s.search)
   const setSelectedTags = useURLStore((s) => s.setSelectedTags)
   const loadSites = useURLStore((s) => s.loadSites)
+  const queueCount = useURLStore((s) => s.queueCount)
+  const loadQueue = useURLStore((s) => s.loadQueue)
   const [showCreateSite, setShowCreateSite] = useState(false)
+  const [showQueue, setShowQueue] = useState(false)
+
+  useEffect(() => { loadQueue() }, [loadQueue])
 
   // TODO: 标签列表后续从 TagService 获取，当前用搜索结果中出现的标签
   const allTags = useCollectedTags()
@@ -48,6 +54,20 @@ export function URLPage() {
           onChange={setSelectedTags}
         />
         <Button
+          variant={showQueue ? "secondary" : "outline"}
+          size="sm"
+          className="h-8 gap-1 shrink-0 text-xs relative"
+          onClick={() => setShowQueue(!showQueue)}
+        >
+          <Inbox size={14} />
+          队列
+          {queueCount > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive text-[10px] text-destructive-foreground px-1">
+              {queueCount}
+            </span>
+          )}
+        </Button>
+        <Button
           variant="outline"
           size="sm"
           className="h-8 gap-1 shrink-0 text-xs"
@@ -72,9 +92,11 @@ export function URLPage() {
           </div>
         </div>
 
-        {/* 右栏：详情面板 */}
+        {/* 右栏：详情面板 / 临时队列 */}
         <div className="flex-1 overflow-hidden">
-          {showCreateSite ? (
+          {showQueue ? (
+            <TempQueue />
+          ) : showCreateSite ? (
             <SiteForm
               onSave={() => { setShowCreateSite(false); loadSites() }}
               onCancel={() => setShowCreateSite(false)}
