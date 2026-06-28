@@ -1,5 +1,5 @@
-import { useState } from "react"
-import { useForm } from "react-hook-form"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { Button } from "@/components/ui/button"
@@ -8,11 +8,12 @@ import { Loader2, Download } from "lucide-react"
 import { URLService } from "../../../bindings/collections/internal/service"
 import type { Site } from "../../../bindings/collections/internal/model"
 import { TagInput } from "@/components/TagInput"
+import { FileUpload } from "@/components/FileUpload"
 
 const siteSchema = z.object({
   title: z.string().min(1, "标题不能为空"),
-  url: z.string().url("请输入有效的 URL"),
-  description: z.string().optional(),
+  url: z.string().min(1, "请输入 URL"),
+  description: z.string(),
 })
 
 type SiteFormValues = z.infer<typeof siteSchema>
@@ -26,7 +27,9 @@ interface SiteFormProps {
 
 /**
  * 站点表单：创建和编辑共用。
- * 包含"抓取"按钮调用 FetchMetadata 回填 title/description。
+ * - 输入 URL 后实时展示标准化结果
+ * - "抓取"按钮调用 FetchMetadata 回填 title/description/icon
+ * - 编辑模式支持附件上传
  */
 export function SiteForm({ site, onSave, onCancel }: SiteFormProps) {
   const isEdit = !!site
@@ -34,12 +37,19 @@ export function SiteForm({ site, onSave, onCancel }: SiteFormProps) {
   const [fetching, setFetching] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
+  const [normalizedURL, setNormalizedURL] = useState("")
+  const [fetchedIcon, setFetchedIcon] = useState<string>(site?.icon ?? "")
+
+  // 附件（编辑模式）
+  const [attachments, setAttachments] = useState<{ filename: string; path: string }[]>(
+    () => (site?.attachments ?? []).map((a) => ({ filename: a.filename, path: a.filename }))
+  )
 
   const {
-    register,
+    control,
     handleSubmit,
     setValue,
-    getValues,
+    watch,
     formState: { errors },
   } = useForm<SiteFormValues>({
     resolver: zodResolver(siteSchema),
@@ -50,26 +60,51 @@ export function SiteForm({ site, onSave, onCancel }: SiteFormProps) {
     },
   })
 
-  /** 抓取页面元数据，回填 title 和 description */
-  const handleFetch = async () => {
-    const url = getValues("url")
-    if (!url) return
+  const urlValue = watch("url")
+
+  // URL 标准化：防抖调用后端 NormalizeURL
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>()
+  useEffect(() => {
+    if (!urlValue || urlValue.trim().length < 8) {
+      setNormalizedURL("")
+      return
+    }
+    clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const result = await URLService.NormalizeURL(urlValue.trim())
+        setNormalizedURL(result ?? "")
+      } catch {
+        setNormalizedURL("")
+      }
+    }, 400)
+    return () => clearTimeout(debounceRef.current)
+  }, [urlValue])
+
+  /** 抓取页面元数据，回填 title、description、icon */
+  const handleFetch = useCallback(async () => {
+    const url = urlValue?.trim()
+    if (!url) {
+      setError("请先输入 URL")
+      return
+    }
     setFetching(true)
     setError("")
     try {
       const meta = await URLService.FetchMetadata({ url })
-      if (meta?.title && !getValues("title")) {
-        setValue("title", meta.title)
-      }
-      if (meta?.description && !getValues("description")) {
-        setValue("description", meta.description)
+      if (meta) {
+        if (meta.title) setValue("title", meta.title, { shouldValidate: true })
+        if (meta.description) setValue("description", meta.description)
+        if (meta.icon) setFetchedIcon(meta.icon)
+      } else {
+        setError("未获取到元数据")
       }
     } catch (e: any) {
       setError("抓取失败：" + (e?.message ?? "网络异常"))
     } finally {
       setFetching(false)
     }
-  }
+  }, [urlValue, setValue])
 
   const onSubmit = async (values: SiteFormValues) => {
     setSaving(true)
@@ -79,15 +114,17 @@ export function SiteForm({ site, onSave, onCancel }: SiteFormProps) {
         await URLService.UpdateSite({
           id: site.id,
           title: values.title,
-          description: values.description ?? null,
-          tags: tags,
+          description: values.description || null,
+          tags,
+          icon: fetchedIcon || site.icon || undefined,
         })
       } else {
         await URLService.CreateSite({
           title: values.title,
           url: values.url,
-          description: values.description,
+          description: values.description || undefined,
           tags: tags.length > 0 ? tags : undefined,
+          icon: fetchedIcon || undefined,
         })
       }
       onSave()
@@ -99,7 +136,7 @@ export function SiteForm({ site, onSave, onCancel }: SiteFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4 px-6 py-5">
+    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4 px-6 py-5 overflow-y-auto h-full">
       <h2 className="text-base font-semibold">
         {isEdit ? "编辑站点" : "新建站点"}
       </h2>
@@ -110,11 +147,18 @@ export function SiteForm({ site, onSave, onCancel }: SiteFormProps) {
           URL <span className="text-destructive">*</span>
         </label>
         <div className="flex gap-2">
-          <Input
-            {...register("url")}
-            placeholder="https://example.com"
-            disabled={isEdit}
-            className="flex-1 h-8 text-sm"
+          <Controller
+            name="url"
+            control={control}
+            render={({ field }) => (
+              <Input
+                {...field}
+                value={field.value ?? ""}
+                placeholder="https://example.com"
+                disabled={isEdit}
+                className="flex-1 h-8 text-sm"
+              />
+            )}
           />
           {!isEdit && (
             <Button
@@ -131,6 +175,11 @@ export function SiteForm({ site, onSave, onCancel }: SiteFormProps) {
           )}
         </div>
         {errors.url && <p className="text-xs text-destructive">{errors.url.message}</p>}
+        {normalizedURL && (
+          <p className="text-xs text-muted-foreground">
+            标准化：<span className="font-mono">{normalizedURL}</span>
+          </p>
+        )}
       </div>
 
       {/* 标题 */}
@@ -138,18 +187,36 @@ export function SiteForm({ site, onSave, onCancel }: SiteFormProps) {
         <label className="text-sm">
           标题 <span className="text-destructive">*</span>
         </label>
-        <Input {...register("title")} placeholder="站点名称" className="h-8 text-sm" />
+        <Controller
+          name="title"
+          control={control}
+          render={({ field }) => (
+            <Input
+              {...field}
+              value={field.value ?? ""}
+              placeholder="站点名称"
+              className="h-8 text-sm"
+            />
+          )}
+        />
         {errors.title && <p className="text-xs text-destructive">{errors.title.message}</p>}
       </div>
 
       {/* 描述 */}
       <div className="flex flex-col gap-1">
         <label className="text-sm">描述</label>
-        <textarea
-          {...register("description")}
-          placeholder="站点描述（可选）"
-          rows={3}
-          className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+        <Controller
+          name="description"
+          control={control}
+          render={({ field }) => (
+            <textarea
+              {...field}
+              value={field.value ?? ""}
+              placeholder="站点描述（可选）"
+              rows={3}
+              className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+            />
+          )}
         />
       </div>
 
@@ -158,6 +225,34 @@ export function SiteForm({ site, onSave, onCancel }: SiteFormProps) {
         <label className="text-sm">标签</label>
         <TagInput value={tags} onChange={setTags} />
       </div>
+
+      {/* 抓取到的 icon 预览 */}
+      {fetchedIcon && (
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-muted-foreground">图标</label>
+          <img
+            src={`/persist/url-assets/icons/${fetchedIcon}`}
+            alt="site icon"
+            className="w-6 h-6 rounded"
+          />
+        </div>
+      )}
+
+      {/* 附件（编辑模式） */}
+      {isEdit && site && (
+        <div className="flex flex-col gap-1">
+          <label className="text-sm">附件</label>
+          <FileUpload
+            scene="site-attachment"
+            entityId={site.id}
+            files={attachments}
+            onChange={setAttachments}
+          />
+        </div>
+      )}
+      {!isEdit && (
+        <p className="text-xs text-muted-foreground">附件可在站点创建后添加</p>
+      )}
 
       {/* 错误提示 */}
       {error && <p className="text-xs text-destructive">{error}</p>}

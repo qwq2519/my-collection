@@ -394,6 +394,17 @@ func (u *URLService) ClearQueue() (err error) {
 	return u.Store.ClearQueue()
 }
 
+// ────────────────────── Normalize ──────────────────────
+
+// NormalizeURL 归一化 URL（去协议、去 www、去尾部斜杠等），
+// 供前端输入时实时预览标准化后的地址。
+func (u *URLService) NormalizeURL(rawURL string) (string, error) {
+	if strings.TrimSpace(rawURL) == "" {
+		return "", nil
+	}
+	return util.NormalizeURL(rawURL)
+}
+
 // ────────────────────── Lookup ──────────────────────
 
 // LookupSiteByURL 根据 URL 查询对应站点。

@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react"
-import { useForm } from "react-hook-form"
+import { useState, useEffect, useRef } from "react"
+import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { Button } from "@/components/ui/button"
@@ -10,9 +10,9 @@ import type { Bookmark } from "../../../bindings/collections/internal/model"
 import { TagInput } from "@/components/TagInput"
 
 const bookmarkSchema = z.object({
-  url: z.string().url("请输入有效的 URL"),
+  url: z.string().min(1, "请输入 URL"),
   title: z.string().min(1, "标题不能为空"),
-  description: z.string().optional(),
+  description: z.string(),
 })
 
 type BookmarkFormValues = z.infer<typeof bookmarkSchema>
@@ -26,16 +26,16 @@ interface BookmarkFormProps {
 
 /**
  * 书签表单：创建和编辑共用。
- * 创建时输入 URL 后自动调用 LookupSiteByURL 检查域名是否有对应站点。
- * URL 一旦创建不可修改。
+ * 创建时输入 URL 后自动调用 LookupSiteByURL 检查域名是否有对应站点，
+ * 并实时展示标准化后的 URL。
  */
 export function BookmarkForm({ bookmark, onSave, onCancel }: BookmarkFormProps) {
   const isEdit = !!bookmark
   const [tags, setTags] = useState<string[]>(bookmark?.tags ?? [])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
+  const [normalizedURL, setNormalizedURL] = useState("")
 
-  // 站点匹配状态（仅创建模式）
   const [lookupState, setLookupState] = useState<
     | { status: "idle" }
     | { status: "checking" }
@@ -44,7 +44,7 @@ export function BookmarkForm({ bookmark, onSave, onCancel }: BookmarkFormProps) 
   >({ status: "idle" })
 
   const {
-    register,
+    control,
     handleSubmit,
     watch,
     formState: { errors },
@@ -57,17 +57,29 @@ export function BookmarkForm({ bookmark, onSave, onCancel }: BookmarkFormProps) 
     },
   })
 
-  // 创建模式下，URL 变化时检查对应站点
   const urlValue = watch("url")
+
+  // URL 标准化 + 站点匹配（防抖）
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>()
   useEffect(() => {
-    if (isEdit || !urlValue) {
+    if (isEdit || !urlValue || urlValue.trim().length < 8) {
       setLookupState({ status: "idle" })
+      setNormalizedURL("")
       return
     }
-    // 简单校验是否像 URL
     try { new URL(urlValue) } catch { return }
 
-    const timer = setTimeout(async () => {
+    clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(async () => {
+      // 标准化
+      try {
+        const norm = await URLService.NormalizeURL(urlValue.trim())
+        setNormalizedURL(norm ?? "")
+      } catch {
+        setNormalizedURL("")
+      }
+
+      // 站点匹配
       setLookupState({ status: "checking" })
       try {
         const result = await URLService.LookupSiteByURL({ url: urlValue })
@@ -81,7 +93,7 @@ export function BookmarkForm({ bookmark, onSave, onCancel }: BookmarkFormProps) 
       }
     }, 500)
 
-    return () => clearTimeout(timer)
+    return () => clearTimeout(debounceRef.current)
   }, [urlValue, isEdit])
 
   const onSubmit = async (values: BookmarkFormValues) => {
@@ -92,14 +104,14 @@ export function BookmarkForm({ bookmark, onSave, onCancel }: BookmarkFormProps) 
         await URLService.UpdateBookmark({
           id: bookmark.id,
           title: values.title,
-          description: values.description ?? null,
-          tags: tags,
+          description: values.description || null,
+          tags,
         })
       } else {
         await URLService.CreateBookmark({
           url: values.url,
           title: values.title,
-          description: values.description,
+          description: values.description || undefined,
           tags: tags.length > 0 ? tags : undefined,
         })
       }
@@ -122,13 +134,27 @@ export function BookmarkForm({ bookmark, onSave, onCancel }: BookmarkFormProps) 
         <label className="text-sm">
           URL <span className="text-destructive">*</span>
         </label>
-        <Input
-          {...register("url")}
-          placeholder="https://example.com/page"
-          disabled={isEdit}
-          className="h-8 text-sm"
+        <Controller
+          name="url"
+          control={control}
+          render={({ field }) => (
+            <Input
+              {...field}
+              value={field.value ?? ""}
+              placeholder="https://example.com/page"
+              disabled={isEdit}
+              className="h-8 text-sm"
+            />
+          )}
         />
         {errors.url && <p className="text-xs text-destructive">{errors.url.message}</p>}
+
+        {/* 标准化 URL */}
+        {!isEdit && normalizedURL && (
+          <p className="text-xs text-muted-foreground">
+            标准化：<span className="font-mono">{normalizedURL}</span>
+          </p>
+        )}
 
         {/* 站点匹配提示 */}
         {!isEdit && lookupState.status === "checking" && (
@@ -155,18 +181,36 @@ export function BookmarkForm({ bookmark, onSave, onCancel }: BookmarkFormProps) 
         <label className="text-sm">
           标题 <span className="text-destructive">*</span>
         </label>
-        <Input {...register("title")} placeholder="书签标题" className="h-8 text-sm" />
+        <Controller
+          name="title"
+          control={control}
+          render={({ field }) => (
+            <Input
+              {...field}
+              value={field.value ?? ""}
+              placeholder="书签标题"
+              className="h-8 text-sm"
+            />
+          )}
+        />
         {errors.title && <p className="text-xs text-destructive">{errors.title.message}</p>}
       </div>
 
       {/* 描述 */}
       <div className="flex flex-col gap-1">
         <label className="text-sm">描述</label>
-        <textarea
-          {...register("description")}
-          placeholder="书签描述（可选）"
-          rows={3}
-          className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+        <Controller
+          name="description"
+          control={control}
+          render={({ field }) => (
+            <textarea
+              {...field}
+              value={field.value ?? ""}
+              placeholder="书签描述（可选）"
+              rows={3}
+              className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+            />
+          )}
         />
       </div>
 
