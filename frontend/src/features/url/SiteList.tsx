@@ -1,6 +1,7 @@
-import { useEffect, useRef } from "react"
+import { useEffect } from "react"
 import { cn, formatRelativeTime } from "@/lib/utils"
 import { useURLStore, getActiveSiteId } from "@/stores/url"
+import { useInfiniteScroll } from "@/hooks/useInfiniteScroll"
 import { EmptyState } from "@/components/EmptyState"
 import { Badge } from "@/components/ui/badge"
 import { Globe, Loader2, Search } from "lucide-react"
@@ -26,30 +27,11 @@ function DefaultSiteList() {
   const selectSite = useURLStore((s) => s.selectSite)
 
   const selectedSiteId = getActiveSiteId(detailView)
+  const sentinelRef = useInfiniteScroll(loadMore, hasMore)
 
   useEffect(() => {
     loadSites()
   }, [loadSites])
-
-  // 无限滚动：IntersectionObserver 监听哨兵元素
-  const sentinelRef = useRef<HTMLDivElement>(null)
-  const loadMoreRef = useRef(loadMore)
-  loadMoreRef.current = loadMore
-
-  useEffect(() => {
-    const sentinel = sentinelRef.current
-    if (!sentinel) return
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          loadMoreRef.current()
-        }
-      },
-      { threshold: 0.1 }
-    )
-    observer.observe(sentinel)
-    return () => observer.disconnect()
-  }, [hasMore])
 
   if (!loading && sites.length === 0) {
     return <EmptyState icon={Globe} message="暂无站点" className="h-full" />
@@ -88,25 +70,7 @@ function SearchResultList() {
   const selectResult = useURLStore((s) => s.selectSearchResult)
 
   const selectedSiteId = getActiveSiteId(detailView)
-
-  const sentinelRef = useRef<HTMLDivElement>(null)
-  const loadMoreRef = useRef(loadMore)
-  loadMoreRef.current = loadMore
-
-  useEffect(() => {
-    const sentinel = sentinelRef.current
-    if (!sentinel) return
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          loadMoreRef.current()
-        }
-      },
-      { threshold: 0.1 }
-    )
-    observer.observe(sentinel)
-    return () => observer.disconnect()
-  }, [hasMore])
+  const sentinelRef = useInfiniteScroll(loadMore, hasMore)
 
   if (!loading && results.length === 0) {
     return <EmptyState icon={Search} message="无匹配结果" className="h-full" />
