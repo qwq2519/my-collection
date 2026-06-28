@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"sort"
 	"time"
 
 	"collections/internal/model"
@@ -146,10 +145,19 @@ func (s *Store) ListNotes(req model.NoteListReq) (*model.NoteListResult, error) 
 }
 
 func (s *Store) listNotesFromDB(req model.NoteListReq) (*model.NoteListResult, error) {
-	var notes []model.Note
+	skip := (req.Page - 1) * req.PageSize
+	total := 0
+	notes := make([]model.Note, 0, req.PageSize)
 
 	err := s.db.View(func(tx *buntdb.Tx) error {
-		return tx.AscendKeys("note:*", func(key, value string) bool {
+		return tx.Descend("idx:note_updated", func(key, value string) bool {
+			total++
+			if total <= skip {
+				return true
+			}
+			if len(notes) >= req.PageSize {
+				return true
+			}
 			var note model.Note
 			if err := json.Unmarshal([]byte(value), &note); err != nil {
 				slog.Warn("skip corrupted note", "key", key, "err", err)
@@ -163,23 +171,10 @@ func (s *Store) listNotesFromDB(req model.NoteListReq) (*model.NoteListResult, e
 		return nil, fmt.Errorf("list notes: %w", err)
 	}
 
-	sort.Slice(notes, func(i, j int) bool {
-		return notes[i].UpdatedAt.After(notes[j].UpdatedAt)
-	})
-
-	total := len(notes)
-	start := (req.Page - 1) * req.PageSize
-	if start >= total {
-		return &model.NoteListResult{Items: []model.Note{}, Total: total, HasMore: false}, nil
-	}
-	end := start + req.PageSize
-	if end > total {
-		end = total
-	}
 	return &model.NoteListResult{
-		Items:   notes[start:end],
+		Items:   notes,
 		Total:   total,
-		HasMore: end < total,
+		HasMore: skip+len(notes) < total,
 	}, nil
 }
 

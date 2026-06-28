@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"sort"
 	"time"
 
 	"collections/internal/model"
@@ -43,7 +42,7 @@ func (s *Store) ListQueue() ([]model.QueueItem, error) {
 	var items []model.QueueItem
 
 	err := s.db.View(func(tx *buntdb.Tx) error {
-		return tx.AscendKeys("queue:*", func(key, value string) bool {
+		return tx.Descend("idx:queue_added", func(key, value string) bool {
 			var item model.QueueItem
 			if err := json.Unmarshal([]byte(value), &item); err != nil {
 				slog.Warn("skip corrupted queue item", "key", key, "err", err)
@@ -57,9 +56,6 @@ func (s *Store) ListQueue() ([]model.QueueItem, error) {
 		return nil, fmt.Errorf("list queue: %w", err)
 	}
 
-	sort.Slice(items, func(i, j int) bool {
-		return items[i].AddedAt.After(items[j].AddedAt)
-	})
 	return items, nil
 }
 

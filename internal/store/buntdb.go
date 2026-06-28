@@ -30,10 +30,11 @@ func (s *Store) registerIndexes() error {
 		pattern string
 		path    string
 	}{
-		// 按域名查找站点（添加书签时自动归组）
 		{"idx:site_domain", "site:*", "domain"},
-		// 按站点列出书签
+		{"idx:site_updated", "site:*", "updated_at"},
 		{"idx:bm_site", "bm:*", "site_id"},
+		{"idx:note_updated", "note:*", "updated_at"},
+		{"idx:queue_added", "queue:*", "added_at"},
 	}
 
 	for _, idx := range indexes {

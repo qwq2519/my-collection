@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"sort"
 	"time"
 
 	"collections/internal/model"
@@ -54,10 +53,6 @@ func (s *Store) ListTags(prefix string) (*model.TagListResult, error) {
 	if err != nil {
 		return nil, fmt.Errorf("list tags: %w", err)
 	}
-
-	sort.Slice(tags, func(i, j int) bool {
-		return tags[i].Name < tags[j].Name
-	})
 
 	return &model.TagListResult{Items: tags, Total: len(tags)}, nil
 }

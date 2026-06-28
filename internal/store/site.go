@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"sort"
 	"time"
 
 	"collections/internal/model"
@@ -224,10 +223,19 @@ func (s *Store) ListSites(req model.SiteListReq) (*model.SiteListResult, error) 
 }
 
 func (s *Store) listSitesFromDB(req model.SiteListReq) (*model.SiteListResult, error) {
-	var sites []model.Site
+	skip := (req.Page - 1) * req.PageSize
+	total := 0
+	sites := make([]model.Site, 0, req.PageSize)
 
 	err := s.db.View(func(tx *buntdb.Tx) error {
-		return tx.AscendKeys("site:*", func(key, value string) bool {
+		return tx.Descend("idx:site_updated", func(key, value string) bool {
+			total++
+			if total <= skip {
+				return true
+			}
+			if len(sites) >= req.PageSize {
+				return true
+			}
 			var site model.Site
 			if err := json.Unmarshal([]byte(value), &site); err != nil {
 				slog.Warn("skip corrupted site", "key", key, "err", err)
@@ -241,23 +249,10 @@ func (s *Store) listSitesFromDB(req model.SiteListReq) (*model.SiteListResult, e
 		return nil, fmt.Errorf("list sites: %w", err)
 	}
 
-	sort.Slice(sites, func(i, j int) bool {
-		return sites[i].UpdatedAt.After(sites[j].UpdatedAt)
-	})
-
-	total := len(sites)
-	start := (req.Page - 1) * req.PageSize
-	if start >= total {
-		return &model.SiteListResult{Items: []model.Site{}, Total: total, HasMore: false}, nil
-	}
-	end := start + req.PageSize
-	if end > total {
-		end = total
-	}
 	return &model.SiteListResult{
-		Items:   sites[start:end],
+		Items:   sites,
 		Total:   total,
-		HasMore: end < total,
+		HasMore: skip+len(sites) < total,
 	}, nil
 }
 
