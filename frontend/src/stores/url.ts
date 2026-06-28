@@ -247,7 +247,10 @@ export const useURLStore = create<URLState>((set, get) => ({
     set({ detailView: { type: "bookmark", bookmarkId, siteId }, currentBookmark: null })
     try {
       const bm = await URLService.GetBookmark(bookmarkId)
-      set({ currentBookmark: bm ?? null })
+      const current = get().detailView
+      if (current.type === "bookmark" && current.bookmarkId === bookmarkId) {
+        set({ currentBookmark: bm ?? null })
+      }
     } catch {
       // 加载失败保持空态，UI 会展示 loading 或错误提示
     }
