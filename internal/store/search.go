@@ -168,9 +168,6 @@ type BleveDoc struct {
 // 自动注入 _type 字段，调用方无需手动设置。
 // 失败时记录到脏队列，不阻塞主流程。
 func (s *Store) IndexDoc(id string, docType string, fields map[string]interface{}) error {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	doc := make(map[string]interface{}, len(fields)+1)
 	for k, v := range fields {
 		doc[k] = v
@@ -188,9 +185,6 @@ func (s *Store) IndexDoc(id string, docType string, fields map[string]interface{
 
 // DeleteDoc 从 Bleve 索引中删除文档。失败时记录到脏队列。
 func (s *Store) DeleteDoc(id string, docType string) error {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	if err := s.idx.DeleteDoc(id); err != nil {
 		slog.Warn("bleve delete failed", "id", id, "err", err)
 		s.addDirtyItem(id, docType)
@@ -202,38 +196,13 @@ func (s *Store) DeleteDoc(id string, docType string) error {
 
 // Search 执行 Bleve 搜索查询。
 func (s *Store) Search(req *bleve.SearchRequest) (*bleve.SearchResult, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	return s.idx.Search(req)
 }
 
 // RebuildIndexByType 按文档类型重建索引（如 "site"、"bookmark"、"note"）。
-//
-// TODO: 当前将所有删除+新增放入单个 batch，万级文档时内存压力大。
-// 后续应复用 bleveBatchSize 分批策略（先分批删除旧文档，再分批写入新文档），
-// RebuildMediaFolderIndex 同理。
 func (s *Store) RebuildIndexByType(docType string, docs []BleveDoc) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	oldIDs, err := s.searchDocIDs("_type", docType)
+	oldIDs, err := s.idx.ReplaceByField("_type", docType, docs)
 	if err != nil {
-		return fmt.Errorf("search existing %s docs: %w", docType, err)
-	}
-
-	batch, err := s.idx.NewBatch()
-	if err != nil {
-		return err
-	}
-	for _, id := range oldIDs {
-		batch.Delete(id)
-	}
-	for _, doc := range docs {
-		batch.Index(doc.ID, doc.Fields)
-	}
-
-	if err := s.idx.ExecuteBatch(batch); err != nil {
 		return fmt.Errorf("rebuild %s index: %w", docType, err)
 	}
 
@@ -244,26 +213,8 @@ func (s *Store) RebuildIndexByType(docType string, docs []BleveDoc) error {
 
 // RebuildMediaFolderIndex 按媒体文件夹重建索引。仅影响指定文件夹的文档。
 func (s *Store) RebuildMediaFolderIndex(folderID string, docs []BleveDoc) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	oldIDs, err := s.searchDocIDs("folder_id", folderID)
+	oldIDs, err := s.idx.ReplaceByField("folder_id", folderID, docs)
 	if err != nil {
-		return fmt.Errorf("search media docs for folder %s: %w", folderID, err)
-	}
-
-	batch, err := s.idx.NewBatch()
-	if err != nil {
-		return err
-	}
-	for _, id := range oldIDs {
-		batch.Delete(id)
-	}
-	for _, doc := range docs {
-		batch.Index(doc.ID, doc.Fields)
-	}
-
-	if err := s.idx.ExecuteBatch(batch); err != nil {
 		return fmt.Errorf("rebuild media folder %s index: %w", folderID, err)
 	}
 
@@ -280,21 +231,7 @@ func (s *Store) RebuildMediaFolderIndex(folderID string, docs []BleveDoc) error 
 
 // RebuildDocs 局部重建：删除指定 ID 的旧文档，写入新文档。
 func (s *Store) RebuildDocs(deleteIDs []string, newDocs []BleveDoc) error {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	batch, err := s.idx.NewBatch()
-	if err != nil {
-		return err
-	}
-	for _, id := range deleteIDs {
-		batch.Delete(id)
-	}
-	for _, doc := range newDocs {
-		batch.Index(doc.ID, doc.Fields)
-	}
-
-	if err := s.idx.ExecuteBatch(batch); err != nil {
+	if err := s.idx.BatchReplace(deleteIDs, newDocs); err != nil {
 		return fmt.Errorf("rebuild docs batch: %w", err)
 	}
 
@@ -309,24 +246,60 @@ func (s *Store) RebuildDocs(deleteIDs []string, newDocs []BleveDoc) error {
 	return nil
 }
 
-// searchDocIDs 按 keyword 字段精确匹配查找文档 ID 列表（内部方法，调用方须持锁）
-func (s *Store) searchDocIDs(field, value string) ([]string, error) {
+// ReplaceByField 按字段精确匹配搜索旧文档，批量替换为新文档（独占锁）。
+// 返回被删除的旧文档 ID 列表，供调用方清理脏队列。
+func (m *IndexManager) ReplaceByField(field, value string, newDocs []BleveDoc) ([]string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if err := m.ensureOpen(); err != nil {
+		return nil, err
+	}
+
 	query := bleve.NewTermQuery(value)
 	query.SetField(field)
 	req := bleve.NewSearchRequest(query)
 	req.Size = math.MaxInt32
 	req.Fields = []string{}
 
-	result, err := s.idx.Search(req)
+	result, err := m.index.Search(req)
 	if err != nil {
 		return nil, err
 	}
 
-	ids := make([]string, 0, len(result.Hits))
+	oldIDs := make([]string, 0, len(result.Hits))
 	for _, hit := range result.Hits {
-		ids = append(ids, hit.ID)
+		oldIDs = append(oldIDs, hit.ID)
 	}
-	return ids, nil
+
+	batch := m.index.NewBatch()
+	for _, id := range oldIDs {
+		batch.Delete(id)
+	}
+	for _, doc := range newDocs {
+		batch.Index(doc.ID, doc.Fields)
+	}
+	if err := m.index.Batch(batch); err != nil {
+		return nil, err
+	}
+	return oldIDs, nil
+}
+
+// BatchReplace 批量删除指定文档并写入新文档。
+func (m *IndexManager) BatchReplace(deleteIDs []string, newDocs []BleveDoc) error {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if err := m.ensureOpen(); err != nil {
+		return err
+	}
+
+	batch := m.index.NewBatch()
+	for _, id := range deleteIDs {
+		batch.Delete(id)
+	}
+	for _, doc := range newDocs {
+		batch.Index(doc.ID, doc.Fields)
+	}
+	return m.index.Batch(batch)
 }
 
 // --- 脏队列管理 ---
@@ -381,9 +354,6 @@ func (s *Store) foreachDirtyItem(tx *buntdb.Tx, fn func(key string, item model.D
 
 // HasDirtyItems 判断是否存在脏记录（前缀扫描 dirty:*）
 func (s *Store) HasDirtyItems() bool {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	var found bool
 	s.db.View(func(tx *buntdb.Tx) error {
 		tx.AscendKeys("dirty:*", func(key, value string) bool {
@@ -397,9 +367,6 @@ func (s *Store) HasDirtyItems() bool {
 
 // GetDirtyItems 获取脏队列中所有条目
 func (s *Store) GetDirtyItems() []model.DirtyItem {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	var items []model.DirtyItem
 	s.db.View(func(tx *buntdb.Tx) error {
 		s.foreachDirtyItem(tx, func(_ string, item model.DirtyItem) {
@@ -412,9 +379,6 @@ func (s *Store) GetDirtyItems() []model.DirtyItem {
 
 // GetDirtyIndexStatus 获取索引状态摘要（按模块统计脏文档数）
 func (s *Store) GetDirtyIndexStatus() model.DirtyIndexStatus {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	status := model.DirtyIndexStatus{}
 	s.db.View(func(tx *buntdb.Tx) error {
 		s.foreachDirtyItem(tx, func(_ string, item model.DirtyItem) {
@@ -435,9 +399,6 @@ func (s *Store) GetDirtyIndexStatus() model.DirtyIndexStatus {
 
 // ClearAllDirtyItems 清空脏队列（全量重建后调用）
 func (s *Store) ClearAllDirtyItems() {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	err := s.db.Update(func(tx *buntdb.Tx) error {
 		var keys []string
 		s.foreachDirtyItem(tx, func(key string, _ model.DirtyItem) {
@@ -457,9 +418,6 @@ func (s *Store) ClearAllDirtyItems() {
 
 // ClearDirtyByType 清除指定类型的脏记录（模块级重建后调用）
 func (s *Store) ClearDirtyByType(docType string) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	err := s.db.Update(func(tx *buntdb.Tx) error {
 		var keys []string
 		s.foreachDirtyItem(tx, func(key string, item model.DirtyItem) {

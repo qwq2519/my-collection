@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/blevesearch/bleve/v2"
 )
@@ -35,8 +36,10 @@ func (s IndexState) String() string {
 }
 
 // IndexManager 管理 Bleve 索引的生命周期和状态。
-// 自身不持有锁，并发安全由 Store.mu 统一保证。
+// 内部持有 RWMutex：普通读写取 RLock（允许并发），重建取 Lock（独占）。
 type IndexManager struct {
+	mu sync.RWMutex
+
 	index      bleve.Index
 	state      IndexState
 	lastErr    error
@@ -97,6 +100,8 @@ func (m *IndexManager) ensureOpen() error {
 
 // IndexDoc 索引单个文档
 func (m *IndexManager) IndexDoc(id string, fields map[string]interface{}) error {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	if err := m.ensureOpen(); err != nil {
 		return err
 	}
@@ -105,6 +110,8 @@ func (m *IndexManager) IndexDoc(id string, fields map[string]interface{}) error 
 
 // DeleteDoc 从索引删除文档
 func (m *IndexManager) DeleteDoc(id string) error {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	if err := m.ensureOpen(); err != nil {
 		return err
 	}
@@ -113,32 +120,19 @@ func (m *IndexManager) DeleteDoc(id string) error {
 
 // Search 执行搜索查询
 func (m *IndexManager) Search(req *bleve.SearchRequest) (*bleve.SearchResult, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	if err := m.ensureOpen(); err != nil {
 		return nil, err
 	}
 	return m.index.Search(req)
 }
 
-// NewBatch 创建新的批量操作
-func (m *IndexManager) NewBatch() (*bleve.Batch, error) {
-	if err := m.ensureOpen(); err != nil {
-		return nil, err
-	}
-	return m.index.NewBatch(), nil
-}
-
-// ExecuteBatch 执行批量操作
-func (m *IndexManager) ExecuteBatch(batch *bleve.Batch) error {
-	if err := m.ensureOpen(); err != nil {
-		return err
-	}
-	return m.index.Batch(batch)
-}
-
 // rebuild 全量重建索引：备份旧索引 → 创建新索引 → 批量写入 → 删除备份。
 // 失败时自动恢复旧索引，避免搜索功能完全不可用。
-// 仅在索引损坏等异常场景内部调用，调用方须持有 Store.mu.Lock。
 func (m *IndexManager) rebuild(docs []BleveDoc) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.state = IndexRebuilding
 	indexPath := filepath.Join(m.persistDir, "search.bleve")
 	backupPath := indexPath + ".bak"
@@ -217,6 +211,8 @@ func (m *IndexManager) rebuild(docs []BleveDoc) error {
 
 // Close 关闭索引
 func (m *IndexManager) Close() error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.index != nil {
 		err := m.index.Close()
 		m.index = nil
