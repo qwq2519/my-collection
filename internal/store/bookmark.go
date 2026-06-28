@@ -241,6 +241,7 @@ func (s *Store) BatchDeleteBookmarks(siteID string, ids []string) error {
 	}
 
 	deleted := 0
+	var site model.Site
 
 	err := s.db.Update(func(tx *buntdb.Tx) error {
 		for _, id := range ids {
@@ -262,11 +263,11 @@ func (s *Store) BatchDeleteBookmarks(siteID string, ids []string) error {
 			return fmt.Errorf("get site %s: %w", siteID, err)
 		}
 		siteObj.BookmarkCount -= deleted
-		//TODO 隐患
 		if siteObj.BookmarkCount < 0 {
 			siteObj.BookmarkCount = 0
 		}
 		siteObj.UpdatedAt = time.Now()
+		site = *siteObj
 		return setSiteTx(tx, siteObj)
 	})
 	if err != nil {
@@ -276,8 +277,8 @@ func (s *Store) BatchDeleteBookmarks(siteID string, ids []string) error {
 	for _, id := range ids {
 		s.DeleteDoc("bm:"+id, "bookmark")
 	}
-	if site, err := s.GetSite(siteID); err == nil {
-		s.IndexDoc("site:"+site.ID, siteBleveFields(site))
+	if deleted > 0 {
+		s.IndexDoc("site:"+site.ID, siteBleveFields(&site))
 	}
 
 	slog.Info("bookmarks batch deleted", "count", deleted, "site_id", siteID)
