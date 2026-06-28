@@ -166,7 +166,8 @@ func (s *Store) WriteMediaMeta(folderID string, meta *model.MediaMeta) error {
 	return util.AtomicWrite(path, data, 0644)
 }
 
-// ReadTreeHash 读取 Merkle Tree 快照，文件不存在时返回 (nil, nil)
+// ReadTreeHash 读取 Merkle Tree 快照。
+// 文件不存在时返回 error（可通过 errors.Is(err, os.ErrNotExist) 判断）。
 func (s *Store) ReadTreeHash(folderID string) (*model.TreeHashFile, error) {
 	path := filepath.Join(s.mediaFolderDir(folderID), "tree_hash.json")
 	data, err := os.ReadFile(path)
