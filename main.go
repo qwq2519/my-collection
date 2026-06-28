@@ -41,7 +41,7 @@ func main() {
 			application.NewService(uploadService),
 		},
 		Assets: application.AssetOptions{
-			Handler: application.AssetFileServerFS(assets),
+			Handler: service.NewAssetHandler(application.AssetFileServerFS(assets), "persist"),
 		},
 		Mac: application.MacOptions{
 			ApplicationShouldTerminateAfterLastWindowClosed: true,
