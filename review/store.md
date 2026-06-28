@@ -68,7 +68,6 @@ internal/store/
 ├── index.go       # IndexManager 生命周期
 ├── media.go       # CRUD + 列表查询（含 Bleve 查询构建）
 ├── note.go        # CRUD + 列表查询
-├── queue.go       # CRUD
 ├── search.go      # Bleve 索引操作 + 脏队列 + 查询映射定义
 ├── site.go        # CRUD + 列表查询
 ├── store.go       # Store 主结构体
@@ -83,7 +82,6 @@ internal/store/
 ├── buntdb.go      # BuntDB 初始化 + 索引注册
 ├── index.go       # IndexManager 生命周期管理
 ├── search.go      # Bleve 文档映射、IndexDoc/DeleteDoc/Search、脏队列
-├── queue.go       # 队列 CRUD（纯原子操作，无需拆分）
 ├── note.go        # 笔记 CRUD（纯原子操作，无需拆分）
 ├── site.go        # 站点原子 CRUD：Create/Get/Update/Delete
 ├── site_list.go   # 站点列表查询：listFromDB / listFromBleve 路由与查询构建

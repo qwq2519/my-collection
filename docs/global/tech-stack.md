@@ -77,7 +77,6 @@ internal/
 ├── model/                     # 领域模型 + 请求/响应类型（纯 struct，无依赖）
 │   ├── site.go                # Site, CreateSiteReq, UpdateSiteReq, SiteListResult
 │   ├── bookmark.go            # Bookmark, CreateBookmarkReq, BookmarkListResult
-│   ├── queue.go               # QueueItem
 │   ├── note.go                # Note, CreateNoteReq, NoteListResult
 │   ├── media.go               # MediaFolder, MediaFile, MediaMeta
 │   ├── tag.go                 # URLTag, MediaTag
@@ -89,13 +88,12 @@ internal/
 │   ├── search.go              # Bleve 初始化、gse analyzer、index mapping、RebuildIndex
 │   ├── site.go                # 站点 CRUD + 域名唯一性校验
 │   ├── bookmark.go            # 书签 CRUD + URL 去重 + bookmark_count 维护
-│   ├── queue.go               # 临时队列 CRUD + 入队去重
 │   ├── note.go                # 笔记 CRUD
 │   ├── media.go               # media_meta.json / tree_hash.json 读写
 │   └── tag.go                 # 标签注册表 CRUD + count 维护
 │
 ├── service/                   # 业务逻辑层（Wails 绑定的 Service 结构体）
-│   ├── url.go                 # URLService：站点 + 书签 + 临时队列
+│   ├── url.go                 # URLService：站点 + 书签
 │   ├── note.go                # NoteService：笔记增删改查 + 图片管理
 │   ├── media.go               # MediaService：文件夹管理、扫描触发、缩略图、标签
 │   ├── tag.go                 # TagService：重命名、合并、删除、重算 count
@@ -176,7 +174,6 @@ frontend/src/
 │   │   ├── BookmarkDetail.tsx      # 书签详情/编辑
 │   │   ├── SiteForm.tsx            # 站点表单
 │   │   ├── BookmarkForm.tsx        # 书签表单
-│   │   ├── TempQueue.tsx           # 临时队列面板
 │   │   └── hooks.ts               # 模块 hooks（数据请求、操作）
 │   ├── notes/
 │   │   ├── NotesPage.tsx
@@ -610,7 +607,6 @@ Wails v3 的 `Application` 支持配置自定义 `AssetHandler`，当请求路�
 | 操作 | 走哪个组件 |
 |------|-----------|
 | 增删改收藏/笔记 | BuntDB → 同步更新 Bleve |
-| 临时队列读写 | BuntDB（前缀扫描 `queue:*`，仅存 URL） |
 | 批量删除 URL | BuntDB 事务 + 清理 Bleve |
 | 按 ID 精确查询 | BuntDB |
 | 标签筛选（多选精确匹配） | Bleve keyword 精确匹配 |
@@ -710,7 +706,7 @@ Wails 将 Go 结构体的公开方法直接暴露给前端调用，无需手写 
 
 | Service | 职责 |
 |---------|------|
-| `URLService` | 站点/书签/临时队列的增删改查 |
+| `URLService` | 站点/书签的增删改查 |
 | `NoteService` | 笔记的增删改查、图片管理 |
 | `MediaService` | 媒体文件夹管理、扫描、缩略图、标签 |
 | `TagService` | 标签管理（重命名/合并/删除/重算 count） |

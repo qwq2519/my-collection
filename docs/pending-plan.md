@@ -88,9 +88,9 @@ Go 后端涉及的异步操作需明确：
 
 新增 `normalized_url` 字段和 `idx:bm_normalized_url` 索引，归一化规则写入 [data-structures.md - bm](./global/data-structures.md#bm--书签url)。后端提供 `NormalizeURL` 方法，前端调用后展示结果供用户确认。
 
-### ~~16. 临时队列（原待归组书签）缺少"分配到已有站点"的流程~~ → 已完成
+### ~~16. 临时队列~~ → 已移除
 
-已简化设计：临时队列独立为 `queue:{id}` 记录，只存 URL，不含元数据。添加书签时若无对应站点则拒绝创建书签，改为存入临时队列。用户如需正式收藏，先创建站点再手动添加书签。写入 [url-bookmarks.md - 临时队列](./features/url-bookmarks.md#临时队列) 和 [data-structures.md - queue](./global/data-structures.md#queue--临时队列)。
+功能已移除，添加书签时若域名无对应站点直接拒绝并提示用户先创建站点。
 
 ### ~~17. 标签名中特殊字符的处理规则未定义~~ → 已完成
 

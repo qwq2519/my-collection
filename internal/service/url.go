@@ -12,7 +12,7 @@ import (
 	"collections/internal/util"
 )
 
-// URLService 站点 + 书签 + 临时队列的业务逻辑层。
+// URLService 站点 + 书签的业务逻辑层。
 // 公开方法即前端可调用接口（通过 Wails 绑定）。
 type URLService struct {
 	Store *store.Store
@@ -137,7 +137,6 @@ func (u *URLService) SearchURL(req model.SearchURLReq) (_ *model.SearchURLResult
 
 // CreateBookmark 创建书签。校验 URL 合法性，自动提取域名匹配站点，
 // 归一化标签并维护 url_tag 注册表 count。
-// 按域名自动查找站点，未找到站点则存入临时队列而非创建书签。
 func (u *URLService) CreateBookmark(req model.CreateBookmarkReq) (_ *model.Bookmark, err error) {
 	defer logError(&err)
 	if err := util.ValidateURL(req.URL); err != nil {
@@ -349,42 +348,6 @@ func mergeTags(existing, toAdd []string) (merged, added []string) {
 		}
 	}
 	return merged, added
-}
-
-// ────────────────────── Queue ──────────────────────
-
-// AddToQueue 将 URL 加入临时队列。
-// TODO: 入队去重（归一化 URL 后校验队列 + 已有书签，重复则拒绝）
-func (u *URLService) AddToQueue(rawURL string) (_ *model.QueueItem, err error) {
-	defer logError(&err)
-	if strings.TrimSpace(rawURL) == "" {
-		return nil, fmt.Errorf("URL 不能为空")
-	}
-	if err := util.ValidateURL(rawURL); err != nil {
-		return nil, err
-	}
-	return u.Store.AddToQueue(rawURL)
-}
-
-// ListQueue 获取临时队列中所有条目（按 added_at 降序）
-func (u *URLService) ListQueue() (_ []model.QueueItem, err error) {
-	defer logError(&err)
-	return u.Store.ListQueue()
-}
-
-// DeleteQueueItem 删除临时队列中的指定条目
-func (u *URLService) DeleteQueueItem(id string) (err error) {
-	defer logError(&err)
-	if id == "" {
-		return fmt.Errorf("队列条目 ID 不能为空")
-	}
-	return u.Store.DeleteQueueItem(id)
-}
-
-// ClearQueue 清空临时队列
-func (u *URLService) ClearQueue() (err error) {
-	defer logError(&err)
-	return u.Store.ClearQueue()
 }
 
 // ────────────────────── Normalize ──────────────────────

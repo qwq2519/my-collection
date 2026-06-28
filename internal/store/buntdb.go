@@ -34,7 +34,6 @@ func (s *Store) registerIndexes() error {
 		{"idx:site_updated", "site:*", "updated_at"},
 		{"idx:bm_site", "bm:*", "site_id"},
 		{"idx:note_updated", "note:*", "updated_at"},
-		{"idx:queue_added", "queue:*", "added_at"},
 	}
 
 	for _, idx := range indexes {

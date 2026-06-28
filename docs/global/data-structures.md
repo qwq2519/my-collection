@@ -55,7 +55,6 @@ BuntDB 以 `前缀:id` 作为 key，value 为 JSON 字符串。
 |----------|------|------|
 | `site:{id}` | 站点 | 手动创建的网站 |
 | `bm:{id}` | 书签 | 具体 URL，必须归属于某个站点 |
-| `queue:{id}` | 临时队列 | 仅存 URL，添加书签时无对应站点则暂存于此 |
 | `note:{id}` | 笔记 | Markdown 短笔记 |
 | `folder:{id}` | 媒体文件夹 | 注册表，实际媒体数据在 JSON 文件中 |
 | `url_tag:{name}` | URL 标签 | 标签注册表，`{name}` 为小写标签字符串 |
@@ -199,7 +198,7 @@ Key:   bm:{bm_id}
 1. 用户输入 URL，后端校验合法性（仅 http/https）
 2. 提取域名，通过 `idx:site_domain` 查找是否存在对应站点
 3. 若站点存在 → 执行去重检查 → 通过则创建书签，`site_id` 指向该站点
-4. 若站点不存在 → **拒绝创建书签**，改为存入临时队列（`queue:{id}`），仅保存 URL
+4. 若站点不存在 → **拒绝创建书签**，提示用户先创建站点
 
 **查询模式：**
 
@@ -207,37 +206,6 @@ Key:   bm:{bm_id}
 - 按站点列出书签：BuntDB 自定义索引 `idx:bm_site`，索引 `site_id` 字段
 - 标签筛选（单标签 / 多标签组合）：走 Bleve keyword 精确匹配
 - 全文搜索：走 Bleve
-
----
-
-### queue — 临时队列
-
-```text
-Key:   queue:{queue_id}
-```
-
-```json
-{
-  "id": "d1e2f3a4-...",
-  "url": "https://example.com/some-page",
-  "added_at": "2026-06-22T14:00:00Z"
-}
-```
-
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| id | string | 是 | UUID |
-| url | string | 是 | 用户输入的原始 URL |
-| added_at | string | 是 | ISO 8601，加入队列的时间 |
-
-临时队列是一个极简的 URL 暂存区。添加书签时若域名无对应站点，URL 自动存入此队列。队列条目只保存 URL 本身，不含 title、tags 等元数据，不参与搜索索引（不进 Bleve）。
-
-用户可在队列中查看和删除条目。如需正式收藏，用户先创建对应站点，再手动添加书签。
-
-**查询模式：**
-
-- 列出所有队列条目：前缀扫描 `queue:*`
-- 按 ID 删除：`queue:{id}`
 
 ---
 
@@ -630,8 +598,6 @@ Bleve 索引目录：`persist/search.bleve/`
 
 ```text
 Site 1 ←——→ N Bookmark        (通过 bookmark.site_id 关联，书签必须归属站点)
-
-Queue                          (独立，仅存 URL，不关联站点或书签)
 
 Folder 1 ←——→ N Media         (通过 media_meta.json 内的 key)
 

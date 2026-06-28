@@ -4,7 +4,6 @@ import type {
   Site,
   Bookmark,
   SiteWithBookmarks,
-  QueueItem,
 } from "../../bindings/collections/internal/model"
 
 /** 右侧面板当前展示的视图类型 */
@@ -80,17 +79,6 @@ interface URLState {
   /** 设置标签筛选 */
   setSelectedTags: (tags: string[]) => void
 
-  // ─── 临时队列 ───────────────────────────────────
-  queueItems: QueueItem[]
-  queueCount: number
-  queueLoading: boolean
-
-  /** 加载临时队列 */
-  loadQueue: () => Promise<void>
-  /** 删除单条队列条目 */
-  deleteQueueItem: (id: string) => Promise<void>
-  /** 清空队列 */
-  clearQueue: () => Promise<void>
 }
 
 export const useURLStore = create<URLState>((set, get) => ({
@@ -118,10 +106,6 @@ export const useURLStore = create<URLState>((set, get) => ({
   searchPage: 1,
   searchLoading: false,
   selectedTags: [],
-
-  queueItems: [],
-  queueCount: 0,
-  queueLoading: false,
 
   loadSites: async () => {
     set({ sitesLoading: true })
@@ -339,24 +323,4 @@ export const useURLStore = create<URLState>((set, get) => ({
     }
   },
 
-  loadQueue: async () => {
-    set({ queueLoading: true })
-    try {
-      const items = await URLService.ListQueue()
-      set({ queueItems: items ?? [], queueCount: items?.length ?? 0 })
-    } finally {
-      set({ queueLoading: false })
-    }
-  },
-
-  deleteQueueItem: async (id) => {
-    await URLService.DeleteQueueItem(id)
-    const items = get().queueItems.filter((i) => i.id !== id)
-    set({ queueItems: items, queueCount: items.length })
-  },
-
-  clearQueue: async () => {
-    await URLService.ClearQueue()
-    set({ queueItems: [], queueCount: 0 })
-  },
 }))

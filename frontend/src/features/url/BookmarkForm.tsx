@@ -171,7 +171,7 @@ export function BookmarkForm({ bookmark, onSave, onCancel }: BookmarkFormProps) 
         {!isEdit && lookupState.status === "not_found" && (
           <p className="text-xs text-destructive flex items-center gap-1">
             <AlertCircle size={12} />
-            无对应站点（{lookupState.domain}），书签将存入临时队列
+            无对应站点（{lookupState.domain}），请先创建站点
           </p>
         )}
       </div>
