@@ -15,7 +15,18 @@ import { URLService } from "../../../bindings/collections/internal/service"
 import type { Site } from "../../../bindings/collections/internal/model"
 
 /**
- * 站点详情面板：协调器，根据当前模式渲染对应子视图。
+ * 站点详情面板：协调器，管理 view/edit-site/add-bookmark 三种模式。
+ *
+ * 组件结构：
+ *   SiteDetail（协调器：模式切换）
+ *     → SiteHeader（站点信息 + 编辑/删除按钮）
+ *     → BookmarkSection（书签工具栏 + 批量操作 + 视图切换）
+ *       → BookmarkGrid / BookmarkListView（来自 BookmarkViews.tsx）
+ *       → BatchToolbar（来自 BatchToolbar.tsx）
+ *
+ * 三元条件链说明（JSX 中的 a ? x : b ? y : z 写法）：
+ *   等价于 Go 的 switch-case，JSX 中没有 if-else 语句，
+ *   只能用三元表达式来实现条件渲染。
  */
 export function SiteDetail() {
   const site = useURLStore((s) => s.currentSite)
@@ -126,6 +137,10 @@ function SiteHeader({ site, onEdit }: { site: Site; onEdit: () => void }) {
 }
 
 // ─── 书签区域：工具栏 + 批量操作 + 内容列表 ──────────────────
+//
+// 这里的 selector 较多是因为同时需要：书签数据、加载状态、视图模式、
+// 选中动作、刷新动作。每个 selector 单独写是为了避免不相关字段变化
+// 导致不必要的重渲染（Zustand 最佳实践）。
 
 function BookmarkSection({ site, onAddBookmark }: { site: Site; onAddBookmark: () => void }) {
   const bookmarks = useURLStore((s) => s.bookmarks)
@@ -135,6 +150,7 @@ function BookmarkSection({ site, onAddBookmark }: { site: Site; onAddBookmark: (
   const selectBookmark = useURLStore((s) => s.selectBookmark)
   const refreshCurrentSite = useURLStore((s) => s.refreshCurrentSite)
 
+  // 批量模式的局部状态（不存入全局 store，因为只在这个组件内有意义）
   const [batchMode, setBatchMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 

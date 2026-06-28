@@ -12,7 +12,17 @@ import { URLService } from "../../../bindings/collections/internal/service"
 import type { Bookmark } from "../../../bindings/collections/internal/model"
 
 /**
- * 书签详情面板：协调器，展示态 / 编辑态切换。
+ * 书签详情面板：协调器，管理展示态/编辑态切换。
+ *
+ * 组件结构：
+ *   BookmarkDetail（协调器：view/edit 模式切换）
+ *     → BookmarkNav（顶部导航栏：面包屑 + 编辑/删除按钮）
+ *     → BookmarkInfo（正文信息：标题、URL、描述、标签、状态）
+ *     → AttachmentGallery（附件画廊：缩略图预览 + 文件列表）
+ *
+ * useURLStore.getState() 直接调用说明：
+ *   在 onSave 回调中使用 getState() 而非 selector，因为这是事件处理器
+ *   （非渲染逻辑），不需要订阅变化，只需在触发时读取最新状态。
  */
 export function BookmarkDetail() {
   const bm = useURLStore((s) => s.currentBookmark)
@@ -79,7 +89,7 @@ function BookmarkNav({ bm, onEdit }: { bm: Bookmark; onEdit: () => void }) {
           className="hover:text-foreground cursor-pointer shrink-0"
           onClick={backToSite}
         >
-          {currentSite?.name ?? "站点"}
+          {currentSite?.title ?? "站点"}
         </span>
         <span className="shrink-0">&gt;</span>
         <span className="truncate">{bm.title}</span>

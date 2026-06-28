@@ -4,7 +4,11 @@ import { cn } from "@/lib/utils"
 import { Check } from "lucide-react"
 
 /**
- * 设置页面：当前仅包含主题切换，后续可扩展更多配置项。
+ * 设置页面：当前仅包含主题切换，后续可扩展更多配置项（数据目录、ffmpeg 等）。
+ *
+ * 主题预览卡片中的 const bg/fg/primary/... 是从主题预设中解构 CSS 变量值，
+ * 用于在卡片内构建一个迷你版的 UI 布局预览（侧边栏 + 内容区 mockup）。
+ * 这些 inline style 只用于预览，不影响实际主题（实际主题由 useTheme hook 注入）。
  */
 export function SettingsPage() {
   const themeKey = useAppStore((s) => s.themeKey)
@@ -20,6 +24,7 @@ export function SettingsPage() {
           <div className="grid grid-cols-2 gap-3">
             {themePresets.map((preset) => {
               const active = preset.key === themeKey
+              // 解构主题色值，用于构建 UI 预览 mockup
               const bg = preset.colors["--background"]
               const fg = preset.colors["--foreground"]
               const primary = preset.colors["--primary"]

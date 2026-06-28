@@ -7,8 +7,18 @@ import { Badge } from "@/components/ui/badge"
 import { Globe, Loader2, Search } from "lucide-react"
 
 /**
- * 左侧站点列表：默认模式分页加载，搜索模式展示搜索结果。
- * 两种模式共用同一个列表 UI，数据源不同。
+ * 左侧站点列表：根据 searchMode 切换数据源。
+ *
+ * 组件结构：
+ *   SiteList（路由器，根据 searchMode 选择子组件）
+ *     → DefaultSiteList（默认模式，分页加载全部站点）
+ *     → SearchResultList（搜索模式，展示搜索命中的站点）
+ *     → SiteListItem（共用列表项 UI）
+ *
+ * 关于 useURLStore((s) => s.xxx) 的多行写法：
+ *   React hooks 规则要求所有 hook 必须在函数顶部调用，不能放在 if/for 里。
+ *   Zustand 的 selector 写法 (s) => s.xxx 是为了精确订阅单个字段，
+ *   避免整个 store 任意字段变化时都触发重渲染。所以每个字段要写一行。
  */
 export function SiteList() {
   const searchMode = useURLStore((s) => s.searchMode)
@@ -105,6 +115,10 @@ function SearchResultList() {
 
 // ─── 共用子组件 ────────────────────────────────────────────────
 
+/**
+ * 站点列表项：展示站点图标、标题、域名、书签数、时间、标签。
+ * data-site-index 属性供键盘导航（useKeyboardNav）定位 DOM 元素。
+ */
 function SiteListItem({
   title,
   icon,

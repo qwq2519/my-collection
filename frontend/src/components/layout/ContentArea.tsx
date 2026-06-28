@@ -3,8 +3,13 @@ import { URLPage } from "@/features/url/URLPage"
 import { SettingsPage } from "@/features/settings/SettingsPage"
 
 /**
- * 内容区容器：根据当前页面渲染对应功能模块。
- * 各模块组件在 features/ 下实现后逐步替换占位。
+ * 内容区容器：根据 Zustand store 中的 currentPage 渲染对应功能模块。
+ *
+ * 本项目不使用 React Router，而是用 Zustand store 管理"当前页面"。
+ * 每个 {currentPage === "xxx" && <XxxPage />} 相当于路由匹配：
+ *   当 currentPage 等于 "xxx" 时渲染对应组件，否则不渲染（短路求值）。
+ *
+ * 各模块组件在 features/ 下实现后逐步替换 Placeholder 占位。
  */
 export function ContentArea() {
   const currentPage = useAppStore((s) => s.currentPage)
