@@ -22,19 +22,9 @@ func (s *Store) ListSites(req model.SiteListReq) (*model.SiteListResult, error) 
 		req.PageSize = 20
 	}
 
-	skip := (req.Page - 1) * req.PageSize
-	total := 0
-	sites := make([]model.Site, 0, req.PageSize)
-
+	var sites []model.Site
 	err := s.db.View(func(tx *buntdb.Tx) error {
 		return tx.Descend("idx:site_updated", func(key, value string) bool {
-			total++
-			if total <= skip {
-				return true
-			}
-			if len(sites) >= req.PageSize {
-				return true
-			}
 			var site model.Site
 			if err := json.Unmarshal([]byte(value), &site); err != nil {
 				slog.Warn("skip corrupted site", "key", key, "err", err)
@@ -48,10 +38,19 @@ func (s *Store) ListSites(req model.SiteListReq) (*model.SiteListResult, error) 
 		return nil, fmt.Errorf("list sites: %w", err)
 	}
 
+	total := len(sites)
+	start := (req.Page - 1) * req.PageSize
+	if start >= total {
+		return &model.SiteListResult{Items: []model.Site{}, Total: total, HasMore: false}, nil
+	}
+	end := start + req.PageSize
+	if end > total {
+		end = total
+	}
 	return &model.SiteListResult{
-		Items:   sites,
+		Items:   sites[start:end],
 		Total:   total,
-		HasMore: skip+len(sites) < total,
+		HasMore: end < total,
 	}, nil
 }
 
