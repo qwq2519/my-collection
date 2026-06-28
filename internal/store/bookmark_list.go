@@ -12,6 +12,8 @@ import (
 )
 
 // ListBookmarks 按站点分页查询书签列表，走 BuntDB idx:bm_site 索引。
+// TODO: 当前全量加载站点下所有书签到内存后排序再分页，数据量大时浪费内存。
+// 优化方案：建 site_id+updated_at 复合索引，让 BuntDB 按序扫描直接跳过 + 截断。
 func (s *Store) ListBookmarks(req model.BookmarkListReq) (*model.BookmarkListResult, error) {
 	if req.Page < 1 {
 		req.Page = 1
