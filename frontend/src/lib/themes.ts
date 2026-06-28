@@ -89,109 +89,12 @@ const ink: ThemePreset = {
   },
 }
 
-/** 暖石 — 暖灰棕，像牛皮纸或旧书页，和"收藏"的语义契合。 */
-const stone: ThemePreset = {
-  key: "stone",
-  label: "暖石",
-  description: "暖灰棕，旧书页质感",
-  colors: {
-    "--background": "40 20% 99%",
-    "--foreground": "30 10% 12%",
-    "--primary": "30 30% 33%",
-    "--primary-foreground": "40 20% 98%",
-    "--secondary": "35 15% 95%",
-    "--secondary-foreground": "30 12% 25%",
-    "--muted": "35 12% 95%",
-    "--muted-foreground": "30 8% 46%",
-    "--accent": "35 15% 93%",
-    "--accent-foreground": "30 10% 12%",
-    "--destructive": "0 55% 48%",
-    "--destructive-foreground": "40 20% 98%",
-    "--border": "35 10% 89%",
-    "--input": "35 10% 87%",
-    "--ring": "30 30% 33%",
-    "--card": "40 20% 99%",
-    "--card-foreground": "30 10% 12%",
-    "--popover": "40 18% 100%",
-    "--popover-foreground": "30 10% 12%",
-    "--sidebar-background": "38 18% 96%",
-    "--sidebar-foreground": "30 10% 12%",
-    "--sidebar-accent": "35 14% 92%",
-    "--sidebar-accent-foreground": "30 10% 12%",
-    "--sidebar-border": "35 10% 90%",
-  },
-}
-
-/** 青竹 — 低饱和灰绿，安静自然，长时间看屏幕舒适。 */
-const sage: ThemePreset = {
-  key: "sage",
-  label: "青竹",
-  description: "灰绿色，安静自然",
-  colors: {
-    "--background": "150 10% 99%",
-    "--foreground": "150 8% 12%",
-    "--primary": "155 25% 30%",
-    "--primary-foreground": "150 10% 98%",
-    "--secondary": "150 8% 95%",
-    "--secondary-foreground": "150 10% 25%",
-    "--muted": "150 6% 95%",
-    "--muted-foreground": "150 5% 46%",
-    "--accent": "155 10% 93%",
-    "--accent-foreground": "150 8% 12%",
-    "--destructive": "0 55% 48%",
-    "--destructive-foreground": "150 10% 98%",
-    "--border": "150 5% 89%",
-    "--input": "150 5% 87%",
-    "--ring": "155 25% 30%",
-    "--card": "150 10% 99%",
-    "--card-foreground": "150 8% 12%",
-    "--popover": "150 8% 100%",
-    "--popover-foreground": "150 8% 12%",
-    "--sidebar-background": "150 8% 97%",
-    "--sidebar-foreground": "150 8% 12%",
-    "--sidebar-accent": "152 8% 92%",
-    "--sidebar-accent-foreground": "150 8% 12%",
-    "--sidebar-border": "150 5% 90%",
-  },
-}
-
-/** 靛青 — 低饱和蓝灰，经典工具类应用配色。 */
-const indigo: ThemePreset = {
-  key: "indigo",
-  label: "靛青",
-  description: "灰蓝色，经典工具风",
-  colors: {
-    "--background": "220 14% 99%",
-    "--foreground": "224 12% 12%",
-    "--primary": "224 30% 38%",
-    "--primary-foreground": "220 14% 98%",
-    "--secondary": "220 10% 96%",
-    "--secondary-foreground": "224 14% 25%",
-    "--muted": "220 8% 96%",
-    "--muted-foreground": "220 8% 46%",
-    "--accent": "220 10% 94%",
-    "--accent-foreground": "224 12% 12%",
-    "--destructive": "0 60% 50%",
-    "--destructive-foreground": "220 14% 98%",
-    "--border": "220 8% 90%",
-    "--input": "220 8% 88%",
-    "--ring": "224 30% 38%",
-    "--card": "220 14% 99%",
-    "--card-foreground": "224 12% 12%",
-    "--popover": "220 12% 100%",
-    "--popover-foreground": "224 12% 12%",
-    "--sidebar-background": "220 10% 97%",
-    "--sidebar-foreground": "224 12% 12%",
-    "--sidebar-accent": "220 9% 93%",
-    "--sidebar-accent-foreground": "224 12% 12%",
-    "--sidebar-border": "220 8% 91%",
-  },
-}
+// TODO: 后续新增更多主题预设（需拉开色差，让用户能明显感知切换效果）
 
 // ─── 注册表 ────────────────────────────────────────────────────
 
 /** 所有可用主题，按展示顺序排列 */
-export const themePresets: ThemePreset[] = [ink, stone, sage, indigo]
+export const themePresets: ThemePreset[] = [ink]
 
 /** 默认主题 key */
 export const DEFAULT_THEME_KEY = "ink"
