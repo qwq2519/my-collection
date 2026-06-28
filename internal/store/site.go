@@ -20,6 +20,7 @@ func siteBleveFields(site *model.Site) map[string]interface{} {
 		"title":       site.Title,
 		"description": site.Description,
 		"domain":      site.Domain,
+		"url":         site.URL,
 		"domain_text": site.Domain,
 		"tags":        site.Tags,
 		"updated_at":  site.UpdatedAt,
@@ -29,9 +30,6 @@ func siteBleveFields(site *model.Site) map[string]interface{} {
 // getSiteTx 在已有事务中读取站点（bookmark.go 等同包文件复用）
 func getSiteTx(tx *buntdb.Tx, id string) (*model.Site, error) {
 	val, err := tx.Get("site:" + id)
-	if err == buntdb.ErrNotFound {
-		return nil, fmt.Errorf("站点不存在")
-	}
 	if err != nil {
 		return nil, err
 	}
@@ -98,9 +96,6 @@ func (s *Store) GetSite(id string) (*model.Site, error) {
 	var site model.Site
 	err := s.db.View(func(tx *buntdb.Tx) error {
 		val, err := tx.Get("site:" + id)
-		if err == buntdb.ErrNotFound {
-			return fmt.Errorf("站点不存在")
-		}
 		if err != nil {
 			return err
 		}
