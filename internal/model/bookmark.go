@@ -29,10 +29,11 @@ func (b *Bookmark) EnsureSlices() {
 }
 
 // CreateBookmarkReq 创建书签请求。
-// SiteID 由后端从 URL 自动匹配，前端无需传递。
+// SiteID 和 Domain 由后端从 URL 自动匹配/提取，前端无需传递。
 type CreateBookmarkReq struct {
 	URL         string   `json:"url"`
 	SiteID      string   `json:"-"`
+	Domain      string   `json:"-"`
 	Title       string   `json:"title"`
 	Description string   `json:"description,omitempty"`
 	Tags        []string `json:"tags,omitempty"`

@@ -159,6 +159,7 @@ func (u *URLService) CreateBookmark(req model.CreateBookmarkReq) (_ *model.Bookm
 		return nil, fmt.Errorf("域名 %q 无对应站点，请先创建站点", domain)
 	}
 	req.SiteID = site.ID
+	req.Domain = domain
 
 	tags, err := normalizeTags(req.Tags)
 	if err != nil {

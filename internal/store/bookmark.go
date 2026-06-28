@@ -79,16 +79,12 @@ func (s *Store) CreateBookmark(req model.CreateBookmarkReq) (*model.Bookmark, er
 	if err != nil {
 		return nil, err
 	}
-	domain, err := util.ExtractDomain(req.URL)
-	if err != nil {
-		return nil, err
-	}
 
 	now := time.Now()
 	bm := &model.Bookmark{
 		ID:          uuid.New().String(),
 		URL:         req.URL,
-		Domain:      domain,
+		Domain:      req.Domain,
 		SiteID:      req.SiteID,
 		Title:       req.Title,
 		Description: req.Description,
