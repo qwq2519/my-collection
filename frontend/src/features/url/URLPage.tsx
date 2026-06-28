@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 import { SiteList } from "./SiteList"
 import { SiteDetail } from "./SiteDetail"
 import { BookmarkDetail } from "./BookmarkDetail"
@@ -27,18 +27,13 @@ export function URLPage() {
   // TODO: 标签列表后续从 TagService 获取，当前用搜索结果中出现的标签
   const allTags = useCollectedTags()
 
-  const handleSearch = useCallback(
-    (query: string) => { search(query) },
-    [search]
-  )
-
   return (
     <div className="flex flex-col h-full">
       {/* 顶部搜索栏 */}
       <div className="flex items-center gap-2 px-3 py-2 border-b shrink-0">
         <SearchBar
           value={searchQuery}
-          onChange={handleSearch}
+          onChange={search}
           placeholder="搜索站点和书签..."
           className="flex-1"
         />

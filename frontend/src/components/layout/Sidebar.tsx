@@ -56,7 +56,6 @@ export function Sidebar() {
         {navItems.map((item) => (
           <NavItem
             key={item.page}
-            page={item.page}
             label={item.label}
             icon={item.icon}
             active={currentPage === item.page}
@@ -69,7 +68,6 @@ export function Sidebar() {
       {/* 底部设置项，用分割线隔开 */}
       <div className="border-t border-sidebar-border px-2 py-2">
         <NavItem
-          page={settingsItem.page}
           label={settingsItem.label}
           icon={settingsItem.icon}
           active={currentPage === "settings"}
@@ -89,7 +87,6 @@ function NavItem({
   collapsed,
   onClick,
 }: {
-  page: Page
   label: string
   icon: typeof Globe
   active: boolean

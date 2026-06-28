@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react"
+import { useEffect, useRef } from "react"
 import { cn } from "@/lib/utils"
 import { useURLStore, getActiveSiteId } from "@/stores/url"
 import { EmptyState } from "@/components/EmptyState"
@@ -50,11 +50,6 @@ function DefaultSiteList() {
     return () => observer.disconnect()
   }, [hasMore])
 
-  const handleSelect = useCallback(
-    (id: string) => { selectSite(id) },
-    [selectSite]
-  )
-
   if (!loading && sites.length === 0) {
     return <EmptyState icon={Globe} message="暂无站点" className="h-full" />
   }
@@ -68,7 +63,7 @@ function DefaultSiteList() {
           icon={site.icon}
           count={site.bookmark_count}
           selected={selectedSiteId === site.id}
-          onClick={() => handleSelect(site.id)}
+          onClick={() => selectSite(site.id)}
         />
       ))}
 

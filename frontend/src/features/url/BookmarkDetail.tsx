@@ -166,12 +166,8 @@ function AttachmentIcon({ ext }: { ext: string }) {
   return <FileText size={12} className="shrink-0 text-muted-foreground" />
 }
 
-function formatTime(t: any): string {
+function formatTime(t: string | undefined): string {
   if (!t) return ""
-  try {
-    const d = typeof t === "string" ? new Date(t) : new Date(t.toString())
-    return d.toLocaleDateString("zh-CN")
-  } catch {
-    return ""
-  }
+  const d = new Date(t)
+  return isNaN(d.getTime()) ? "" : d.toLocaleDateString("zh-CN")
 }
