@@ -387,8 +387,9 @@ func (s *Store) GetDirtyIndexStatus() model.DirtyIndexStatus {
 func (s *Store) ClearAllDirtyItems() {
 	err := s.db.Update(func(tx *buntdb.Tx) error {
 		var keys []string
-		s.foreachDirtyItem(tx, func(key string, _ model.DirtyItem) {
+		tx.AscendKeys("dirty:*", func(key, _ string) bool {
 			keys = append(keys, key)
+			return true
 		})
 		for _, k := range keys {
 			if _, err := tx.Delete(k); err != nil && err != buntdb.ErrNotFound {
