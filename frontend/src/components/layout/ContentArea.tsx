@@ -1,4 +1,5 @@
 import { useAppStore } from "@/stores/app"
+import { URLPage } from "@/features/url/URLPage"
 
 /**
  * 内容区容器：根据当前页面渲染对应功能模块。
@@ -9,7 +10,7 @@ export function ContentArea() {
 
   return (
     <main className="flex-1 h-full overflow-hidden">
-      {currentPage === "url" && <Placeholder label="URL 收藏" />}
+      {currentPage === "url" && <URLPage />}
       {currentPage === "notes" && <Placeholder label="笔记" />}
       {currentPage === "media" && <Placeholder label="媒体" />}
       {currentPage === "tags" && <Placeholder label="标签管理" />}
