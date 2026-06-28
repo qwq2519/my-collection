@@ -145,21 +145,6 @@ func (s *Store) UpdateSite(req model.UpdateSiteReq) (*model.Site, error) {
 		if req.Title != nil {
 			site.Title = *req.Title
 		}
-		if req.URL != nil {
-			site.URL = *req.URL
-		}
-		if req.Domain != nil && *req.Domain != site.Domain {
-			pivot, _ := json.Marshal(map[string]string{"domain": *req.Domain})
-			var exists bool
-			tx.AscendEqual("idx:site_domain", string(pivot), func(key, value string) bool {
-				exists = true
-				return false
-			})
-			if exists {
-				return fmt.Errorf("域名 %q 对应的站点已存在", *req.Domain)
-			}
-			site.Domain = *req.Domain
-		}
 		if req.Description != nil {
 			site.Description = *req.Description
 		}

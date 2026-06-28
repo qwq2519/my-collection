@@ -61,7 +61,7 @@ func (u *URLService) GetSite(id string) (_ *model.Site, err error) {
 	return u.Store.GetSite(id)
 }
 
-// UpdateSite 更新站点。传入 URL 时自动重新提取 Domain。
+// UpdateSite 更新站点（URL/Domain 不可修改）。
 // 当 Tags 字段变化时维护 url_tag 注册表 count。
 func (u *URLService) UpdateSite(req model.UpdateSiteReq) (_ *model.Site, err error) {
 	defer logError(&err)
@@ -70,16 +70,6 @@ func (u *URLService) UpdateSite(req model.UpdateSiteReq) (_ *model.Site, err err
 	}
 	if req.Title != nil && strings.TrimSpace(*req.Title) == "" {
 		return nil, fmt.Errorf("站点标题不能为空")
-	}
-	if req.URL != nil {
-		if strings.TrimSpace(*req.URL) == "" {
-			return nil, fmt.Errorf("站点 URL 不能为空，请提供完整的 URL（如 https://example.com）")
-		}
-		domain, err := util.ExtractDomain(*req.URL)
-		if err != nil {
-			return nil, fmt.Errorf("URL 格式不正确，请提供完整的 URL（如 https://example.com）")
-		}
-		req.Domain = &domain
 	}
 
 	var oldTags []string

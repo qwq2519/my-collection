@@ -30,12 +30,12 @@ type CreateSiteReq struct {
 }
 
 // UpdateSiteReq 更新站点请求。
-// 传入 URL 时后端自动重新提取 Domain，前端无需单独传 Domain。
+// URL 和 Domain 创建后不可修改（domain 是站点的唯一标识）。
+// TODO: 后续如需开放修改 URL/Domain，需同步更新所有关联书签的 domain 和
+//       site_id，并处理 icon 文件名（按域名命名）的变更。
 type UpdateSiteReq struct {
 	ID          string        `json:"id"`
 	Title       *string       `json:"title,omitempty"`
-	URL         *string       `json:"url,omitempty"`
-	Domain      *string       `json:"domain,omitempty"`
 	Description *string       `json:"description,omitempty"`
 	Tags        *[]string     `json:"tags,omitempty"`
 	Icon        *string       `json:"icon,omitempty"`
