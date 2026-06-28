@@ -15,6 +15,7 @@ import { URLService } from "../../../bindings/collections/internal/service"
 export function useURLNormalize(urlValue: string, delayMs = 400): string {
   const [normalizedURL, setNormalizedURL] = useState("")
   const timerRef = useRef<ReturnType<typeof setTimeout>>()
+  const versionRef = useRef(0)
 
   useEffect(() => {
     if (!urlValue || urlValue.trim().length < 8) {
@@ -22,13 +23,14 @@ export function useURLNormalize(urlValue: string, delayMs = 400): string {
       return
     }
 
+    const version = ++versionRef.current
     clearTimeout(timerRef.current)
     timerRef.current = setTimeout(async () => {
       try {
         const result = await URLService.NormalizeURL(urlValue.trim())
-        setNormalizedURL(result ?? "")
+        if (versionRef.current === version) setNormalizedURL(result ?? "")
       } catch {
-        setNormalizedURL("")
+        if (versionRef.current === version) setNormalizedURL("")
       }
     }, delayMs)
 
@@ -65,6 +67,7 @@ export function useSiteLookup(
   const [normalizedURL, setNormalizedURL] = useState("")
   const [lookupState, setLookupState] = useState<SiteLookupState>({ status: "idle" })
   const timerRef = useRef<ReturnType<typeof setTimeout>>()
+  const versionRef = useRef(0)
 
   useEffect(() => {
     if (!enabled || !urlValue || urlValue.trim().length < 8) {
@@ -80,27 +83,31 @@ export function useSiteLookup(
       return
     }
 
+    const version = ++versionRef.current
     clearTimeout(timerRef.current)
     timerRef.current = setTimeout(async () => {
       // 步骤 1：标准化 URL
       try {
         const norm = await URLService.NormalizeURL(urlValue.trim())
-        setNormalizedURL(norm ?? "")
+        if (versionRef.current === version) setNormalizedURL(norm ?? "")
       } catch {
-        setNormalizedURL("")
+        if (versionRef.current === version) setNormalizedURL("")
       }
+
+      if (versionRef.current !== version) return
 
       // 步骤 2：查找域名对应的站点
       setLookupState({ status: "checking" })
       try {
         const result = await URLService.LookupSiteByURL({ url: urlValue })
+        if (versionRef.current !== version) return
         if (result?.found) {
           setLookupState({ status: "found", domain: result.domain })
         } else {
           setLookupState({ status: "not_found", domain: result?.domain ?? "" })
         }
       } catch {
-        setLookupState({ status: "idle" })
+        if (versionRef.current === version) setLookupState({ status: "idle" })
       }
     }, 500)
 
