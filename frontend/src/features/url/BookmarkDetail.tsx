@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
 import { ArrowLeft, ExternalLink, Loader2, FileText, ImageIcon, Video, Pencil, Trash2 } from "lucide-react"
-import { IMAGE_EXTS, VIDEO_EXTS, isPreviewableExt, extractError } from "@/lib/utils"
+import { IMAGE_EXTS, VIDEO_EXTS, isPreviewableExt } from "@/lib/utils"
 import { toast } from "sonner"
 import { BookmarkForm } from "./BookmarkForm"
 import { URLService } from "../../../bindings/collections/internal/service"
@@ -73,14 +73,10 @@ function BookmarkNav({ bm, onEdit }: { bm: Bookmark; onEdit: () => void }) {
   const [showDelete, setShowDelete] = useState(false)
 
   const handleDelete = async () => {
-    try {
-      await URLService.DeleteBookmark(bm.id)
-      toast.success("书签已删除")
-      backToSite()
-      refreshCurrentSite()
-    } catch (e: unknown) {
-      toast.error(extractError(e))
-    }
+    await URLService.DeleteBookmark(bm.id)
+    toast.success("书签已删除")
+    backToSite()
+    refreshCurrentSite()
   }
 
   return (
