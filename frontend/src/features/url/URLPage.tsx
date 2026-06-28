@@ -165,15 +165,27 @@ function SearchToolbar({
 
 function useCollectedTags(): string[] {
   const sites = useURLStore((s) => s.sites)
+  const bookmarks = useURLStore((s) => s.bookmarks)
   const searchResults = useURLStore((s) => s.searchResults)
   const searchMode = useURLStore((s) => s.searchMode)
 
   return useMemo(() => {
-    const source = searchMode ? searchResults.map((r) => r.site) : sites
     const tagSet = new Set<string>()
-    for (const site of source) {
-      if (site.tags) site.tags.forEach((t) => tagSet.add(t))
+    if (searchMode) {
+      for (const r of searchResults) {
+        if (r.site.tags) r.site.tags.forEach((t) => tagSet.add(t))
+        for (const bm of r.bookmarks) {
+          if (bm.tags) bm.tags.forEach((t) => tagSet.add(t))
+        }
+      }
+    } else {
+      for (const site of sites) {
+        if (site.tags) site.tags.forEach((t) => tagSet.add(t))
+      }
+      for (const bm of bookmarks) {
+        if (bm.tags) bm.tags.forEach((t) => tagSet.add(t))
+      }
     }
     return Array.from(tagSet).sort()
-  }, [sites, searchResults, searchMode])
+  }, [sites, bookmarks, searchResults, searchMode])
 }
