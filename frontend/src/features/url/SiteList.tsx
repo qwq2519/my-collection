@@ -51,7 +51,7 @@ function DefaultSiteList() {
     )
     observer.observe(sentinel)
     return () => observer.disconnect()
-  }, [])
+  }, [hasMore])
 
   const handleSelect = useCallback(
     (id: string) => { selectSite(id) },
@@ -112,7 +112,7 @@ function SearchResultList() {
     )
     observer.observe(sentinel)
     return () => observer.disconnect()
-  }, [])
+  }, [hasMore])
 
   if (!loading && results.length === 0) {
     return <EmptyState icon={Search} message="无匹配结果" className="h-full" />
