@@ -19,19 +19,19 @@ func (s *Store) GetTag(prefix, name string) (*model.Tag, error) {
 	var tag *model.Tag
 	err := s.db.View(func(tx *buntdb.Tx) error {
 		val, err := tx.Get(prefix + ":" + name)
-		if err == buntdb.ErrNotFound {
-			return nil
-		}
 		if err != nil {
 			return err
 		}
-		var t model.Tag
-		if err := json.Unmarshal([]byte(val), &t); err != nil {
+		if err := json.Unmarshal([]byte(val), tag); err != nil {
 			return err
 		}
-		tag = &t
 		return nil
 	})
+
+	if err != nil {
+		return nil, err
+	}
+
 	return tag, err
 }
 
@@ -73,9 +73,6 @@ func (s *Store) SetTag(prefix string, tag *model.Tag) error {
 func (s *Store) DeleteTagEntry(prefix, name string) error {
 	return s.db.Update(func(tx *buntdb.Tx) error {
 		_, err := tx.Delete(prefix + ":" + name)
-		if err == buntdb.ErrNotFound {
-			return nil
-		}
 		return err
 	})
 }

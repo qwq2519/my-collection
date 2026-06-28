@@ -77,9 +77,6 @@ func (s *Store) GetFolder(id string) (*model.MediaFolder, error) {
 	var folder model.MediaFolder
 	err := s.db.View(func(tx *buntdb.Tx) error {
 		val, err := tx.Get("folder:" + id)
-		if err == buntdb.ErrNotFound {
-			return fmt.Errorf("文件夹不存在")
-		}
 		if err != nil {
 			return err
 		}
@@ -98,10 +95,11 @@ func (s *Store) UpdateFolder(folder *model.MediaFolder) error {
 		return fmt.Errorf("marshal folder: %w", err)
 	}
 	return s.db.Update(func(tx *buntdb.Tx) error {
-		if _, err := tx.Get("folder:" + folder.ID); err == buntdb.ErrNotFound {
-			return fmt.Errorf("文件夹不存在")
+		_, err := tx.Get("folder:" + folder.ID)
+		if err != nil {
+			return err
 		}
-		_, _, err := tx.Set("folder:"+folder.ID, string(val), nil)
+		_, _, err = tx.Set("folder:"+folder.ID, string(val), nil)
 		return err
 	})
 }
@@ -110,9 +108,6 @@ func (s *Store) UpdateFolder(folder *model.MediaFolder) error {
 func (s *Store) DeleteFolder(id string) error {
 	return s.db.Update(func(tx *buntdb.Tx) error {
 		_, err := tx.Delete("folder:" + id)
-		if err == buntdb.ErrNotFound {
-			return fmt.Errorf("文件夹不存在")
-		}
 		return err
 	})
 }
@@ -144,15 +139,12 @@ func (s *Store) RemoveMediaFolderDir(folderID string) error {
 
 // --- media_meta.json / tree_hash.json 读写 ---
 
-// ReadMediaMeta 读取文件夹的媒体元数据，文件不存在时返回空 meta
+// ReadMediaMeta 读取文件夹的媒体元数据
 func (s *Store) ReadMediaMeta(folderID string) (*model.MediaMeta, error) {
 	path := filepath.Join(s.mediaFolderDir(folderID), "media_meta.json")
 	data, err := os.ReadFile(path)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return &model.MediaMeta{FolderID: folderID, Files: make(map[string]model.MediaFile)}, nil
-		}
-		return nil, fmt.Errorf("read media_meta.json: %w", err)
+		return nil, fmt.Errorf("read media_meta.json failed: %w", err)
 	}
 	var meta model.MediaMeta
 	if err := json.Unmarshal(data, &meta); err != nil {
@@ -179,9 +171,6 @@ func (s *Store) ReadTreeHash(folderID string) (*model.TreeHashFile, error) {
 	path := filepath.Join(s.mediaFolderDir(folderID), "tree_hash.json")
 	data, err := os.ReadFile(path)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
 		return nil, fmt.Errorf("read tree_hash.json: %w", err)
 	}
 	var th model.TreeHashFile
