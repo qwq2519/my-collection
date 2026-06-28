@@ -1,12 +1,12 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -18,18 +18,19 @@ import (
 )
 
 const (
-	fetchTimeout = 10 * time.Second
-	maxBodySize  = 512 << 10
-	maxIconSize  = 1 << 20
-	minIconBytes = 100
-	userAgent    = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
+	fetchTimeout      = 5 * time.Second
+	totalFetchTimeout = 15 * time.Second
+	maxBodySize       = 512 << 10
+	maxIconSize       = 1 << 20
+	minIconBytes      = 100
+	userAgent         = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
 )
 
 var fetchClient = &http.Client{Timeout: fetchTimeout}
 
 // FetchMetadata 抓取 URL 页面元数据（title、description、icon、og:image）。
-// icon 使用多级降级：Google S2 → DuckDuckGo → 解析 HTML <link rel="icon"> → 为空。
-// 超时上限 10 秒，不缓存抓取结果。
+// icon 当前仅使用 Google S2 获取。
+// 单次 HTTP 请求超时 5 秒，整体超时上限 15 秒，不缓存抓取结果。
 func (u *URLService) FetchMetadata(req model.FetchMetaReq) (_ *model.FetchMetaResult, err error) {
 	defer logError(&err)
 	if strings.TrimSpace(req.URL) == "" {
@@ -44,14 +45,17 @@ func (u *URLService) FetchMetadata(req model.FetchMetaReq) (_ *model.FetchMetaRe
 		return nil, err
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), totalFetchTimeout)
+	defer cancel()
+
 	result := &model.FetchMetaResult{}
 
-	meta, iconHrefs := fetchPageMeta(req.URL)
+	meta, iconHrefs := fetchPageMeta(ctx, req.URL)
 	result.Title = meta.title
 	result.Description = meta.description
 	result.OGImage = meta.ogImage
 
-	result.Icon = u.fetchAndSaveIcon(domain, req.URL, iconHrefs)
+	result.Icon = u.fetchAndSaveIcon(ctx, domain, req.URL, iconHrefs)
 
 	return result, nil
 }
@@ -64,10 +68,10 @@ type pageMeta struct {
 	ogImage     string
 }
 
-func fetchPageMeta(rawURL string) (pageMeta, []string) {
+func fetchPageMeta(ctx context.Context, rawURL string) (pageMeta, []string) {
 	pm := pageMeta{}
 
-	resp, err := doGet(rawURL)
+	resp, err := doGet(ctx, rawURL)
 	if err != nil {
 		slog.Warn("fetch page failed", "url", rawURL, "err", err)
 		return pm, nil
@@ -86,21 +90,29 @@ func fetchPageMeta(rawURL string) (pageMeta, []string) {
 	}
 
 	var iconHrefs []string
-	var hasOGTitle bool
+	var hasOGTitle, hasOGDesc bool
 
 	var walk func(*html.Node)
 	walk = func(n *html.Node) {
 		if n.Type == html.ElementNode {
 			switch n.Data {
 			case "title":
-				if n.FirstChild != nil && !hasOGTitle && pm.title == "" {
-					pm.title = strings.TrimSpace(n.FirstChild.Data)
+				if !hasOGTitle && pm.title == "" {
+					var sb strings.Builder
+					for c := n.FirstChild; c != nil; c = c.NextSibling {
+						if c.Type == html.TextNode {
+							sb.WriteString(c.Data)
+						}
+					}
+					if t := strings.TrimSpace(sb.String()); t != "" {
+						pm.title = t
+					}
 				}
 			case "meta":
 				name, content := metaAttrs(n)
 				switch strings.ToLower(name) {
 				case "description":
-					if pm.description == "" {
+					if !hasOGDesc && pm.description == "" {
 						pm.description = content
 					}
 				case "og:title":
@@ -109,8 +121,9 @@ func fetchPageMeta(rawURL string) (pageMeta, []string) {
 						hasOGTitle = true
 					}
 				case "og:description":
-					if pm.description == "" {
+					if content != "" {
 						pm.description = content
+						hasOGDesc = true
 					}
 				case "og:image":
 					if pm.ogImage == "" {
@@ -119,7 +132,7 @@ func fetchPageMeta(rawURL string) (pageMeta, []string) {
 				}
 			case "link":
 				rel, href := linkAttrs(n)
-				if strings.Contains(strings.ToLower(rel), "icon") && href != "" {
+				if strings.Contains(strings.ToLower(rel), "icon") && href != "" && !strings.HasPrefix(href, "data:") {
 					iconHrefs = append(iconHrefs, href)
 				}
 			}
@@ -157,14 +170,13 @@ func linkAttrs(n *html.Node) (rel, href string) {
 	return
 }
 
-// --- Icon 多级降级 ---
+// --- Icon ---
 
-func (u *URLService) fetchAndSaveIcon(domain, pageURL string, iconHrefs []string) string {
+func (u *URLService) fetchAndSaveIcon(ctx context.Context, domain, pageURL string, iconHrefs []string) string {
 	iconsDir := filepath.Join(u.Store.PersistDir(), "url-assets", "icons")
-	os.MkdirAll(iconsDir, 0755)
 
-	// Level 1: Google S2
-	if data := fetchIconData(fmt.Sprintf(
+	// Google S2
+	if data := fetchIconData(ctx, fmt.Sprintf(
 		"https://www.google.com/s2/favicons?domain=%s&sz=64", domain,
 	)); len(data) > minIconBytes {
 		filename := domain + ".png"
@@ -174,42 +186,41 @@ func (u *URLService) fetchAndSaveIcon(domain, pageURL string, iconHrefs []string
 		}
 	}
 
-	// Level 2: DuckDuckGo
-	if data := fetchIconData(fmt.Sprintf(
-		"https://icons.duckduckgo.com/ip3/%s.ico", domain,
-	)); len(data) > minIconBytes {
-		filename := domain + ".ico"
-		if saveIcon(iconsDir, filename, data) == nil {
-			slog.Info("icon from duckduckgo", "domain", domain)
-			return filename
-		}
-	}
+	// // DuckDuckGo（暂时禁用）
+	// if data := fetchIconData(ctx, fmt.Sprintf(
+	// 	"https://icons.duckduckgo.com/ip3/%s.ico", domain,
+	// )); len(data) > minIconBytes {
+	// 	filename := domain + ".ico"
+	// 	if saveIcon(iconsDir, filename, data) == nil {
+	// 		slog.Info("icon from duckduckgo", "domain", domain)
+	// 		return filename
+	// 	}
+	// }
 
-	// Level 3: HTML <link rel="icon">
-	for _, href := range iconHrefs {
-		iconURL := resolveHref(pageURL, href)
-		if iconURL == "" {
-			continue
-		}
-		data := fetchIconData(iconURL)
-		if len(data) <= minIconBytes {
-			continue
-		}
-		ext := guessExt(iconURL, ".png")
-		filename := domain + ext
-		if saveIcon(iconsDir, filename, data) == nil {
-			slog.Info("icon from html link", "domain", domain, "src", iconURL)
-			return filename
-		}
-	}
+	// // HTML <link rel="icon">（暂时禁用）
+	// for _, href := range iconHrefs {
+	// 	iconURL := resolveHref(pageURL, href)
+	// 	if iconURL == "" {
+	// 		continue
+	// 	}
+	// 	data := fetchIconData(ctx, iconURL)
+	// 	if len(data) <= minIconBytes {
+	// 		continue
+	// 	}
+	// 	ext := guessExt(iconURL, ".png")
+	// 	filename := domain + ext
+	// 	if saveIcon(iconsDir, filename, data) == nil {
+	// 		slog.Info("icon from html link", "domain", domain, "src", iconURL)
+	// 		return filename
+	// 	}
+	// }
 
-	// Level 4: 留空，前端展示占位 icon
 	slog.Info("no icon found", "domain", domain)
 	return ""
 }
 
-func fetchIconData(iconURL string) []byte {
-	resp, err := doGet(iconURL)
+func fetchIconData(ctx context.Context, iconURL string) []byte {
+	resp, err := doGet(ctx, iconURL)
 	if err != nil {
 		return nil
 	}
@@ -230,8 +241,8 @@ func saveIcon(dir, filename string, data []byte) error {
 
 // --- 工具函数 ---
 
-func doGet(rawURL string) (*http.Response, error) {
-	req, err := http.NewRequest("GET", rawURL, nil)
+func doGet(ctx context.Context, rawURL string) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", rawURL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -240,12 +251,6 @@ func doGet(rawURL string) (*http.Response, error) {
 }
 
 func resolveHref(base, href string) string {
-	if strings.HasPrefix(href, "http://") || strings.HasPrefix(href, "https://") {
-		return href
-	}
-	if strings.HasPrefix(href, "//") {
-		return "https:" + href
-	}
 	baseURL, err := url.Parse(base)
 	if err != nil {
 		return ""
