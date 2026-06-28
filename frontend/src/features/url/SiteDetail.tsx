@@ -49,20 +49,24 @@ export function SiteDetail() {
 
   if (mode === "edit-site") {
     return (
-      <SiteForm
-        site={site}
-        onSave={() => { setMode("view"); refreshCurrentSite() }}
-        onCancel={() => setMode("view")}
-      />
+      <div className="h-full overflow-y-auto">
+        <SiteForm
+          site={site}
+          onSave={() => { setMode("view"); refreshCurrentSite() }}
+          onCancel={() => setMode("view")}
+        />
+      </div>
     )
   }
 
   if (mode === "add-bookmark") {
     return (
-      <BookmarkForm
-        onSave={() => { setMode("view"); refreshCurrentSite() }}
-        onCancel={() => setMode("view")}
-      />
+      <div className="h-full overflow-y-auto">
+        <BookmarkForm
+          onSave={() => { setMode("view"); refreshCurrentSite() }}
+          onCancel={() => setMode("view")}
+        />
+      </div>
     )
   }
 
@@ -220,7 +224,7 @@ function BookmarkSection({ site, onAddBookmark }: { site: Site; onAddBookmark: (
       )}
 
       {/* 书签内容 */}
-      <div className="flex-1 px-6 pb-4 overflow-y-auto">
+      <div className="px-6 pb-4">
         {bookmarksLoading && bookmarks.length === 0 ? (
           <div className="flex justify-center py-8">
             <Loader2 size={20} className="animate-spin text-muted-foreground" />

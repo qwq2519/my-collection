@@ -39,15 +39,17 @@ export function BookmarkDetail() {
 
   if (editing) {
     return (
-      <BookmarkForm
-        bookmark={bm}
-        onSave={() => {
-          setEditing(false)
-          useURLStore.getState().selectBookmark(bm.id)
-          useURLStore.getState().refreshCurrentSite()
-        }}
-        onCancel={() => setEditing(false)}
-      />
+      <div className="h-full overflow-y-auto">
+        <BookmarkForm
+          bookmark={bm}
+          onSave={() => {
+            setEditing(false)
+            useURLStore.getState().selectBookmark(bm.id)
+            useURLStore.getState().refreshCurrentSite()
+          }}
+          onCancel={() => setEditing(false)}
+        />
+      </div>
     )
   }
 
