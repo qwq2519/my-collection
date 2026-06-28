@@ -1,3 +1,36 @@
+/**
+ * URL 收藏模块的全局状态管理（Zustand store）。
+ *
+ * ┌─────────────────────────────────────────────────────────┐
+ * │  Zustand 简介（给 Go 工程师）                            │
+ * │                                                         │
+ * │  Zustand 类似 Go 中的全局 struct + mutex：               │
+ * │  - 状态字段 = struct fields                              │
+ * │  - action 方法 = struct methods                          │
+ * │  - set() = 加锁后修改字段                                │
+ * │  - get() = 读取当前快照                                  │
+ * │                                                         │
+ * │  组件通过 useURLStore((s) => s.xxx) 订阅特定字段，       │
+ * │  字段变化时 React 自动重新渲染该组件（类似 pub/sub）。    │
+ * │  每个 (s) => s.xxx 叫做 selector，只订阅需要的字段，     │
+ * │  避免不相关字段变化导致不必要的重渲染。                    │
+ * └─────────────────────────────────────────────────────────┘
+ *
+ * 本 store 管理 URL 收藏模块的三大数据域：
+ *
+ * 1. 站点列表（左栏） — sites*, 分页加载 + 无限滚动
+ * 2. 详情面板（右栏） — detailView, currentSite, bookmarks*, currentBookmark
+ * 3. 搜索/筛选       — search*, selectedTags
+ *
+ * 数据流：
+ *
+ *   用户操作          →  action 方法     →  调用后端 API   →  set() 更新状态  →  UI 自动刷新
+ *   点击侧边栏"URL"   →  loadSites()     →  ListSites      →  sites=[...]     →  SiteList 重渲染
+ *   点击某站点         →  selectSite(id)  →  GetSite +      →  currentSite,    →  SiteDetail 重渲染
+ *                                           ListBookmarks     bookmarks=[...]
+ *   输入搜索关键词     →  search(query)   →  SearchURL      →  searchResults   →  SearchResultList 重渲染
+ */
+
 import { create } from "zustand"
 import { URLService } from "../../bindings/collections/internal/service"
 import type {
@@ -6,7 +39,15 @@ import type {
   SiteWithBookmarks,
 } from "../../bindings/collections/internal/model"
 
-/** 右侧面板当前展示的视图类型 */
+// ─── 类型定义 ────────────────────────────────────────────────
+
+/**
+ * 右侧面板当前展示的视图类型（联合类型，类比 Go 的 interface + type assert）。
+ *
+ * - none:     空态，未选中任何站点
+ * - site:     展示站点详情 + 书签列表
+ * - bookmark: 展示单个书签详情（从站点视图点进去）
+ */
 export type DetailView =
   | { type: "none" }
   | { type: "site"; siteId: string }
@@ -22,71 +63,65 @@ export type BookmarkViewMode = "grid" | "list"
 
 const PAGE_SIZE = 50
 
+// ─── State 接口 ──────────────────────────────────────────────
+
 interface URLState {
-  // ─── 站点列表 ───────────────────────────────────
+  // ═══ 数据域 1：站点列表（左栏，分页加载） ═══
   sites: Site[]
   sitesTotal: number
-  sitesPage: number
-  sitesHasMore: boolean
+  sitesPage: number         // 当前已加载到第几页
+  sitesHasMore: boolean     // 后端是否还有下一页
   sitesLoading: boolean
 
-  // ─── 右侧面板 ───────────────────────────────────
-  detailView: DetailView
-  currentSite: Site | null
-  bookmarks: Bookmark[]
+  // ═══ 数据域 2：详情面板（右栏） ═══
+  detailView: DetailView    // 当前展示的视图类型
+  currentSite: Site | null  // 选中的站点完整数据
+  bookmarks: Bookmark[]     // 当前站点下的书签列表（也是分页的）
   bookmarksTotal: number
   bookmarksPage: number
   bookmarksHasMore: boolean
   bookmarksLoading: boolean
-  bookmarkViewMode: BookmarkViewMode
-  currentBookmark: Bookmark | null
+  bookmarkViewMode: BookmarkViewMode  // 网格 or 列表
+  currentBookmark: Bookmark | null    // 选中的单个书签
 
-  // ─── 搜索与筛选 ──────────────────────────────────
-  searchMode: boolean
+  // ═══ 数据域 3：搜索与筛选 ═══
+  searchMode: boolean       // 是否处于搜索模式（切换左栏数据源）
   searchQuery: string
-  searchResults: SiteWithBookmarks[]
+  searchResults: SiteWithBookmarks[]  // 搜索结果：站点+命中的书签
   searchTotal: number
   searchHasMore: boolean
   searchPage: number
   searchLoading: boolean
-  selectedTags: string[]
+  selectedTags: string[]    // 标签筛选（AND 语义，与关键词取交集）
 
-  // ─── 操作方法 ───────────────────────────────────
-  /** 加载第一页站点 */
+  // ═══ Action 方法 ═══
+
+  // --- 站点列表 ---
   loadSites: () => Promise<void>
-  /** 加载下一页站点（无限滚动） */
   loadMoreSites: () => Promise<void>
 
-  /** 选中站点，加载站点详情和第一页书签 */
+  // --- 详情面板导航 ---
   selectSite: (siteId: string) => Promise<void>
-  /** 加载下一页书签 */
   loadMoreBookmarks: () => Promise<void>
-
-  /** 选中书签，加载书签详情 */
   selectBookmark: (bookmarkId: string) => Promise<void>
-  /** 返回到站点视图 */
+  /** 从书签详情返回站点视图 */
   backToSite: () => void
-
-  /** 切换书签网格/列表视图 */
   setBookmarkViewMode: (mode: BookmarkViewMode) => void
-
-  /** 刷新当前站点数据（创建/编辑/删除后调用） */
+  /** 数据变更后刷新右栏 + 左栏（创建/编辑/删除后调用） */
   refreshCurrentSite: () => Promise<void>
 
-  /** 执行搜索（关键词 + 标签筛选取交集） */
+  // --- 搜索 ---
   search: (query: string) => Promise<void>
-  /** 加载更多搜索结果 */
   loadMoreSearch: () => Promise<void>
-  /** 清除搜索，恢复默认站点列表 */
   clearSearch: () => void
-  /** 选中搜索结果中的站点（展示命中的书签） */
   selectSearchResult: (item: SiteWithBookmarks) => void
-  /** 设置标签筛选 */
   setSelectedTags: (tags: string[]) => void
-
 }
 
+// ─── Store 实现 ──────────────────────────────────────────────
+
 export const useURLStore = create<URLState>((set, get) => ({
+  // --- 初始值 ---
   sites: [],
   sitesTotal: 0,
   sitesPage: 1,
@@ -112,6 +147,9 @@ export const useURLStore = create<URLState>((set, get) => ({
   searchLoading: false,
   selectedTags: [],
 
+  // ═══ 站点列表操作 ═══
+
+  /** 加载第一页站点（页面初始化 或 数据变更后刷新） */
   loadSites: async () => {
     set({ sitesLoading: true })
     try {
@@ -127,15 +165,16 @@ export const useURLStore = create<URLState>((set, get) => ({
     }
   },
 
+  /** 加载下一页站点（无限滚动触发，由 useInfiniteScroll hook 调用） */
   loadMoreSites: async () => {
     const { sitesHasMore, sitesLoading, sitesPage, sites } = get()
-    if (!sitesHasMore || sitesLoading) return
+    if (!sitesHasMore || sitesLoading) return  // 防止重复请求
     set({ sitesLoading: true })
     try {
       const nextPage = sitesPage + 1
       const result = await URLService.ListSites({ page: nextPage, page_size: PAGE_SIZE })
       set({
-        sites: [...sites, ...(result?.items ?? [])],
+        sites: [...sites, ...(result?.items ?? [])],  // 追加到已有列表
         sitesTotal: result?.total ?? 0,
         sitesPage: nextPage,
         sitesHasMore: result?.has_more ?? false,
@@ -145,6 +184,12 @@ export const useURLStore = create<URLState>((set, get) => ({
     }
   },
 
+  // ═══ 详情面板导航 ═══
+
+  /**
+   * 选中站点：并行加载站点详情和第一页书签。
+   * 先 set 空态让 UI 立即切换到 loading 状态，再异步填充数据。
+   */
   selectSite: async (siteId) => {
     set({
       detailView: { type: "site", siteId },
@@ -201,7 +246,7 @@ export const useURLStore = create<URLState>((set, get) => ({
       const bm = await URLService.GetBookmark(bookmarkId)
       set({ currentBookmark: bm ?? null })
     } catch {
-      // 加载失败保持空态，UI 会展示错误提示
+      // 加载失败保持空态，UI 会展示 loading 或错误提示
     }
   },
 
@@ -217,11 +262,14 @@ export const useURLStore = create<URLState>((set, get) => ({
 
   setBookmarkViewMode: (mode) => set({ bookmarkViewMode: mode }),
 
+  /**
+   * 刷新当前站点的所有数据（创建/编辑/删除书签后调用）。
+   * 副作用链：刷新右栏详情 → 同时刷新左栏站点列表（因为书签数等可能变化）。
+   */
   refreshCurrentSite: async () => {
     const siteId = getActiveSiteId(get().detailView)
     if (!siteId) return
 
-    // 同时刷新站点列表和当前站点详情
     const [site, bmResult] = await Promise.all([
       URLService.GetSite(siteId),
       URLService.ListBookmarks({ site_id: siteId, page: 1, page_size: PAGE_SIZE }),
@@ -233,13 +281,14 @@ export const useURLStore = create<URLState>((set, get) => ({
       bookmarksPage: 1,
       bookmarksHasMore: bmResult?.has_more ?? false,
     })
-    // 刷新左侧站点列表
     get().loadSites()
   },
 
+  // ═══ 搜索与筛选 ═══
+
+  /** 执行搜索：关键词 + 标签筛选取交集（AND），均为空时退出搜索模式 */
   search: async (query) => {
     const { selectedTags } = get()
-    // 无关键词且无标签筛选时退出搜索模式
     if (!query.trim() && selectedTags.length === 0) {
       get().clearSearch()
       return
@@ -286,6 +335,7 @@ export const useURLStore = create<URLState>((set, get) => ({
     }
   },
 
+  /** 退出搜索模式，重置所有搜索状态 */
   clearSearch: () => {
     set({
       searchMode: false,
@@ -300,6 +350,10 @@ export const useURLStore = create<URLState>((set, get) => ({
     })
   },
 
+  /**
+   * 选中搜索结果中的一条：直接用搜索返回的数据填充右栏，
+   * 不再额外请求后端（因为搜索结果中已包含站点+命中书签）。
+   */
   selectSearchResult: (item) => {
     set({
       detailView: { type: "site", siteId: item.site.id },
@@ -313,6 +367,7 @@ export const useURLStore = create<URLState>((set, get) => ({
     })
   },
 
+  /** 标签筛选变化时自动触发搜索（或清除搜索） */
   setSelectedTags: (tags) => {
     set({ selectedTags: tags })
     const { searchQuery } = get()
