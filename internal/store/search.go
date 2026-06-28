@@ -93,6 +93,7 @@ func buildIndexMapping() mapping.IndexMapping {
 	siteMapping.AddFieldMappingsAt("domain", keywordField())
 	siteMapping.AddFieldMappingsAt("domain_text", textField())
 	siteMapping.AddFieldMappingsAt("tags", keywordField())
+	siteMapping.AddFieldMappingsAt("url", keywordField())
 	siteMapping.AddFieldMappingsAt("updated_at", datetimeField())
 	indexMapping.AddDocumentMapping("site", siteMapping)
 
@@ -157,14 +158,9 @@ type BleveDoc struct {
 // IndexDoc 索引单个文档到 Bleve（写操作后调用）。
 // 自动注入 _type 字段，调用方无需手动设置。
 // 失败时记录到脏队列，不阻塞主流程。
-func (s *Store) IndexDoc(id string, docType string, fields map[string]interface{}) error {
-	doc := make(map[string]interface{}, len(fields)+1)
-	for k, v := range fields {
-		doc[k] = v
-	}
-	doc["_type"] = docType
-
-	if err := s.idx.IndexDoc(id, doc); err != nil {
+func (s *Store) IndexDoc(id string, fields map[string]interface{}) error {
+	if err := s.idx.IndexDoc(id, fields); err != nil {
+		docType, _ := fields["_type"].(string)
 		slog.Warn("bleve index failed", "id", id, "err", err)
 		s.addDirtyItem(id, docType)
 		return err
@@ -447,4 +443,3 @@ func batchIndex(idx bleve.Index, docs []BleveDoc) error {
 	}
 	return nil
 }
-

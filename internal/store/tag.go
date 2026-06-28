@@ -215,10 +215,10 @@ func (s *Store) RenameURLTag(req model.RenameTagReq) (int, error) {
 	}
 
 	for i := range sitesReindex {
-		s.IndexDoc("site:"+sitesReindex[i].ID, "site", siteBleveFields(&sitesReindex[i]))
+		s.IndexDoc("site:"+sitesReindex[i].ID, siteBleveFields(&sitesReindex[i]))
 	}
 	for i := range bmsReindex {
-		s.IndexDoc("bm:"+bmsReindex[i].ID, "bookmark", bmBleveFields(&bmsReindex[i]))
+		s.IndexDoc("bm:"+bmsReindex[i].ID, bmBleveFields(&bmsReindex[i]))
 	}
 
 	affected := len(sitesReindex) + len(bmsReindex)
@@ -305,10 +305,10 @@ func (s *Store) MergeURLTag(req model.MergeTagReq) (int, error) {
 	}
 
 	for i := range sitesReindex {
-		s.IndexDoc("site:"+sitesReindex[i].ID, "site", siteBleveFields(&sitesReindex[i]))
+		s.IndexDoc("site:"+sitesReindex[i].ID, siteBleveFields(&sitesReindex[i]))
 	}
 	for i := range bmsReindex {
-		s.IndexDoc("bm:"+bmsReindex[i].ID, "bookmark", bmBleveFields(&bmsReindex[i]))
+		s.IndexDoc("bm:"+bmsReindex[i].ID, bmBleveFields(&bmsReindex[i]))
 	}
 
 	affected := len(sitesReindex) + len(bmsReindex)
@@ -363,10 +363,10 @@ func (s *Store) DeleteURLTagFromEntities(name string) (int, error) {
 	}
 
 	for i := range sitesReindex {
-		s.IndexDoc("site:"+sitesReindex[i].ID, "site", siteBleveFields(&sitesReindex[i]))
+		s.IndexDoc("site:"+sitesReindex[i].ID, siteBleveFields(&sitesReindex[i]))
 	}
 	for i := range bmsReindex {
-		s.IndexDoc("bm:"+bmsReindex[i].ID, "bookmark", bmBleveFields(&bmsReindex[i]))
+		s.IndexDoc("bm:"+bmsReindex[i].ID, bmBleveFields(&bmsReindex[i]))
 	}
 
 	affected := len(sitesReindex) + len(bmsReindex)

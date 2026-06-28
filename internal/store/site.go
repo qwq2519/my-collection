@@ -16,6 +16,7 @@ import (
 
 func siteBleveFields(site *model.Site) map[string]interface{} {
 	return map[string]interface{}{
+		"_type":       "site",
 		"title":       site.Title,
 		"description": site.Description,
 		"domain":      site.Domain,
@@ -87,7 +88,7 @@ func (s *Store) CreateSite(req model.CreateSiteReq) (*model.Site, error) {
 		return nil, err
 	}
 
-	s.IndexDoc("site:"+site.ID, "site", siteBleveFields(site))
+	s.IndexDoc("site:"+site.ID, siteBleveFields(site))
 	slog.Info("site created", "id", site.ID, "domain", site.Domain)
 	return site, nil
 }
@@ -186,7 +187,7 @@ func (s *Store) UpdateSite(req model.UpdateSiteReq) (*model.Site, error) {
 		return nil, err
 	}
 
-	s.IndexDoc("site:"+site.ID, "site", siteBleveFields(&site))
+	s.IndexDoc("site:"+site.ID, siteBleveFields(&site))
 	return &site, nil
 }
 

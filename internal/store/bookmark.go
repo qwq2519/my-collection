@@ -16,6 +16,7 @@ import (
 
 func bmBleveFields(bm *model.Bookmark) map[string]interface{} {
 	return map[string]interface{}{
+		"_type":       "bookmark",
 		"title":       bm.Title,
 		"description": bm.Description,
 		"domain":      bm.Domain,
@@ -123,8 +124,8 @@ func (s *Store) CreateBookmark(req model.CreateBookmarkReq) (*model.Bookmark, er
 		return nil, err
 	}
 
-	s.IndexDoc("bm:"+bm.ID, "bookmark", bmBleveFields(bm))
-	s.IndexDoc("site:"+site.ID, "site", siteBleveFields(&site))
+	s.IndexDoc("bm:"+bm.ID, bmBleveFields(bm))
+	s.IndexDoc("site:"+site.ID, siteBleveFields(&site))
 	slog.Info("bookmark created", "id", bm.ID, "url", bm.URL, "site_id", bm.SiteID)
 	return bm, nil
 }
@@ -191,8 +192,8 @@ func (s *Store) UpdateBookmark(req model.UpdateBookmarkReq) (*model.Bookmark, er
 		return nil, err
 	}
 
-	s.IndexDoc("bm:"+bm.ID, "bookmark", bmBleveFields(&bm))
-	s.IndexDoc("site:"+site.ID, "site", siteBleveFields(&site))
+	s.IndexDoc("bm:"+bm.ID, bmBleveFields(&bm))
+	s.IndexDoc("site:"+site.ID, siteBleveFields(&site))
 	return &bm, nil
 }
 
@@ -227,7 +228,7 @@ func (s *Store) DeleteBookmark(id string) error {
 	}
 
 	s.DeleteDoc("bm:"+id, "bookmark")
-	s.IndexDoc("site:"+site.ID, "site", siteBleveFields(&site))
+	s.IndexDoc("site:"+site.ID, siteBleveFields(&site))
 	slog.Info("bookmark deleted", "id", id)
 	return nil
 }
@@ -280,7 +281,7 @@ func (s *Store) BatchDeleteBookmarks(ids []string) error {
 	}
 	for siteID := range siteDeltas {
 		if site, err := s.GetSite(siteID); err == nil {
-			s.IndexDoc("site:"+site.ID, "site", siteBleveFields(site))
+			s.IndexDoc("site:"+site.ID, siteBleveFields(site))
 		}
 	}
 

@@ -17,6 +17,7 @@ import (
 
 func noteBleveFields(note *model.Note) map[string]interface{} {
 	return map[string]interface{}{
+		"_type":      "note",
 		"title":      note.Title,
 		"body":       util.StripMarkdown(note.Body),
 		"updated_at": note.UpdatedAt,
@@ -47,7 +48,7 @@ func (s *Store) CreateNote(req model.CreateNoteReq) (*model.Note, error) {
 		return nil, err
 	}
 
-	s.IndexDoc("note:"+note.ID, "note", noteBleveFields(note))
+	s.IndexDoc("note:"+note.ID, noteBleveFields(note))
 	slog.Info("note created", "id", note.ID, "title", note.Title)
 	return note, nil
 }
@@ -107,7 +108,7 @@ func (s *Store) UpdateNote(req model.UpdateNoteReq) (*model.Note, error) {
 		return nil, err
 	}
 
-	s.IndexDoc("note:"+note.ID, "note", noteBleveFields(&note))
+	s.IndexDoc("note:"+note.ID, noteBleveFields(&note))
 	return &note, nil
 }
 
