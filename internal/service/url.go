@@ -22,7 +22,8 @@ type URLService struct {
 
 // CreateSite 创建站点。校验 title 必填、URL 合法性，
 // 从 URL 自动提取 Domain，归一化标签并维护 url_tag 注册表 count。
-func (u *URLService) CreateSite(req model.CreateSiteReq) (*model.Site, error) {
+func (u *URLService) CreateSite(req model.CreateSiteReq) (_ *model.Site, err error) {
+	defer logError(&err)
 	if strings.TrimSpace(req.Title) == "" {
 		return nil, fmt.Errorf("站点标题不能为空")
 	}
@@ -52,7 +53,8 @@ func (u *URLService) CreateSite(req model.CreateSiteReq) (*model.Site, error) {
 }
 
 // GetSite 按 ID 查询站点详情
-func (u *URLService) GetSite(id string) (*model.Site, error) {
+func (u *URLService) GetSite(id string) (_ *model.Site, err error) {
+	defer logError(&err)
 	if id == "" {
 		return nil, fmt.Errorf("站点 ID 不能为空")
 	}
@@ -61,7 +63,8 @@ func (u *URLService) GetSite(id string) (*model.Site, error) {
 
 // UpdateSite 更新站点。传入 URL 时自动重新提取 Domain。
 // 当 Tags 字段变化时维护 url_tag 注册表 count。
-func (u *URLService) UpdateSite(req model.UpdateSiteReq) (*model.Site, error) {
+func (u *URLService) UpdateSite(req model.UpdateSiteReq) (_ *model.Site, err error) {
+	defer logError(&err)
 	if req.ID == "" {
 		return nil, fmt.Errorf("站点 ID 不能为空")
 	}
@@ -107,7 +110,8 @@ func (u *URLService) UpdateSite(req model.UpdateSiteReq) (*model.Site, error) {
 
 // DeleteSite 删除站点。同步清理 icon、封面、附件目录，
 // 并递减 url_tag 注册表 count。
-func (u *URLService) DeleteSite(id string) error {
+func (u *URLService) DeleteSite(id string) (err error) {
+	defer logError(&err)
 	if id == "" {
 		return fmt.Errorf("站点 ID 不能为空")
 	}
@@ -127,7 +131,8 @@ func (u *URLService) DeleteSite(id string) error {
 }
 
 // ListSites 分页查询站点列表
-func (u *URLService) ListSites(req model.SiteListReq) (*model.SiteListResult, error) {
+func (u *URLService) ListSites(req model.SiteListReq) (_ *model.SiteListResult, err error) {
+	defer logError(&err)
 	return u.Store.ListSites(req)
 }
 
@@ -136,7 +141,8 @@ func (u *URLService) ListSites(req model.SiteListReq) (*model.SiteListResult, er
 // CreateBookmark 创建书签。校验 URL 合法性，自动提取域名匹配站点，
 // 归一化标签并维护 url_tag 注册表 count。
 // 按域名自动查找站点，未找到站点则存入临时队列而非创建书签。
-func (u *URLService) CreateBookmark(req model.CreateBookmarkReq) (*model.Bookmark, error) {
+func (u *URLService) CreateBookmark(req model.CreateBookmarkReq) (_ *model.Bookmark, err error) {
+	defer logError(&err)
 	if err := util.ValidateURL(req.URL); err != nil {
 		return nil, err
 	}
@@ -177,7 +183,8 @@ func (u *URLService) CreateBookmark(req model.CreateBookmarkReq) (*model.Bookmar
 }
 
 // GetBookmark 按 ID 查询书签详情
-func (u *URLService) GetBookmark(id string) (*model.Bookmark, error) {
+func (u *URLService) GetBookmark(id string) (_ *model.Bookmark, err error) {
+	defer logError(&err)
 	if id == "" {
 		return nil, fmt.Errorf("书签 ID 不能为空")
 	}
@@ -185,7 +192,8 @@ func (u *URLService) GetBookmark(id string) (*model.Bookmark, error) {
 }
 
 // UpdateBookmark 更新书签。当 Tags 字段变化时维护 url_tag 注册表 count。
-func (u *URLService) UpdateBookmark(req model.UpdateBookmarkReq) (*model.Bookmark, error) {
+func (u *URLService) UpdateBookmark(req model.UpdateBookmarkReq) (_ *model.Bookmark, err error) {
+	defer logError(&err)
 	if req.ID == "" {
 		return nil, fmt.Errorf("书签 ID 不能为空")
 	}
@@ -221,7 +229,8 @@ func (u *URLService) UpdateBookmark(req model.UpdateBookmarkReq) (*model.Bookmar
 
 // DeleteBookmark 删除单条书签。同步清理封面和附件文件，
 // 并递减 url_tag 注册表 count。
-func (u *URLService) DeleteBookmark(id string) error {
+func (u *URLService) DeleteBookmark(id string) (err error) {
+	defer logError(&err)
 	if id == "" {
 		return fmt.Errorf("书签 ID 不能为空")
 	}
@@ -242,7 +251,8 @@ func (u *URLService) DeleteBookmark(id string) error {
 
 // BatchDeleteBookmarks 批量删除书签。汇总所有被删除书签的标签后
 // 一次性更新 url_tag 注册表 count，并逐个清理文件资源。
-func (u *URLService) BatchDeleteBookmarks(ids []string) error {
+func (u *URLService) BatchDeleteBookmarks(ids []string) (err error) {
+	defer logError(&err)
 	if len(ids) == 0 {
 		return nil
 	}
@@ -272,7 +282,8 @@ func (u *URLService) BatchDeleteBookmarks(ids []string) error {
 
 // BatchTagBookmarks 批量为书签追加标签（不覆盖已有标签），
 // 同步维护 url_tag 注册表 count。
-func (u *URLService) BatchTagBookmarks(ids []string, tagsToAdd []string) error {
+func (u *URLService) BatchTagBookmarks(ids []string, tagsToAdd []string) (err error) {
+	defer logError(&err)
 	if len(ids) == 0 || len(tagsToAdd) == 0 {
 		return nil
 	}
@@ -319,7 +330,8 @@ func (u *URLService) BatchTagBookmarks(ids []string, tagsToAdd []string) error {
 }
 
 // ListBookmarks 分页查询书签列表
-func (u *URLService) ListBookmarks(req model.BookmarkListReq) (*model.BookmarkListResult, error) {
+func (u *URLService) ListBookmarks(req model.BookmarkListReq) (_ *model.BookmarkListResult, err error) {
+	defer logError(&err)
 	return u.Store.ListBookmarks(req)
 }
 
@@ -352,7 +364,8 @@ func mergeTags(existing, toAdd []string) ([]string, int) {
 // ────────────────────── Queue ──────────────────────
 
 // AddToQueue 将 URL 加入临时队列
-func (u *URLService) AddToQueue(rawURL string) (*model.QueueItem, error) {
+func (u *URLService) AddToQueue(rawURL string) (_ *model.QueueItem, err error) {
+	defer logError(&err)
 	if strings.TrimSpace(rawURL) == "" {
 		return nil, fmt.Errorf("URL 不能为空")
 	}
@@ -363,12 +376,14 @@ func (u *URLService) AddToQueue(rawURL string) (*model.QueueItem, error) {
 }
 
 // ListQueue 获取临时队列中所有条目（按 added_at 降序）
-func (u *URLService) ListQueue() ([]model.QueueItem, error) {
+func (u *URLService) ListQueue() (_ []model.QueueItem, err error) {
+	defer logError(&err)
 	return u.Store.ListQueue()
 }
 
 // DeleteQueueItem 删除临时队列中的指定条目
-func (u *URLService) DeleteQueueItem(id string) error {
+func (u *URLService) DeleteQueueItem(id string) (err error) {
+	defer logError(&err)
 	if id == "" {
 		return fmt.Errorf("队列条目 ID 不能为空")
 	}
@@ -376,7 +391,8 @@ func (u *URLService) DeleteQueueItem(id string) error {
 }
 
 // ClearQueue 清空临时队列
-func (u *URLService) ClearQueue() error {
+func (u *URLService) ClearQueue() (err error) {
+	defer logError(&err)
 	return u.Store.ClearQueue()
 }
 
@@ -385,7 +401,8 @@ func (u *URLService) ClearQueue() error {
 // LookupSiteByURL 根据 URL 查询对应站点。
 // 提取 URL 中的域名，查找是否有对应站点。
 // 在新增url前判断用户是否需要先创建site
-func (u *URLService) LookupSiteByURL(req model.LookupSiteByURLReq) (*model.LookupSiteResult, error) {
+func (u *URLService) LookupSiteByURL(req model.LookupSiteByURLReq) (_ *model.LookupSiteResult, err error) {
+	defer logError(&err)
 	if strings.TrimSpace(req.URL) == "" {
 		return nil, fmt.Errorf("URL 不能为空")
 	}
