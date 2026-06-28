@@ -42,7 +42,6 @@ type IndexManager struct {
 
 	index      bleve.Index
 	state      IndexState
-	lastErr    error
 	persistDir string
 }
 
@@ -81,8 +80,6 @@ func NewIndexManager(persistDir string) (*IndexManager, error) {
 	}
 	idx, err := openBleve(persistDir)
 	if err != nil {
-		m.state = IndexError
-		m.lastErr = err
 		return nil, err
 	}
 	m.index = idx
@@ -153,7 +150,6 @@ func (m *IndexManager) rebuild(docs []BleveDoc) error {
 	if _, err := os.Stat(indexPath); err == nil {
 		if err := os.Rename(indexPath, backupPath); err != nil {
 			m.state = IndexError
-			m.lastErr = err
 			return fmt.Errorf("backup old index: %w", err)
 		}
 		hasBackup = true
@@ -171,7 +167,6 @@ func (m *IndexManager) rebuild(docs []BleveDoc) error {
 		if idx, err := bleve.Open(indexPath); err == nil {
 			m.index = idx
 			m.state = IndexOpen
-			m.lastErr = nil
 			slog.Info("restored old index after rebuild failure")
 		} else {
 			slog.Error("failed to reopen restored index", "err", err)
@@ -184,7 +179,6 @@ func (m *IndexManager) rebuild(docs []BleveDoc) error {
 		restoreBackup()
 		if m.state != IndexOpen {
 			m.state = IndexError
-			m.lastErr = err
 		}
 		return fmt.Errorf("create new index: %w", err)
 	}
@@ -196,14 +190,12 @@ func (m *IndexManager) rebuild(docs []BleveDoc) error {
 		restoreBackup()
 		if m.state != IndexOpen {
 			m.state = IndexError
-			m.lastErr = err
 		}
 		return err
 	}
 
 	m.index = idx
 	m.state = IndexOpen
-	m.lastErr = nil
 
 	if hasBackup {
 		_ = os.RemoveAll(backupPath)
