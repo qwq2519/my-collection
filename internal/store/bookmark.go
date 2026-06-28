@@ -51,7 +51,9 @@ func setBookmarkTx(tx *buntdb.Tx, bm *model.Bookmark) error {
 	return err
 }
 
-// checkBookmarkDupTx 通过 idx:bm_site 取出同站点书签，归一化比对 URL 判断重复
+// checkBookmarkDupTx 通过 idx:bm_site 取出同站点书签，归一化比对 URL 判断重复。
+// TODO: 当前为 O(N) 全扫描——遍历站点下所有书签逐条归一化比对。
+// 优化方案：在 Bookmark 上持久化 NormalizedURL 字段并建 BuntDB 索引，改为 O(1) 查找。
 func checkBookmarkDupTx(tx *buntdb.Tx, siteID, normalizedURL string) error {
 	pivot, _ := json.Marshal(map[string]string{"site_id": siteID})
 	var dup bool
