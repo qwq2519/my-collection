@@ -35,7 +35,7 @@ import { create } from "zustand"
 import { URLService } from "../../bindings/collections/internal/service"
 import type { Site, Bookmark, SiteWithBookmarks } from "../../bindings/collections/internal/model"
 import { callService } from "../lib/async"
-import { unpackList } from "../lib/safe"
+import { unpackList, str } from "../lib/safe"
 
 // ─── 类型定义 ────────────────────────────────────────────────
 
@@ -245,7 +245,7 @@ export const useURLStore = create<URLState>((set, get) => ({
 
   selectBookmark: async (bookmarkId) => {
     const { detailView } = get()
-    const siteId = getActiveSiteId(detailView) ?? ""
+    const siteId = str(getActiveSiteId(detailView))
     set({ detailView: { type: "bookmark", bookmarkId, siteId }, currentBookmark: null })
     const [bm] = await callService(() => URLService.GetBookmark(bookmarkId))
     const current = get().detailView

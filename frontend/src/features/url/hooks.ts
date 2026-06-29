@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { URLService } from "../../../bindings/collections/internal/service"
 import { callService } from "@/lib/async"
+import { str } from "@/lib/safe"
 
 /**
  * URL 标准化 hook：输入 URL 后防抖调用后端 NormalizeURL，返回标准化结果。
@@ -28,7 +29,7 @@ export function useURLNormalize(urlValue: string, delayMs = 400): string {
     clearTimeout(timerRef.current)
     timerRef.current = setTimeout(async () => {
       const [result] = await callService(() => URLService.NormalizeURL(urlValue.trim()))
-      if (versionRef.current === version) setNormalizedURL(result ?? "")
+      if (versionRef.current === version) setNormalizedURL(str(result))
     }, delayMs)
 
     return () => clearTimeout(timerRef.current)
@@ -93,7 +94,7 @@ export function useSiteLookup(
     timerRef.current = setTimeout(async () => {
       // 步骤 1：标准化 URL
       const [norm] = await callService(() => URLService.NormalizeURL(urlValue.trim()))
-      if (versionRef.current === version) setNormalizedURL(norm ?? "")
+      if (versionRef.current === version) setNormalizedURL(str(norm))
 
       if (versionRef.current !== version) return
 
@@ -108,7 +109,7 @@ export function useSiteLookup(
       if (result?.found) {
         setLookupState({ status: "found", domain: result.domain })
       } else {
-        setLookupState({ status: "not_found", domain: result?.domain ?? "" })
+        setLookupState({ status: "not_found", domain: str(result?.domain) })
       }
     }, 500)
 

@@ -5,6 +5,7 @@ import { useInfiniteScroll } from "@/hooks/useInfiniteScroll"
 import { EmptyState } from "@/components/EmptyState"
 import { Badge } from "@/components/ui/badge"
 import { Globe, Loader2, Search } from "lucide-react"
+import { arr } from "@/lib/safe"
 import { pick } from "@/lib/safe"
 
 /**
@@ -145,11 +146,11 @@ function SiteListItem({
   index?: number
 }) {
   const timeStr = formatRelativeTime(updatedAt)
-  const visibleTags = tags?.slice(0, 3) ?? []
+  const visibleTags = arr(tags).slice(0, 3)
 
   const secondaryParts: string[] = []
   if (domain) secondaryParts.push(domain)
-  secondaryParts.push(countLabel ?? `${count} 书签`)
+  secondaryParts.push(countLabel || `${count} 书签`)
   if (timeStr) secondaryParts.push(timeStr)
 
   return (

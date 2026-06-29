@@ -104,7 +104,7 @@ function BookmarkNav({ bm, onEdit }: { bm: Bookmark; onEdit: () => void }) {
       </Button>
       <div className="flex items-center gap-1 flex-1 min-w-0 text-xs text-muted-foreground">
         <span className="hover:text-foreground cursor-pointer shrink-0" onClick={backToSite}>
-          {currentSite?.title ?? "站点"}
+          {currentSite?.title || "站点"}
         </span>
         <span className="shrink-0">&gt;</span>
         <span className="truncate">{bm.title}</span>

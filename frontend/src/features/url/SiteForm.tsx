@@ -12,7 +12,7 @@ import { toast } from "sonner"
 import { FileUpload } from "@/components/FileUpload"
 import { useURLNormalize } from "./hooks"
 import { callService } from "@/lib/async"
-import { pick } from "@/lib/safe"
+import { pick, str, arr } from "@/lib/safe"
 
 const siteSchema = z.object({
   title: z.string().min(1, "标题不能为空"),
@@ -35,17 +35,28 @@ interface SiteFormProps {
  * - "抓取"按钮调用 FetchMetadata 回填 title/description/icon
  * - 编辑模式支持附件上传
  */
+function siteDefaults(site?: Site | null) {
+  return {
+    title: str(site?.title),
+    url: str(site?.url),
+    description: str(site?.description),
+    tags: arr(site?.tags),
+    icon: str(site?.icon),
+    attachments: arr(site?.attachments).map((a) => ({ filename: a.filename, path: a.filename })),
+  }
+}
+
 export function SiteForm({ site, onSave, onCancel }: SiteFormProps) {
   const isEdit = !!site
-  const [tags, setTags] = useState<string[]>(site?.tags ?? [])
+  const defaults = siteDefaults(site)
+  const [tags, setTags] = useState<string[]>(defaults.tags)
   const [fetching, setFetching] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
-  const [fetchedIcon, setFetchedIcon] = useState<string>(site?.icon ?? "")
+  const [fetchedIcon, setFetchedIcon] = useState<string>(defaults.icon)
 
-  // 附件（编辑模式）
-  const [attachments, setAttachments] = useState<{ filename: string; path: string }[]>(() =>
-    (site?.attachments ?? []).map((a) => ({ filename: a.filename, path: a.filename })),
+  const [attachments, setAttachments] = useState<{ filename: string; path: string }[]>(
+    defaults.attachments,
   )
 
   const {
@@ -57,9 +68,9 @@ export function SiteForm({ site, onSave, onCancel }: SiteFormProps) {
   } = useForm<SiteFormValues>({
     resolver: zodResolver(siteSchema),
     defaultValues: {
-      title: site?.title ?? "",
-      url: site?.url ?? "",
-      description: site?.description ?? "",
+      title: defaults.title,
+      url: defaults.url,
+      description: defaults.description,
     },
   })
 

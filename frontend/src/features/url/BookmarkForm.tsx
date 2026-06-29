@@ -11,7 +11,7 @@ import { TagInput } from "@/components/TagInput"
 import { toast } from "sonner"
 import { useSiteLookup } from "./hooks"
 import { callService } from "@/lib/async"
-import { pick } from "@/lib/safe"
+import { pick, str, arr } from "@/lib/safe"
 
 const bookmarkSchema = z.object({
   url: z.string().min(1, "请输入 URL"),
@@ -35,9 +35,19 @@ interface BookmarkFormProps {
  * 创建时输入 URL 后自动调用 LookupSiteByURL 检查域名是否有对应站点，
  * 并实时展示标准化后的 URL。
  */
+function bookmarkDefaults(bm?: Bookmark | null) {
+  return {
+    url: str(bm?.url),
+    title: str(bm?.title),
+    description: str(bm?.description),
+    tags: arr(bm?.tags),
+  }
+}
+
 export function BookmarkForm({ bookmark, onSave, onCancel, onCreateSite }: BookmarkFormProps) {
   const isEdit = !!bookmark
-  const [tags, setTags] = useState<string[]>(bookmark?.tags ?? [])
+  const defaults = bookmarkDefaults(bookmark)
+  const [tags, setTags] = useState<string[]>(defaults.tags)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
 
@@ -49,9 +59,9 @@ export function BookmarkForm({ bookmark, onSave, onCancel, onCreateSite }: Bookm
   } = useForm<BookmarkFormValues>({
     resolver: zodResolver(bookmarkSchema),
     defaultValues: {
-      url: bookmark?.url ?? "",
-      title: bookmark?.title ?? "",
-      description: bookmark?.description ?? "",
+      url: defaults.url,
+      title: defaults.title,
+      description: defaults.description,
     },
   })
 
