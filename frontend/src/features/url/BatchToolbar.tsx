@@ -11,8 +11,8 @@ import {
 } from "@/components/ui/dialog"
 import { Trash2, Tags, X, Loader2 } from "lucide-react"
 import { URLService } from "../../../bindings/collections/internal/service"
-import { extractError } from "@/lib/utils"
 import { toast } from "sonner"
+import { callService } from "@/lib/async"
 
 interface BatchToolbarProps {
   siteId: string
@@ -47,7 +47,13 @@ export function BatchToolbar({
 
   const handleBatchDelete = async () => {
     if (count === 0) return
-    await URLService.BatchDeleteBookmarks(siteId, Array.from(selectedIds))
+    const [, err] = await callService(() =>
+      URLService.BatchDeleteBookmarks(siteId, Array.from(selectedIds)),
+    )
+    if (err) {
+      toast.error(err)
+      return
+    }
     toast.success(`已删除 ${count} 条书签`)
     onDone()
   }
@@ -56,19 +62,19 @@ export function BatchToolbar({
     if (count === 0 || tagsToAdd.length === 0) return
     setLoading(true)
     setTagError("")
-    try {
-      await URLService.BatchTagBookmarks(Array.from(selectedIds), tagsToAdd)
-      toast.success(`已为 ${count} 条书签添加标签`)
-      setShowTagDialog(false)
-      setTagsToAdd([])
-      onDone()
-    } catch (e: unknown) {
-      const msg = extractError(e)
-      setTagError(msg)
-      toast.error(msg)
-    } finally {
-      setLoading(false)
+    const [, err] = await callService(() =>
+      URLService.BatchTagBookmarks(Array.from(selectedIds), tagsToAdd),
+    )
+    setLoading(false)
+    if (err) {
+      setTagError(err)
+      toast.error(err)
+      return
     }
+    toast.success(`已为 ${count} 条书签添加标签`)
+    setShowTagDialog(false)
+    setTagsToAdd([])
+    onDone()
   }
 
   return (

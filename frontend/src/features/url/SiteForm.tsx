@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react"
+import { useState } from "react"
 import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -8,10 +8,10 @@ import { Loader2, Download } from "lucide-react"
 import { URLService } from "../../../bindings/collections/internal/service"
 import type { Site } from "../../../bindings/collections/internal/model"
 import { TagInput } from "@/components/TagInput"
-import { extractError } from "@/lib/utils"
 import { toast } from "sonner"
 import { FileUpload } from "@/components/FileUpload"
 import { useURLNormalize } from "./hooks"
+import { callService } from "@/lib/async"
 
 const siteSchema = z.object({
   title: z.string().min(1, "标题不能为空"),
@@ -66,7 +66,7 @@ export function SiteForm({ site, onSave, onCancel }: SiteFormProps) {
   const normalizedURL = useURLNormalize(urlValue)
 
   /** 抓取页面元数据，回填 title、description、icon */
-  const handleFetch = useCallback(async () => {
+  async function handleFetch() {
     const url = urlValue?.trim()
     if (!url) {
       setError("请先输入 URL")
@@ -74,52 +74,51 @@ export function SiteForm({ site, onSave, onCancel }: SiteFormProps) {
     }
     setFetching(true)
     setError("")
-    try {
-      const meta = await URLService.FetchMetadata({ url })
-      if (meta) {
-        if (meta.title) setValue("title", meta.title, { shouldValidate: true })
-        if (meta.description) setValue("description", meta.description)
-        if (meta.icon) setFetchedIcon(meta.icon)
-      } else {
-        setError("no metadata found")
-      }
-    } catch (e: any) {
-      setError("fetch failed: " + extractError(e))
-    } finally {
-      setFetching(false)
+    const [meta, err] = await callService(() => URLService.FetchMetadata({ url }))
+    setFetching(false)
+    if (err) {
+      setError("fetch failed: " + err)
+      return
     }
-  }, [urlValue, setValue])
+    if (meta) {
+      if (meta.title) setValue("title", meta.title, { shouldValidate: true })
+      if (meta.description) setValue("description", meta.description)
+      if (meta.icon) setFetchedIcon(meta.icon)
+    } else {
+      setError("no metadata found")
+    }
+  }
 
   const onSubmit = async (values: SiteFormValues) => {
     setSaving(true)
     setError("")
-    try {
-      if (isEdit && site) {
-        await URLService.UpdateSite({
-          id: site.id,
-          title: values.title,
-          description: values.description || null,
-          tags,
-          icon: fetchedIcon || site.icon || undefined,
-        })
-      } else {
-        await URLService.CreateSite({
-          title: values.title,
-          url: values.url,
-          description: values.description || undefined,
-          tags: tags.length > 0 ? tags : undefined,
-          icon: fetchedIcon || undefined,
-        })
-      }
-      toast.success(isEdit ? "站点已更新" : "站点已创建")
-      onSave()
-    } catch (e: unknown) {
-      const msg = extractError(e)
-      setError(msg)
-      toast.error(msg)
-    } finally {
-      setSaving(false)
+    const serviceFn =
+      isEdit && site
+        ? () =>
+            URLService.UpdateSite({
+              id: site.id,
+              title: values.title,
+              description: values.description || null,
+              tags,
+              icon: fetchedIcon || site.icon || undefined,
+            })
+        : () =>
+            URLService.CreateSite({
+              title: values.title,
+              url: values.url,
+              description: values.description || undefined,
+              tags: tags.length > 0 ? tags : undefined,
+              icon: fetchedIcon || undefined,
+            })
+    const [, err] = await callService(serviceFn)
+    setSaving(false)
+    if (err) {
+      setError(err)
+      toast.error(err)
+      return
     }
+    toast.success(isEdit ? "站点已更新" : "站点已创建")
+    onSave()
   }
 
   return (

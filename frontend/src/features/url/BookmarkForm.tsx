@@ -8,9 +8,9 @@ import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react"
 import { URLService } from "../../../bindings/collections/internal/service"
 import type { Bookmark } from "../../../bindings/collections/internal/model"
 import { TagInput } from "@/components/TagInput"
-import { extractError } from "@/lib/utils"
 import { toast } from "sonner"
 import { useSiteLookup } from "./hooks"
+import { callService } from "@/lib/async"
 
 const bookmarkSchema = z.object({
   url: z.string().min(1, "请输入 URL"),
@@ -60,31 +60,31 @@ export function BookmarkForm({ bookmark, onSave, onCancel, onCreateSite }: Bookm
   const onSubmit = async (values: BookmarkFormValues) => {
     setSaving(true)
     setError("")
-    try {
-      if (isEdit && bookmark) {
-        await URLService.UpdateBookmark({
-          id: bookmark.id,
-          title: values.title,
-          description: values.description || null,
-          tags,
-        })
-      } else {
-        await URLService.CreateBookmark({
-          url: values.url,
-          title: values.title,
-          description: values.description || undefined,
-          tags: tags.length > 0 ? tags : undefined,
-        })
-      }
-      toast.success(isEdit ? "书签已更新" : "书签已创建")
-      onSave()
-    } catch (e: unknown) {
-      const msg = extractError(e)
-      setError(msg)
-      toast.error(msg)
-    } finally {
-      setSaving(false)
+    const serviceFn =
+      isEdit && bookmark
+        ? () =>
+            URLService.UpdateBookmark({
+              id: bookmark.id,
+              title: values.title,
+              description: values.description || null,
+              tags,
+            })
+        : () =>
+            URLService.CreateBookmark({
+              url: values.url,
+              title: values.title,
+              description: values.description || undefined,
+              tags: tags.length > 0 ? tags : undefined,
+            })
+    const [, err] = await callService(serviceFn)
+    setSaving(false)
+    if (err) {
+      setError(err)
+      toast.error(err)
+      return
     }
+    toast.success(isEdit ? "书签已更新" : "书签已创建")
+    onSave()
   }
 
   return (

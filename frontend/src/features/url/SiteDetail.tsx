@@ -23,6 +23,7 @@ import { BatchToolbar } from "./BatchToolbar"
 import { BookmarkGrid, BookmarkListView } from "./BookmarkViews"
 import { URLService } from "../../../bindings/collections/internal/service"
 import type { Site } from "../../../bindings/collections/internal/model"
+import { callService } from "@/lib/async"
 
 /**
  * 站点详情面板：协调器，管理 view/edit-site/add-bookmark 三种模式。
@@ -102,7 +103,11 @@ function SiteHeader({ site, onEdit }: { site: Site; onEdit: () => void }) {
   const [showDelete, setShowDelete] = useState(false)
 
   const handleDelete = async () => {
-    await URLService.DeleteSite(site.id)
+    const [, err] = await callService(() => URLService.DeleteSite(site.id))
+    if (err) {
+      toast.error(err)
+      return
+    }
     toast.success("站点已删除")
     loadSites()
     useURLStore.setState({ detailView: { type: "none" }, currentSite: null })

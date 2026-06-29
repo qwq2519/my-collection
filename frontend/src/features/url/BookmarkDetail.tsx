@@ -20,6 +20,7 @@ import { BookmarkForm } from "./BookmarkForm"
 import { ThumbnailImage } from "./BookmarkViews"
 import { URLService } from "../../../bindings/collections/internal/service"
 import type { Bookmark } from "../../../bindings/collections/internal/model"
+import { callService } from "@/lib/async"
 
 /**
  * 书签详情面板：协调器，管理展示态/编辑态切换。
@@ -85,7 +86,11 @@ function BookmarkNav({ bm, onEdit }: { bm: Bookmark; onEdit: () => void }) {
   const [showDelete, setShowDelete] = useState(false)
 
   const handleDelete = async () => {
-    await URLService.DeleteBookmark(bm.id)
+    const [, err] = await callService(() => URLService.DeleteBookmark(bm.id))
+    if (err) {
+      toast.error(err)
+      return
+    }
     toast.success("书签已删除")
     backToSite()
     refreshCurrentSite()
