@@ -8,6 +8,7 @@ import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react"
 import { URLService } from "../../../bindings/collections/internal/service"
 import type { Bookmark } from "../../../bindings/collections/internal/model"
 import { TagInput } from "@/components/TagInput"
+import { FormField } from "@/components/FormField"
 import { toast } from "sonner"
 import { useSiteLookup } from "./hooks"
 import { callService } from "@/lib/async"
@@ -161,10 +162,7 @@ export function BookmarkForm({ bookmark, onSave, onCancel, onCreateSite }: Bookm
       </div>
 
       {/* 标题 */}
-      <div className="flex flex-col gap-1">
-        <label className="text-sm">
-          标题 <span className="text-destructive">*</span>
-        </label>
+      <FormField label="标题" required error={errors.title?.message}>
         <Controller
           name="title"
           control={control}
@@ -177,12 +175,10 @@ export function BookmarkForm({ bookmark, onSave, onCancel, onCreateSite }: Bookm
             />
           )}
         />
-        {errors.title && <p className="text-xs text-destructive">{errors.title.message}</p>}
-      </div>
+      </FormField>
 
       {/* 描述 */}
-      <div className="flex flex-col gap-1">
-        <label className="text-sm">描述</label>
+      <FormField label="描述">
         <Controller
           name="description"
           control={control}
@@ -196,13 +192,12 @@ export function BookmarkForm({ bookmark, onSave, onCancel, onCreateSite }: Bookm
             />
           )}
         />
-      </div>
+      </FormField>
 
       {/* 标签 */}
-      <div className="flex flex-col gap-1">
-        <label className="text-sm">标签</label>
+      <FormField label="标签">
         <TagInput value={tags} onChange={setTags} />
-      </div>
+      </FormField>
 
       {error && <p className="text-xs text-destructive">{error}</p>}
 
