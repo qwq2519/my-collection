@@ -1,6 +1,9 @@
 # 前端 AI 开发指引
 
-编写前端代码时必须遵守本文件及 `docs/global/frontend-design-guide.md` 中的全部规则。
+编写前端代码时必须遵守本文件及以下文档中的全部规则：
+
+- `docs/global/frontend-design-guide.md` — UI/UX 设计规范
+- `docs/global/frontend-code-conventions.md` — 代码开发规范
 
 ## 技术栈
 
