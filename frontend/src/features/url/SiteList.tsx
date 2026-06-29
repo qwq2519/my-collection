@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { cn, formatRelativeTime } from "@/lib/utils"
-import { useURLStore, getActiveSiteId } from "@/stores/url"
+import { useURLStore, getActiveSiteId, useSiteListState, useSearchResultState } from "@/stores/url"
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll"
 import { EmptyState } from "@/components/EmptyState"
 import { Badge } from "@/components/ui/badge"
@@ -31,13 +31,8 @@ export function SiteList() {
 
 /** 默认模式：站点列表 + 无限滚动 */
 function DefaultSiteList() {
-  const sites = useURLStore((s) => s.sites)
-  const loading = useURLStore((s) => s.sitesLoading)
-  const hasMore = useURLStore((s) => s.sitesHasMore)
-  const detailView = useURLStore((s) => s.detailView)
-  const loadSites = useURLStore((s) => s.loadSites)
-  const loadMore = useURLStore((s) => s.loadMoreSites)
-  const selectSite = useURLStore((s) => s.selectSite)
+  const { sites, loading, hasMore, detailView, loadSites, loadMore, selectSite } =
+    useSiteListState()
 
   const selectedSiteId = getActiveSiteId(detailView)
   const sentinelRef = useInfiniteScroll(loadMore, hasMore)
@@ -75,12 +70,7 @@ function DefaultSiteList() {
 
 /** 搜索模式：展示搜索结果，每条显示站点名 + 命中书签数 */
 function SearchResultList() {
-  const results = useURLStore((s) => s.searchResults)
-  const loading = useURLStore((s) => s.searchLoading)
-  const hasMore = useURLStore((s) => s.searchHasMore)
-  const detailView = useURLStore((s) => s.detailView)
-  const loadMore = useURLStore((s) => s.loadMoreSearch)
-  const selectResult = useURLStore((s) => s.selectSearchResult)
+  const { results, loading, hasMore, detailView, loadMore, selectResult } = useSearchResultState()
 
   const selectedSiteId = getActiveSiteId(detailView)
   const sentinelRef = useInfiniteScroll(loadMore, hasMore)

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { useURLStore, getActiveSiteId } from "@/stores/url"
+import { useURLStore, getActiveSiteId, useBookmarkSectionState } from "@/stores/url"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
@@ -176,12 +176,14 @@ function SiteHeader({ site, onEdit }: { site: Site; onEdit: () => void }) {
 // 导致不必要的重渲染（Zustand 最佳实践）。
 
 function BookmarkSection({ site, onAddBookmark }: { site: Site; onAddBookmark: () => void }) {
-  const bookmarks = useURLStore((s) => s.bookmarks)
-  const bookmarksLoading = useURLStore((s) => s.bookmarksLoading)
-  const viewMode = useURLStore((s) => s.bookmarkViewMode)
-  const setViewMode = useURLStore((s) => s.setBookmarkViewMode)
-  const selectBookmark = useURLStore((s) => s.selectBookmark)
-  const refreshCurrentSite = useURLStore((s) => s.refreshCurrentSite)
+  const {
+    bookmarks,
+    loading: bookmarksLoading,
+    viewMode,
+    setViewMode,
+    selectBookmark,
+    refreshCurrentSite,
+  } = useBookmarkSectionState()
 
   // 批量模式的局部状态（不存入全局 store，因为只在这个组件内有意义）
   const [batchMode, setBatchMode] = useState(false)
