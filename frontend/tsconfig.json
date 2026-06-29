@@ -4,28 +4,38 @@
     "useDefineForClassFields": true,
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "module": "ESNext",
+    // 跳过 node_modules 中 .d.ts 文件的类型检查，加快编译速度
     "skipLibCheck": true,
 
-    /* Bundler mode */
+    /* Bundler mode — 配合 Vite 打包器使用 */
     "moduleResolution": "bundler",
+    // 允许 import "./foo.ts" 带扩展名（Vite 需要）
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
+    // 每个文件视为独立模块（Vite 要求，不做全局类型合并）
     "isolatedModules": true,
+    // 只做类型检查不生成 .js 文件（Vite 负责编译，tsc 只管类型）
     "noEmit": true,
     "jsx": "react-jsx",
 
-    /* Path alias: @ → src/ */
+    /* 路径别名：@ → src/，避免 ../../../ 相对路径地狱 */
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     },
 
-    /* Linting */
+    /* 严格模式 — 类比 Go 编译器的严格检查 */
+    // 开启所有 strict 系列检查（strictNullChecks, strictFunctionTypes 等）
     "strict": true,
+    // 声明了没使用的局部变量报错（类比 Go 的 "declared and not used"）
     "noUnusedLocals": true,
+    // 声明了没使用的函数参数报错（_ 前缀豁免，类比 Go 的 _ 忽略参数）
     "noUnusedParameters": true,
+    // 函数参数不写类型就报错，不允许隐式 any（类比 Go 函数参数必须有类型）
     "noImplicitAny": true,
+    // switch-case 不写 break 就报错（类比 Go 的 switch 默认不 fallthrough）
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "bindings"],
+  // src: 业务代码，bindings: Wails 自动生成的 Go→TS 绑定
+  "include": ["src", "bindings"]
 }
