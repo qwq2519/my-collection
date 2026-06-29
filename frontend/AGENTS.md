@@ -42,6 +42,51 @@ src/
 - Zustand store 每模块独立，放 `src/stores/`
 - 后端调用通过 `bindings/` 自动生成的函数，不手写 API 层
 
+### ESLint 强制（机器检查）
+
+- **禁止三元运算符** — 用 `if + return` 或 `pick()` 替代
+- **禁止 try-catch** — 用 `callService()` 返回 `[result, err]` 元组
+- **禁止 useCallback / useMemo** — 此项目规模不需要（useMemo 如确有性能需求，加 eslint-disable 注释）
+- **JSX 属性中禁止多行箭头函数** — 提取为命名函数
+- **嵌套不超过 4 层，函数不超过 60 行**
+- **禁止 any**，未使用变量报错（`_` 前缀豁免）
+
+### 人工 / AI 审查
+
+- `?.` `??` 只写在 `lib/` 的工具函数中，业务代码用 `str()`/`arr()`/`unpackList()` 替代
+- 每个 `.tsx` 文件只 `export` 1 个主组件，辅助组件不导出
+- 子组件直接调 store action，回调 prop 最多 1 个 `onDone`
+- 条件渲染超过 2 个分支必须提取为独立子组件（用 if + return）
+- 表单字段统一使用 `<FormField>` 组件包裹
+
+## 工具函数
+
+| 函数 | 位置 | 用途 | Go 类比 |
+|------|------|------|---------|
+| `callService(fn)` | `lib/async.ts` | 异步调用 → `[result, err]` | `result, err := fn()` |
+| `useLoading()` | `lib/async.ts` | loading 状态 + callService | 带进度的 `result, err` |
+| `pick(cond, a, b)` | `lib/safe.ts` | 条件值选择 | `if cond { a } else { b }` |
+| `str()` / `arr()` / `num()` | `lib/safe.ts` | null → 零值 | Go 零值语义 |
+| `unpackList(result)` | `lib/safe.ts` | 分页响应拆包 | 指针字段 → 值字段 |
+| `extractError(e)` | `lib/utils.ts` | Wails 错误解析 | `err.Error()` |
+| `FormField` | `components/FormField.tsx` | 表单字段布局 | — |
+
+## 预组合 Hooks
+
+| Hook | 位置 | 用途 |
+|------|------|------|
+| `useSiteListState()` | `stores/url.ts` | 站点列表所需全部状态 |
+| `useSearchResultState()` | `stores/url.ts` | 搜索结果列表所需全部状态 |
+| `useBookmarkSectionState()` | `stores/url.ts` | 书签区域所需全部状态 |
+
+## npm scripts
+
+| 命令 | 用途 | Go 类比 |
+|------|------|---------|
+| `npm run fmt` | 格式化代码 | `go fmt ./...` |
+| `npm run lint` | 静态检查 | `go vet ./...` |
+| `npm run check` | 类型 + lint + 格式 | `go build && go vet && gofmt` |
+
 ## UI 自查清单
 
 每生成一个组件，逐条检查：
