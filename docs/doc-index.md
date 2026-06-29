@@ -25,6 +25,7 @@
 | [标签系统](./global/tag-system.md) | `::` 层级规则、生命周期、管理页面 |
 | [开发指南](./global/dev-guide.md) | WSL + Windows 开发环境与构建流程 |
 | [前端设计指南](./global/frontend-design-guide.md) | UI 设计原则、视觉规范、组件规范、反模式清单 |
+| [前端代码规范化](./global/frontend-code-conventions.md) | 代码风格约束、ESLint 规则、工具函数、改造计划 |
 
 ## 待讨论
 
