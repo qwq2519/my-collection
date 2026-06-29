@@ -156,7 +156,7 @@ function SiteListItem({
       data-site-index={index}
       className={cn(
         "flex gap-2 px-3 py-2 text-left rounded-md mx-1 transition-colors duration-150",
-        selected ? "bg-muted font-medium" : "hover:bg-muted/50"
+        selected ? "bg-muted font-medium" : "hover:bg-muted/50",
       )}
     >
       <div className="pt-0.5 shrink-0">
@@ -164,17 +164,11 @@ function SiteListItem({
       </div>
       <div className="flex-1 min-w-0 space-y-0.5">
         <div className="text-sm font-medium truncate">{title}</div>
-        <div className="text-xs text-muted-foreground truncate">
-          {secondaryParts.join(" · ")}
-        </div>
+        <div className="text-xs text-muted-foreground truncate">{secondaryParts.join(" · ")}</div>
         {visibleTags.length > 0 && (
           <div className="flex gap-1 flex-wrap">
             {visibleTags.map((tag) => (
-              <Badge
-                key={tag}
-                variant="secondary"
-                className="text-xs px-1.5 py-0 h-4 font-normal"
-              >
+              <Badge key={tag} variant="secondary" className="text-xs px-1.5 py-0 h-4 font-normal">
                 {tag}
               </Badge>
             ))}

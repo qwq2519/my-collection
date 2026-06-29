@@ -5,7 +5,17 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { EmptyState } from "@/components/EmptyState"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
-import { Globe, LayoutGrid, List, Loader2, ExternalLink, Bookmark, Pencil, Plus, Trash2 } from "lucide-react"
+import {
+  Globe,
+  LayoutGrid,
+  List,
+  Loader2,
+  ExternalLink,
+  Bookmark,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react"
 import { toast } from "sonner"
 import { SiteForm } from "./SiteForm"
 import { BookmarkForm } from "./BookmarkForm"
@@ -52,7 +62,10 @@ export function SiteDetail() {
       <div className="h-full overflow-y-auto">
         <SiteForm
           site={site}
-          onSave={() => { setMode("view"); refreshCurrentSite() }}
+          onSave={() => {
+            setMode("view")
+            refreshCurrentSite()
+          }}
           onCancel={() => setMode("view")}
         />
       </div>
@@ -63,7 +76,10 @@ export function SiteDetail() {
     return (
       <div className="h-full overflow-y-auto">
         <BookmarkForm
-          onSave={() => { setMode("view"); refreshCurrentSite() }}
+          onSave={() => {
+            setMode("view")
+            refreshCurrentSite()
+          }}
           onCancel={() => setMode("view")}
         />
       </div>
@@ -113,7 +129,8 @@ function SiteHeader({ site, onEdit }: { site: Site; onEdit: () => void }) {
             <Pencil size={14} />
           </Button>
           <Button
-            variant="ghost" size="icon"
+            variant="ghost"
+            size="icon"
             className="h-7 w-7 text-muted-foreground hover:text-destructive"
             onClick={() => setShowDelete(true)}
           >
@@ -122,14 +139,14 @@ function SiteHeader({ site, onEdit }: { site: Site; onEdit: () => void }) {
         </div>
       </div>
 
-      {site.description && (
-        <p className="text-sm text-muted-foreground mt-3">{site.description}</p>
-      )}
+      {site.description && <p className="text-sm text-muted-foreground mt-3">{site.description}</p>}
 
       {site.tags && site.tags.length > 0 && (
         <div className="flex flex-wrap gap-1 mt-3">
           {site.tags.map((tag) => (
-            <Badge key={tag} variant="secondary">{tag}</Badge>
+            <Badge key={tag} variant="secondary">
+              {tag}
+            </Badge>
           ))}
         </div>
       )}
@@ -188,7 +205,12 @@ function BookmarkSection({ site, onAddBookmark }: { site: Site; onAddBookmark: (
             <Plus size={14} />
           </Button>
           {bookmarks.length > 0 && !batchMode && (
-            <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={() => setBatchMode(true)}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 text-xs px-2"
+              onClick={() => setBatchMode(true)}
+            >
               批量
             </Button>
           )}
@@ -196,14 +218,16 @@ function BookmarkSection({ site, onAddBookmark }: { site: Site; onAddBookmark: (
         <div className="flex gap-1">
           <Button
             variant={viewMode === "grid" ? "secondary" : "ghost"}
-            size="icon" className="h-7 w-7"
+            size="icon"
+            className="h-7 w-7"
             onClick={() => setViewMode("grid")}
           >
             <LayoutGrid size={14} />
           </Button>
           <Button
             variant={viewMode === "list" ? "secondary" : "ghost"}
-            size="icon" className="h-7 w-7"
+            size="icon"
+            className="h-7 w-7"
             onClick={() => setViewMode("list")}
           >
             <List size={14} />
@@ -218,7 +242,10 @@ function BookmarkSection({ site, onAddBookmark }: { site: Site; onAddBookmark: (
           totalCount={bookmarks.length}
           onSelectAll={() => setSelectedIds(new Set(bookmarks.map((b) => b.id)))}
           onDeselectAll={() => setSelectedIds(new Set())}
-          onDone={() => { exitBatchMode(); refreshCurrentSite() }}
+          onDone={() => {
+            exitBatchMode()
+            refreshCurrentSite()
+          }}
           onCancel={exitBatchMode}
         />
       )}
@@ -232,9 +259,19 @@ function BookmarkSection({ site, onAddBookmark }: { site: Site; onAddBookmark: (
         ) : bookmarks.length === 0 ? (
           <EmptyState icon={Bookmark} message="暂无书签" />
         ) : viewMode === "grid" ? (
-          <BookmarkGrid bookmarks={bookmarks} onSelect={onSelect} batchMode={batchMode} selectedIds={selectedIds} />
+          <BookmarkGrid
+            bookmarks={bookmarks}
+            onSelect={onSelect}
+            batchMode={batchMode}
+            selectedIds={selectedIds}
+          />
         ) : (
-          <BookmarkListView bookmarks={bookmarks} onSelect={onSelect} batchMode={batchMode} selectedIds={selectedIds} />
+          <BookmarkListView
+            bookmarks={bookmarks}
+            onSelect={onSelect}
+            batchMode={batchMode}
+            selectedIds={selectedIds}
+          />
         )}
       </div>
     </>
@@ -245,7 +282,8 @@ function BookmarkSection({ site, onAddBookmark }: { site: Site; onAddBookmark: (
 
 function SiteIcon({ icon, size }: { icon?: string; size: number }) {
   const [failed, setFailed] = useState(false)
-  if (!icon || failed) return <Globe size={size} className="shrink-0 text-muted-foreground mt-0.5" />
+  if (!icon || failed)
+    return <Globe size={size} className="shrink-0 text-muted-foreground mt-0.5" />
   return (
     <img
       src={`/persist/url-assets/icons/${icon}`}
@@ -256,4 +294,3 @@ function SiteIcon({ icon, size }: { icon?: string; size: number }) {
     />
   )
 }
-

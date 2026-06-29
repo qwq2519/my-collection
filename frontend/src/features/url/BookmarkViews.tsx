@@ -18,7 +18,10 @@ import type { Bookmark } from "../../../bindings/collections/internal/model"
 // ─── 书签网格视图 ─────────────────────────────────────────────
 
 export function BookmarkGrid({
-  bookmarks, onSelect, batchMode = false, selectedIds = new Set(),
+  bookmarks,
+  onSelect,
+  batchMode = false,
+  selectedIds = new Set(),
 }: {
   bookmarks: Bookmark[]
   onSelect: (id: string) => void
@@ -36,7 +39,7 @@ export function BookmarkGrid({
             onClick={() => onSelect(bm.id)}
             className={cn(
               "flex flex-col rounded-md border overflow-hidden text-left transition-colors duration-150",
-              isSelected ? "ring-2 ring-primary" : "hover:bg-muted/50"
+              isSelected ? "ring-2 ring-primary" : "hover:bg-muted/50",
             )}
           >
             <div className="aspect-[16/10] bg-muted flex items-center justify-center overflow-hidden">
@@ -64,7 +67,10 @@ export function BookmarkGrid({
 // ─── 书签列表视图 ─────────────────────────────────────────────
 
 export function BookmarkListView({
-  bookmarks, onSelect, batchMode = false, selectedIds = new Set(),
+  bookmarks,
+  onSelect,
+  batchMode = false,
+  selectedIds = new Set(),
 }: {
   bookmarks: Bookmark[]
   onSelect: (id: string) => void
@@ -81,7 +87,7 @@ export function BookmarkListView({
             onClick={() => onSelect(bm.id)}
             className={cn(
               "flex items-center gap-3 px-3 py-2 rounded-md text-left transition-colors duration-150",
-              isSelected ? "bg-muted" : "hover:bg-muted/50"
+              isSelected ? "bg-muted" : "hover:bg-muted/50",
             )}
           >
             {batchMode && (
@@ -139,8 +145,10 @@ export function ThumbnailImage({ bookmarkId, filename }: { bookmarkId: string; f
 /** 从书签的附件列表中找到第一个可预览的图片/视频作为封面 */
 function getCoverAttachment(bm: Bookmark) {
   if (!bm.attachments || bm.attachments.length === 0) return null
-  return bm.attachments.find((a) => {
-    const ext = a.filename.split(".").pop()?.toLowerCase() ?? ""
-    return isPreviewableExt(ext)
-  }) ?? null
+  return (
+    bm.attachments.find((a) => {
+      const ext = a.filename.split(".").pop()?.toLowerCase() ?? ""
+      return isPreviewableExt(ext)
+    }) ?? null
+  )
 }

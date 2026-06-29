@@ -19,7 +19,12 @@ export function EmptyState({
   children,
 }: EmptyStateProps) {
   return (
-    <div className={cn("flex flex-col items-center justify-center py-12 text-muted-foreground", className)}>
+    <div
+      className={cn(
+        "flex flex-col items-center justify-center py-12 text-muted-foreground",
+        className,
+      )}
+    >
       <Icon size={32} className="mb-2" />
       <p className="text-sm">{message}</p>
       {children}

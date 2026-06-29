@@ -33,11 +33,7 @@
 
 import { create } from "zustand"
 import { URLService } from "../../bindings/collections/internal/service"
-import type {
-  Site,
-  Bookmark,
-  SiteWithBookmarks,
-} from "../../bindings/collections/internal/model"
+import type { Site, Bookmark, SiteWithBookmarks } from "../../bindings/collections/internal/model"
 
 // ─── 类型定义 ────────────────────────────────────────────────
 
@@ -71,30 +67,30 @@ interface URLState {
   // ═══ 数据域 1：站点列表（左栏，分页加载） ═══
   sites: Site[]
   sitesTotal: number
-  sitesPage: number         // 当前已加载到第几页
-  sitesHasMore: boolean     // 后端是否还有下一页
+  sitesPage: number // 当前已加载到第几页
+  sitesHasMore: boolean // 后端是否还有下一页
   sitesLoading: boolean
 
   // ═══ 数据域 2：详情面板（右栏） ═══
-  detailView: DetailView    // 当前展示的视图类型
-  currentSite: Site | null  // 选中的站点完整数据
-  bookmarks: Bookmark[]     // 当前站点下的书签列表（也是分页的）
+  detailView: DetailView // 当前展示的视图类型
+  currentSite: Site | null // 选中的站点完整数据
+  bookmarks: Bookmark[] // 当前站点下的书签列表（也是分页的）
   bookmarksTotal: number
   bookmarksPage: number
   bookmarksHasMore: boolean
   bookmarksLoading: boolean
-  bookmarkViewMode: BookmarkViewMode  // 网格 or 列表
-  currentBookmark: Bookmark | null    // 选中的单个书签
+  bookmarkViewMode: BookmarkViewMode // 网格 or 列表
+  currentBookmark: Bookmark | null // 选中的单个书签
 
   // ═══ 数据域 3：搜索与筛选 ═══
-  searchMode: boolean       // 是否处于搜索模式（切换左栏数据源）
+  searchMode: boolean // 是否处于搜索模式（切换左栏数据源）
   searchQuery: string
-  searchResults: SiteWithBookmarks[]  // 搜索结果：站点+命中的书签
+  searchResults: SiteWithBookmarks[] // 搜索结果：站点+命中的书签
   searchTotal: number
   searchHasMore: boolean
   searchPage: number
   searchLoading: boolean
-  selectedTags: string[]    // 标签筛选（AND 语义，与关键词取交集）
+  selectedTags: string[] // 标签筛选（AND 语义，与关键词取交集）
 
   // ═══ Action 方法 ═══
 
@@ -170,13 +166,13 @@ export const useURLStore = create<URLState>((set, get) => ({
   /** 加载下一页站点（无限滚动触发，由 useInfiniteScroll hook 调用） */
   loadMoreSites: async () => {
     const { sitesHasMore, sitesLoading, sitesPage, sites } = get()
-    if (!sitesHasMore || sitesLoading) return  // 防止重复请求
+    if (!sitesHasMore || sitesLoading) return // 防止重复请求
     set({ sitesLoading: true })
     try {
       const nextPage = sitesPage + 1
       const result = await URLService.ListSites({ page: nextPage, page_size: PAGE_SIZE })
       set({
-        sites: [...sites, ...(result?.items ?? [])],  // 追加到已有列表
+        sites: [...sites, ...(result?.items ?? [])], // 追加到已有列表
         sitesTotal: result?.total ?? 0,
         sitesPage: nextPage,
         sitesHasMore: result?.has_more ?? false,
@@ -390,5 +386,4 @@ export const useURLStore = create<URLState>((set, get) => ({
       get().clearSearch()
     }
   },
-
 }))

@@ -76,7 +76,11 @@ export function ConfirmDialog({
           <Button
             onClick={handleConfirm}
             disabled={loading}
-            className={destructive ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
+            className={
+              destructive
+                ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                : ""
+            }
           >
             {loading && <Loader2 size={14} className="animate-spin mr-1" />}
             {confirmLabel}

@@ -1,20 +1,8 @@
-import {
-  Globe,
-  FileText,
-  Image,
-  Tags,
-  Settings,
-  PanelLeftClose,
-  PanelLeft,
-} from "lucide-react"
+import { Globe, FileText, Image, Tags, Settings, PanelLeftClose, PanelLeft } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAppStore, type Page } from "@/stores/app"
 import { Button } from "@/components/ui/button"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 
 /** 导航项配置：功能导航和底部设置分开定义 */
 const navItems: { page: Page; label: string; icon: typeof Globe }[] = [
@@ -36,7 +24,7 @@ export function Sidebar() {
     <aside
       className={cn(
         "flex flex-col h-full bg-sidebar-background border-r border-sidebar-border transition-[width] duration-150",
-        collapsed ? "w-12" : "w-[220px]"
+        collapsed ? "w-12" : "w-[220px]",
       )}
     >
       {/* 折叠/展开按钮 */}
@@ -101,7 +89,7 @@ function NavItem({
         collapsed ? "justify-center px-0 py-2" : "px-3 py-2",
         active
           ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-          : "text-sidebar-foreground hover:bg-sidebar-accent/50"
+          : "text-sidebar-foreground hover:bg-sidebar-accent/50",
       )}
     >
       <Icon size={16} />

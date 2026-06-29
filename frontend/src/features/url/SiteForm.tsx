@@ -43,8 +43,8 @@ export function SiteForm({ site, onSave, onCancel }: SiteFormProps) {
   const [fetchedIcon, setFetchedIcon] = useState<string>(site?.icon ?? "")
 
   // 附件（编辑模式）
-  const [attachments, setAttachments] = useState<{ filename: string; path: string }[]>(
-    () => (site?.attachments ?? []).map((a) => ({ filename: a.filename, path: a.filename }))
+  const [attachments, setAttachments] = useState<{ filename: string; path: string }[]>(() =>
+    (site?.attachments ?? []).map((a) => ({ filename: a.filename, path: a.filename })),
   )
 
   const {
@@ -123,10 +123,11 @@ export function SiteForm({ site, onSave, onCancel }: SiteFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4 px-6 py-5 overflow-y-auto">
-      <h2 className="text-base font-semibold">
-        {isEdit ? "编辑站点" : "新建站点"}
-      </h2>
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="flex flex-col gap-4 px-6 py-5 overflow-y-auto"
+    >
+      <h2 className="text-base font-semibold">{isEdit ? "编辑站点" : "新建站点"}</h2>
 
       {/* URL + 抓取 */}
       <div className="flex flex-col gap-1">
@@ -237,9 +238,7 @@ export function SiteForm({ site, onSave, onCancel }: SiteFormProps) {
           />
         </div>
       )}
-      {!isEdit && (
-        <p className="text-xs text-muted-foreground">附件可在站点创建后添加</p>
-      )}
+      {!isEdit && <p className="text-xs text-muted-foreground">附件可在站点创建后添加</p>}
 
       {/* 错误提示 */}
       {error && <p className="text-xs text-destructive">{error}</p>}

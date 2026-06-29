@@ -10,11 +10,7 @@ import { EmptyState } from "@/components/EmptyState"
 import { SearchBar } from "@/components/SearchBar"
 import { TagTreeFilter } from "@/components/TagTreeFilter"
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Globe, Plus, Bookmark } from "lucide-react"
 
 type CreateMode = null | "site" | "bookmark"
@@ -93,20 +89,17 @@ function CreateFormDialog({
   onSwitchToSite: () => void
 }) {
   return (
-    <Dialog open={mode !== null} onOpenChange={(open) => { if (!open) onClose() }}>
+    <Dialog
+      open={mode !== null}
+      onOpenChange={(open) => {
+        if (!open) onClose()
+      }}
+    >
       <DialogContent className="sm:max-w-[500px] p-0 max-h-[85vh] overflow-y-auto">
-        <DialogTitle className="sr-only">
-          {mode === "site" ? "新建站点" : "新建书签"}
-        </DialogTitle>
-        {mode === "site" && (
-          <SiteForm onSave={onCreated} onCancel={onClose} />
-        )}
+        <DialogTitle className="sr-only">{mode === "site" ? "新建站点" : "新建书签"}</DialogTitle>
+        {mode === "site" && <SiteForm onSave={onCreated} onCancel={onClose} />}
         {mode === "bookmark" && (
-          <BookmarkForm
-            onSave={onCreated}
-            onCancel={onClose}
-            onCreateSite={onSwitchToSite}
-          />
+          <BookmarkForm onSave={onCreated} onCancel={onClose} onCreateSite={onSwitchToSite} />
         )}
       </DialogContent>
     </Dialog>
@@ -136,13 +129,10 @@ function SearchToolbar({
         placeholder="搜索站点和书签..."
         className="flex-1"
       />
-      <TagTreeFilter
-        allTags={allTags}
-        selectedTags={selectedTags}
-        onChange={setSelectedTags}
-      />
+      <TagTreeFilter allTags={allTags} selectedTags={selectedTags} onChange={setSelectedTags} />
       <Button
-        variant="outline" size="sm"
+        variant="outline"
+        size="sm"
         className="h-8 gap-1 shrink-0 text-xs"
         onClick={onCreateSite}
       >
@@ -150,7 +140,8 @@ function SearchToolbar({
         站点
       </Button>
       <Button
-        variant="outline" size="sm"
+        variant="outline"
+        size="sm"
         className="h-8 gap-1 shrink-0 text-xs"
         onClick={onCreateBookmark}
       >

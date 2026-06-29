@@ -9,9 +9,25 @@
  * 上传/粘贴/验证逻辑集中在 useFileUpload hook，UI 只负责渲染。
  */
 
-import { useCallback, useEffect, useRef, useState, type ClipboardEvent, type DragEvent } from "react"
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ClipboardEvent,
+  type DragEvent,
+} from "react"
 import { Button } from "@/components/ui/button"
-import { Upload, X, Loader2, FileText, ImageIcon, Video, Clipboard, GripVertical } from "lucide-react"
+import {
+  Upload,
+  X,
+  Loader2,
+  FileText,
+  ImageIcon,
+  Video,
+  Clipboard,
+  GripVertical,
+} from "lucide-react"
 import { UploadService } from "../../bindings/collections/internal/service"
 import { cn, extractError, IMAGE_EXTS, VIDEO_EXTS } from "@/lib/utils"
 
@@ -20,9 +36,15 @@ const ALL_EXTS = new Set([...IMAGE_EXTS, ...VIDEO_EXTS, ...TEXT_EXTS])
 
 /** MIME → 扩展名映射，粘贴的截图通常没有文件名，需要靠 MIME 推断 */
 const MIME_TO_EXT: Record<string, string> = {
-  "image/png": "png", "image/jpeg": "jpg", "image/gif": "gif",
-  "image/webp": "webp", "image/bmp": "bmp", "image/avif": "avif",
-  "image/svg+xml": "svg", "video/mp4": "mp4", "video/webm": "webm",
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/gif": "gif",
+  "image/webp": "webp",
+  "image/bmp": "bmp",
+  "image/avif": "avif",
+  "image/svg+xml": "svg",
+  "video/mp4": "mp4",
+  "video/webm": "webm",
   "text/plain": "txt",
 }
 
@@ -42,7 +64,12 @@ interface FileUploadProps {
 // ─── 主组件 ──────────────────────────────────────────────────
 
 export function FileUpload({ scene, entityId, files, onChange, className }: FileUploadProps) {
-  const { uploading, error, uploadFiles, handlePaste } = useFileUpload(scene, entityId, files, onChange)
+  const { uploading, error, uploadFiles, handlePaste } = useFileUpload(
+    scene,
+    entityId,
+    files,
+    onChange,
+  )
 
   return (
     <div className={cn("flex flex-col gap-2", className)}>
@@ -74,79 +101,86 @@ function useFileUpload(
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState("")
 
-  const uploadFiles = useCallback(async (fileList: File[]) => {
-    setError("")
-    const validFiles: File[] = []
-    for (const file of fileList) {
-      const ext = file.name.split(".").pop()?.toLowerCase() ?? ""
-      if (!ALL_EXTS.has(ext)) {
-        setError(`不支持的文件格式：${file.name}`)
-        continue
-      }
-      validFiles.push(file)
-    }
-    if (validFiles.length === 0) return
-
-    setUploading(true)
-    try {
-      const newFiles: UploadedFile[] = []
-      for (const file of validFiles) {
-        const base64 = await readFileAsBase64(file)
-        const result = await UploadService.UploadFile({
-          scene,
-          entity_id: entityId,
-          filename: file.name,
-          data: base64,
-        })
-        if (result?.path) {
-          newFiles.push({ filename: file.name, path: result.path })
+  const uploadFiles = useCallback(
+    async (fileList: File[]) => {
+      setError("")
+      const validFiles: File[] = []
+      for (const file of fileList) {
+        const ext = file.name.split(".").pop()?.toLowerCase() ?? ""
+        if (!ALL_EXTS.has(ext)) {
+          setError(`不支持的文件格式：${file.name}`)
+          continue
         }
+        validFiles.push(file)
       }
-      onChange([...files, ...newFiles])
-    } catch (e: any) {
-      setError(extractError(e))
-    } finally {
-      setUploading(false)
-    }
-  }, [scene, entityId, files, onChange]) as UploadFn
+      if (validFiles.length === 0) return
+
+      setUploading(true)
+      try {
+        const newFiles: UploadedFile[] = []
+        for (const file of validFiles) {
+          const base64 = await readFileAsBase64(file)
+          const result = await UploadService.UploadFile({
+            scene,
+            entity_id: entityId,
+            filename: file.name,
+            data: base64,
+          })
+          if (result?.path) {
+            newFiles.push({ filename: file.name, path: result.path })
+          }
+        }
+        onChange([...files, ...newFiles])
+      } catch (e: any) {
+        setError(extractError(e))
+      } finally {
+        setUploading(false)
+      }
+    },
+    [scene, entityId, files, onChange],
+  ) as UploadFn
 
   // 暴露 setError 给 UploadedFileList 的删除操作使用
   uploadFiles._setError = setError
 
   /** 从剪贴板中提取文件（截图、复制的文件），为无文件名的 blob 生成名称 */
-  const handlePaste = useCallback((e: ClipboardEvent | globalThis.ClipboardEvent) => {
-    const items = (e as ClipboardEvent).clipboardData?.items
-      ?? (e as globalThis.ClipboardEvent).clipboardData?.items
-    if (!items || items.length === 0) return
+  const handlePaste = useCallback(
+    (e: ClipboardEvent | globalThis.ClipboardEvent) => {
+      const items =
+        (e as ClipboardEvent).clipboardData?.items ??
+        (e as globalThis.ClipboardEvent).clipboardData?.items
+      if (!items || items.length === 0) return
 
-    const pastedFiles: File[] = []
-    for (const item of Array.from(items)) {
-      if (item.kind !== "file") continue
-      const file = item.getAsFile()
-      if (!file) continue
+      const pastedFiles: File[] = []
+      for (const item of Array.from(items)) {
+        if (item.kind !== "file") continue
+        const file = item.getAsFile()
+        if (!file) continue
 
-      let name = file.name
-      if (!name || name === "image.png" || name === "image.jpeg") {
-        const ext = MIME_TO_EXT[file.type] ?? "png"
-        name = `paste-${Date.now()}.${ext}`
-      }
-
-      const ext = name.split(".").pop()?.toLowerCase() ?? ""
-      if (!ALL_EXTS.has(ext)) {
-        const guessedExt = MIME_TO_EXT[file.type]
-        if (guessedExt && ALL_EXTS.has(guessedExt)) {
-          name = `paste-${Date.now()}.${guessedExt}`
+        let name = file.name
+        if (!name || name === "image.png" || name === "image.jpeg") {
+          const ext = MIME_TO_EXT[file.type] ?? "png"
+          name = `paste-${Date.now()}.${ext}`
         }
+
+        const ext = name.split(".").pop()?.toLowerCase() ?? ""
+        if (!ALL_EXTS.has(ext)) {
+          const guessedExt = MIME_TO_EXT[file.type]
+          if (guessedExt && ALL_EXTS.has(guessedExt)) {
+            name = `paste-${Date.now()}.${guessedExt}`
+          }
+        }
+
+        pastedFiles.push(new File([file], name, { type: file.type }))
       }
 
-      pastedFiles.push(new File([file], name, { type: file.type }))
-    }
-
-    if (pastedFiles.length > 0) {
-      e.preventDefault()
-      uploadFiles(pastedFiles)
-    }
-  }, [uploadFiles])
+      if (pastedFiles.length > 0) {
+        e.preventDefault()
+        uploadFiles(pastedFiles)
+      }
+    },
+    [uploadFiles],
+  )
 
   return { uploading, error, uploadFiles, handlePaste }
 }
@@ -190,13 +224,20 @@ function DropZone({
       tabIndex={0}
       className={cn(
         "flex flex-col items-center justify-center gap-1 rounded-md border border-dashed py-4 cursor-pointer transition-colors duration-150 outline-none",
-        dragOver ? "border-primary bg-muted/50" : focused ? "border-primary/60 bg-muted/30" : "border-input hover:border-primary/50"
+        dragOver
+          ? "border-primary bg-muted/50"
+          : focused
+            ? "border-primary/60 bg-muted/30"
+            : "border-input hover:border-primary/50",
       )}
       onClick={() => inputRef.current?.click()}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
       onPaste={handlePaste as any}
-      onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+      onDragOver={(e) => {
+        e.preventDefault()
+        setDragOver(true)
+      }}
       onDragLeave={() => setDragOver(false)}
       onDrop={handleDrop}
     >
@@ -206,7 +247,9 @@ function DropZone({
         <Upload size={20} className="text-muted-foreground" />
       )}
       <p className="text-xs text-muted-foreground text-center">
-        {uploading ? "上传中..." : (
+        {uploading ? (
+          "上传中..."
+        ) : (
           <>
             点击选择 / 拖拽 / <Clipboard size={10} className="inline -mt-0.5" /> 粘贴文件
           </>
@@ -217,7 +260,9 @@ function DropZone({
         type="file"
         multiple
         className="hidden"
-        accept={Array.from(ALL_EXTS).map((e) => `.${e}`).join(",")}
+        accept={Array.from(ALL_EXTS)
+          .map((e) => `.${e}`)
+          .join(",")}
         onChange={(e) => {
           if (e.target.files) uploadFiles(Array.from(e.target.files))
           e.target.value = ""
@@ -275,13 +320,25 @@ function UploadedFileList({
             key={f.filename}
             draggable
             onDragStart={() => setDragIndex(idx)}
-            onDragOver={(e) => { e.preventDefault(); setOverIndex(idx) }}
-            onDragEnd={() => { setDragIndex(null); setOverIndex(null) }}
-            onDrop={(e) => { e.preventDefault(); handleReorderDrop() }}
+            onDragOver={(e) => {
+              e.preventDefault()
+              setOverIndex(idx)
+            }}
+            onDragEnd={() => {
+              setDragIndex(null)
+              setOverIndex(null)
+            }}
+            onDrop={(e) => {
+              e.preventDefault()
+              handleReorderDrop()
+            }}
             className={cn(
               "flex items-center gap-2 px-2 py-1 rounded-md hover:bg-muted/50",
               dragIndex === idx && "opacity-50",
-              overIndex === idx && dragIndex !== null && dragIndex !== idx && "border-t border-primary",
+              overIndex === idx &&
+                dragIndex !== null &&
+                dragIndex !== idx &&
+                "border-t border-primary",
             )}
           >
             <GripVertical size={14} className="shrink-0 text-muted-foreground/50 cursor-grab" />

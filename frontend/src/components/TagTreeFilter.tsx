@@ -1,11 +1,7 @@
 import { useState, useMemo } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Filter, ChevronRight, ChevronDown, X } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -59,9 +55,7 @@ export function TagTreeFilter({ allTags, selectedTags, onChange }: TagTreeFilter
       <PopoverContent className="w-[260px] p-0" align="start">
         {selectedTags.length > 0 && (
           <div className="flex items-center justify-between px-3 py-2 border-b">
-            <span className="text-xs text-muted-foreground">
-              已选 {selectedTags.length} 个
-            </span>
+            <span className="text-xs text-muted-foreground">已选 {selectedTags.length} 个</span>
             <button
               onClick={() => onChange([])}
               className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-0.5"
@@ -114,7 +108,7 @@ function TreeNode({
       <button
         className={cn(
           "flex items-center gap-1 w-full rounded-md px-2 py-1 text-left text-sm transition-colors duration-150",
-          isSelected ? "bg-muted font-medium" : "hover:bg-muted/50"
+          isSelected ? "bg-muted font-medium" : "hover:bg-muted/50",
         )}
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
         onClick={() => onToggle(node.fullPath)}

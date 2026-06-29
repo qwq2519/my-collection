@@ -18,10 +18,7 @@ import { useEffect, useRef } from "react"
  *   自动调用回调函数加载更多数据。IntersectionObserver 是浏览器原生 API，
  *   用于高效检测元素是否进入视口，无需手动监听 scroll 事件。
  */
-export function useInfiniteScroll(
-  loadMore: () => void,
-  hasMore: boolean,
-) {
+export function useInfiniteScroll(loadMore: () => void, hasMore: boolean) {
   const sentinelRef = useRef<HTMLDivElement>(null)
 
   // 用 ref 持有最新的 loadMore 回调，避免 useEffect 依赖变化导致 observer 反复重建

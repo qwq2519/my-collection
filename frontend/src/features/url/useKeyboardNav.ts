@@ -19,9 +19,7 @@ export function useKeyboardNav() {
       focusedIndexRef.current = -1
       return
     }
-    const ids = searchMode
-      ? searchResults.map((r) => r.site.id)
-      : sites.map((s) => s.id)
+    const ids = searchMode ? searchResults.map((r) => r.site.id) : sites.map((s) => s.id)
     const idx = ids.indexOf(selectedId)
     if (idx !== -1) focusedIndexRef.current = idx
   }, [detailView, sites, searchResults, searchMode])
@@ -35,9 +33,7 @@ export function useKeyboardNav() {
       }
 
       const state = useURLStore.getState()
-      const listLen = state.searchMode
-        ? state.searchResults.length
-        : state.sites.length
+      const listLen = state.searchMode ? state.searchResults.length : state.sites.length
 
       switch (e.key) {
         case "ArrowDown": {
@@ -83,10 +79,7 @@ export function useKeyboardNav() {
   }, [])
 }
 
-function selectByIndex(
-  state: ReturnType<typeof useURLStore.getState>,
-  index: number,
-) {
+function selectByIndex(state: ReturnType<typeof useURLStore.getState>, index: number) {
   if (state.searchMode) {
     const item = state.searchResults[index]
     if (item) state.selectSearchResult(item)
@@ -98,8 +91,6 @@ function selectByIndex(
 
 function scrollToIndex(index: number) {
   requestAnimationFrame(() => {
-    document
-      .querySelector(`[data-site-index="${index}"]`)
-      ?.scrollIntoView({ block: "nearest" })
+    document.querySelector(`[data-site-index="${index}"]`)?.scrollIntoView({ block: "nearest" })
   })
 }

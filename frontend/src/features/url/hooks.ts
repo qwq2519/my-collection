@@ -77,7 +77,9 @@ export function useSiteLookup(
     }
 
     // 验证是否为合法 URL 格式
-    try { new URL(urlValue) } catch {
+    try {
+      new URL(urlValue)
+    } catch {
       setLookupState({ status: "idle" })
       setNormalizedURL("")
       return

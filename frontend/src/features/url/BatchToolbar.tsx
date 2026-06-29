@@ -77,7 +77,12 @@ export function BatchToolbar({
         <span className="text-xs text-muted-foreground">
           已选 {count} / {totalCount}
         </span>
-        <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={count === totalCount ? onDeselectAll : onSelectAll}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 text-xs px-2"
+          onClick={count === totalCount ? onDeselectAll : onSelectAll}
+        >
           {count === totalCount ? "取消全选" : "全选"}
         </Button>
         <div className="flex-1" />

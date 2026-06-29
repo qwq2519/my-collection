@@ -49,7 +49,10 @@ export function SearchBar({
 
   return (
     <div className={cn("relative", className)}>
-      <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+      <Search
+        size={14}
+        className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
+      />
       <Input
         value={localValue}
         onChange={(e) => handleChange(e.target.value)}

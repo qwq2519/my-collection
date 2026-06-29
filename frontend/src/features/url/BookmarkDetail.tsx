@@ -4,7 +4,16 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
-import { ArrowLeft, ExternalLink, Loader2, FileText, ImageIcon, Video, Pencil, Trash2 } from "lucide-react"
+import {
+  ArrowLeft,
+  ExternalLink,
+  Loader2,
+  FileText,
+  ImageIcon,
+  Video,
+  Pencil,
+  Trash2,
+} from "lucide-react"
 import { IMAGE_EXTS, VIDEO_EXTS, isPreviewableExt } from "@/lib/utils"
 import { toast } from "sonner"
 import { BookmarkForm } from "./BookmarkForm"
@@ -88,10 +97,7 @@ function BookmarkNav({ bm, onEdit }: { bm: Bookmark; onEdit: () => void }) {
         <ArrowLeft size={16} />
       </Button>
       <div className="flex items-center gap-1 flex-1 min-w-0 text-xs text-muted-foreground">
-        <span
-          className="hover:text-foreground cursor-pointer shrink-0"
-          onClick={backToSite}
-        >
+        <span className="hover:text-foreground cursor-pointer shrink-0" onClick={backToSite}>
           {currentSite?.title ?? "站点"}
         </span>
         <span className="shrink-0">&gt;</span>
@@ -101,7 +107,8 @@ function BookmarkNav({ bm, onEdit }: { bm: Bookmark; onEdit: () => void }) {
         <Pencil size={14} />
       </Button>
       <Button
-        variant="ghost" size="icon"
+        variant="ghost"
+        size="icon"
         className="h-7 w-7 text-muted-foreground hover:text-destructive"
         onClick={() => setShowDelete(true)}
       >
@@ -136,14 +143,14 @@ function BookmarkInfo({ bm }: { bm: Bookmark }) {
         <ExternalLink size={10} />
       </a>
 
-      {bm.description && (
-        <p className="text-sm text-muted-foreground mt-3">{bm.description}</p>
-      )}
+      {bm.description && <p className="text-sm text-muted-foreground mt-3">{bm.description}</p>}
 
       {bm.tags && bm.tags.length > 0 && (
         <div className="flex flex-wrap gap-1 mt-3">
           {bm.tags.map((tag) => (
-            <Badge key={tag} variant="secondary">{tag}</Badge>
+            <Badge key={tag} variant="secondary">
+              {tag}
+            </Badge>
           ))}
         </div>
       )}
@@ -164,7 +171,13 @@ interface Attachment {
   label?: string
 }
 
-function AttachmentGallery({ bookmarkId, attachments }: { bookmarkId: string; attachments: Attachment[] }) {
+function AttachmentGallery({
+  bookmarkId,
+  attachments,
+}: {
+  bookmarkId: string
+  attachments: Attachment[]
+}) {
   return (
     <div className="px-6 py-4">
       <h3 className="text-sm font-medium mb-3">附件 ({attachments.length})</h3>

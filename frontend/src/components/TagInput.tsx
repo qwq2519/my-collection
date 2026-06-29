@@ -16,11 +16,7 @@ interface TagInputProps {
  * 后续可增加自动补全功能（基于 Command + Popover），
  * 当前先实现基础的手动输入。
  */
-export function TagInput({
-  value,
-  onChange,
-  placeholder = "输入标签后按回车添加",
-}: TagInputProps) {
+export function TagInput({ value, onChange, placeholder = "输入标签后按回车添加" }: TagInputProps) {
   const [input, setInput] = useState("")
   const inputRef = useRef<HTMLInputElement>(null)
 

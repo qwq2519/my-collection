@@ -89,9 +89,7 @@ export function BookmarkForm({ bookmark, onSave, onCancel, onCreateSite }: Bookm
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4 px-6 py-5">
-      <h2 className="text-base font-semibold">
-        {isEdit ? "编辑书签" : "新建书签"}
-      </h2>
+      <h2 className="text-base font-semibold">{isEdit ? "编辑书签" : "新建书签"}</h2>
 
       {/* URL */}
       <div className="flex flex-col gap-1">

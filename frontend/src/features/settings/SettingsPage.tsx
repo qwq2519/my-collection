@@ -40,7 +40,7 @@ export function SettingsPage() {
                     "relative flex flex-col rounded-lg border-2 p-3 text-left transition-all",
                     active
                       ? "border-primary ring-1 ring-primary/30"
-                      : "border-border hover:border-muted-foreground/40"
+                      : "border-border hover:border-muted-foreground/40",
                   )}
                 >
                   {active && (
