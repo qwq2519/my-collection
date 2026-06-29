@@ -6,12 +6,14 @@ import { BookmarkDetail } from "./BookmarkDetail"
 import { SiteForm } from "./SiteForm"
 import { BookmarkForm } from "./BookmarkForm"
 import { useURLStore } from "@/stores/url"
+import type { DetailView } from "@/stores/url"
 import { EmptyState } from "@/components/EmptyState"
 import { SearchBar } from "@/components/SearchBar"
 import { TagTreeFilter } from "@/components/TagTreeFilter"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Globe, Plus, Bookmark } from "lucide-react"
+import { pick } from "@/lib/safe"
 
 type CreateMode = null | "site" | "bookmark"
 
@@ -44,7 +46,7 @@ export function URLPage() {
         <div className="w-[260px] shrink-0 border-r flex flex-col">
           <div className="px-3 py-2 border-b">
             <h2 className="text-sm font-semibold text-foreground">
-              {searchMode ? "搜索结果" : "站点"}
+              {pick(searchMode, "搜索结果", "站点")}
             </h2>
           </div>
           <div className="flex-1 overflow-hidden py-1">
@@ -54,13 +56,7 @@ export function URLPage() {
 
         {/* 右栏：始终展示详情，不被创建表单替换 */}
         <div className="flex-1 overflow-hidden">
-          {detailView.type === "none" ? (
-            <EmptyState icon={Globe} message="选择一个站点查看详情" className="h-full" />
-          ) : detailView.type === "site" ? (
-            <SiteDetail />
-          ) : (
-            <BookmarkDetail />
-          )}
+          <DetailPanel detailView={detailView} />
         </div>
       </div>
 
@@ -73,6 +69,18 @@ export function URLPage() {
       />
     </div>
   )
+}
+
+// ─── 右栏详情面板 ─────────────────────────────────────────────
+
+function DetailPanel({ detailView }: { detailView: DetailView }) {
+  if (detailView.type === "none") {
+    return <EmptyState icon={Globe} message="选择一个站点查看详情" className="h-full" />
+  }
+  if (detailView.type === "site") {
+    return <SiteDetail />
+  }
+  return <BookmarkDetail />
 }
 
 // ─── 创建表单弹窗 ─────────────────────────────────────────────
@@ -96,7 +104,9 @@ function CreateFormDialog({
       }}
     >
       <DialogContent className="sm:max-w-[500px] p-0 max-h-[85vh] overflow-y-auto">
-        <DialogTitle className="sr-only">{mode === "site" ? "新建站点" : "新建书签"}</DialogTitle>
+        <DialogTitle className="sr-only">
+          {pick(mode === "site", "新建站点", "新建书签")}
+        </DialogTitle>
         {mode === "site" && <SiteForm onSave={onCreated} onCancel={onClose} />}
         {mode === "bookmark" && (
           <BookmarkForm onSave={onCreated} onCancel={onClose} onCreateSite={onSwitchToSite} />
@@ -160,6 +170,7 @@ function useCollectedTags(): string[] {
   const searchResults = useURLStore((s) => s.searchResults)
   const searchMode = useURLStore((s) => s.searchMode)
 
+  // eslint-disable-next-line no-restricted-syntax -- useMemo justified: expensive tree traversal on every tag change
   return useMemo(() => {
     const tagSet = new Set<string>()
     if (searchMode) {

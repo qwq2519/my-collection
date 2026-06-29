@@ -14,6 +14,7 @@ import { useState } from "react"
 import { cn, isPreviewableExt, VIDEO_EXTS } from "@/lib/utils"
 import { Video } from "lucide-react"
 import type { Bookmark } from "../../../bindings/collections/internal/model"
+import { pick } from "@/lib/safe"
 
 // ─── 书签网格视图 ─────────────────────────────────────────────
 
@@ -39,7 +40,7 @@ export function BookmarkGrid({
             onClick={() => onSelect(bm.id)}
             className={cn(
               "flex flex-col rounded-md border overflow-hidden text-left transition-colors duration-150",
-              isSelected ? "ring-2 ring-primary" : "hover:bg-muted/50",
+              pick(isSelected, "ring-2 ring-primary", "hover:bg-muted/50"),
             )}
           >
             <div className="aspect-[16/10] bg-muted flex items-center justify-center overflow-hidden">
@@ -87,7 +88,7 @@ export function BookmarkListView({
             onClick={() => onSelect(bm.id)}
             className={cn(
               "flex items-center gap-3 px-3 py-2 rounded-md text-left transition-colors duration-150",
-              isSelected ? "bg-muted" : "hover:bg-muted/50",
+              pick(isSelected, "bg-muted", "hover:bg-muted/50"),
             )}
           >
             {batchMode && (
@@ -122,16 +123,16 @@ export function ThumbnailImage({ bookmarkId, filename }: { bookmarkId: string; f
 
   return (
     <img
-      src={
-        fallback === "original"
-          ? `/persist/url-assets/attachments/${bookmarkId}/${filename}`
-          : `/persist/url-assets/attachments/${bookmarkId}/${filename}.thumb.jpg`
-      }
+      src={pick(
+        fallback === "original",
+        `/persist/url-assets/attachments/${bookmarkId}/${filename}`,
+        `/persist/url-assets/attachments/${bookmarkId}/${filename}.thumb.jpg`,
+      )}
       alt=""
       className="w-full h-full object-cover"
       onError={() => {
         if (fallback === "none") {
-          setFallback(isVideo ? "icon" : "original")
+          setFallback(pick(isVideo, "icon", "original"))
         } else {
           setFallback("icon")
         }

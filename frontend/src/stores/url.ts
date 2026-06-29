@@ -53,7 +53,8 @@ export type DetailView =
 
 /** 从 DetailView 中提取当前 siteId（站点或书签视图都有） */
 export function getActiveSiteId(view: DetailView): string | null {
-  return view.type === "none" ? null : view.siteId
+  if (view.type === "none") return null
+  return view.siteId
 }
 
 /** 书签展示模式 */

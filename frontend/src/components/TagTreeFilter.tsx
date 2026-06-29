@@ -5,6 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Filter, ChevronRight, ChevronDown, X } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { pick } from "@/lib/safe"
 
 interface TagTreeFilterProps {
   /** 所有可用标签（扁平列表，层级用 :: 分割） */
@@ -29,6 +30,7 @@ interface TagNode {
  */
 export function TagTreeFilter({ allTags, selectedTags, onChange }: TagTreeFilterProps) {
   const [open, setOpen] = useState(false)
+  // eslint-disable-next-line no-restricted-syntax -- useMemo justified: expensive tree traversal on every tag change
   const tree = useMemo(() => buildTree(allTags), [allTags])
 
   const toggleTag = (tag: string) => {
@@ -67,9 +69,10 @@ export function TagTreeFilter({ allTags, selectedTags, onChange }: TagTreeFilter
         )}
         <ScrollArea className="max-h-[300px]">
           <div className="p-2">
-            {tree.length === 0 ? (
+            {tree.length === 0 && (
               <p className="text-xs text-muted-foreground text-center py-4">暂无标签</p>
-            ) : (
+            )}
+            {tree.length > 0 &&
               tree.map((node) => (
                 <TreeNode
                   key={node.fullPath}
@@ -78,8 +81,7 @@ export function TagTreeFilter({ allTags, selectedTags, onChange }: TagTreeFilter
                   onToggle={toggleTag}
                   depth={0}
                 />
-              ))
-            )}
+              ))}
           </div>
         </ScrollArea>
       </PopoverContent>
@@ -108,13 +110,13 @@ function TreeNode({
       <button
         className={cn(
           "flex items-center gap-1 w-full rounded-md px-2 py-1 text-left text-sm transition-colors duration-150",
-          isSelected ? "bg-muted font-medium" : "hover:bg-muted/50",
+          pick(isSelected, "bg-muted font-medium", "hover:bg-muted/50"),
         )}
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
         onClick={() => onToggle(node.fullPath)}
       >
         {/* 折叠按钮：有子节点时显示 */}
-        {hasChildren ? (
+        {hasChildren && (
           <span
             className="shrink-0 text-muted-foreground"
             onClick={(e) => {
@@ -122,11 +124,10 @@ function TreeNode({
               setExpanded(!expanded)
             }}
           >
-            {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+            {pick(expanded, <ChevronDown size={12} />, <ChevronRight size={12} />)}
           </span>
-        ) : (
-          <span className="w-3 shrink-0" />
         )}
+        {!hasChildren && <span className="w-3 shrink-0" />}
         <span className="truncate">{node.name}</span>
       </button>
 

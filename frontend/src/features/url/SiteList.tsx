@@ -5,6 +5,7 @@ import { useInfiniteScroll } from "@/hooks/useInfiniteScroll"
 import { EmptyState } from "@/components/EmptyState"
 import { Badge } from "@/components/ui/badge"
 import { Globe, Loader2, Search } from "lucide-react"
+import { pick } from "@/lib/safe"
 
 /**
  * 左侧站点列表：根据 searchMode 切换数据源。
@@ -23,7 +24,8 @@ import { Globe, Loader2, Search } from "lucide-react"
 export function SiteList() {
   const searchMode = useURLStore((s) => s.searchMode)
 
-  return searchMode ? <SearchResultList /> : <DefaultSiteList />
+  if (searchMode) return <SearchResultList />
+  return <DefaultSiteList />
 }
 
 /** 默认模式：站点列表 + 无限滚动 */
@@ -98,7 +100,7 @@ function SearchResultList() {
             icon={item.site.icon}
             domain={item.site.domain}
             count={hitCount}
-            countLabel={hitCount > 0 ? `${hitCount} 命中` : undefined}
+            countLabel={pick(hitCount > 0, `${hitCount} 命中`, undefined)}
             updatedAt={item.site.updated_at}
             tags={item.site.tags}
             selected={selectedSiteId === item.site.id}
@@ -156,7 +158,7 @@ function SiteListItem({
       data-site-index={index}
       className={cn(
         "flex gap-2 px-3 py-2 text-left rounded-md mx-1 transition-colors duration-150",
-        selected ? "bg-muted font-medium" : "hover:bg-muted/50",
+        pick(selected, "bg-muted font-medium", "hover:bg-muted/50"),
       )}
     >
       <div className="pt-0.5 shrink-0">

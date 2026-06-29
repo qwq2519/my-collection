@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils"
 import { useAppStore, type Page } from "@/stores/app"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { pick } from "@/lib/safe"
 
 /** 导航项配置：功能导航和底部设置分开定义 */
 const navItems: { page: Page; label: string; icon: typeof Globe }[] = [
@@ -24,18 +25,20 @@ export function Sidebar() {
     <aside
       className={cn(
         "flex flex-col h-full bg-sidebar-background border-r border-sidebar-border transition-[width] duration-150",
-        collapsed ? "w-12" : "w-[220px]",
+        pick(collapsed, "w-12", "w-[220px]"),
       )}
     >
       {/* 折叠/展开按钮 */}
-      <div className={cn("flex items-center p-2", collapsed ? "justify-center" : "justify-end")}>
+      <div
+        className={cn("flex items-center p-2", pick(collapsed, "justify-center", "justify-end"))}
+      >
         <Button
           variant="ghost"
           size="icon"
           className="h-7 w-7 text-muted-foreground"
           onClick={toggleSidebar}
         >
-          {collapsed ? <PanelLeft size={16} /> : <PanelLeftClose size={16} />}
+          {pick(collapsed, <PanelLeft size={16} />, <PanelLeftClose size={16} />)}
         </Button>
       </div>
 
@@ -86,7 +89,7 @@ function NavItem({
       onClick={onClick}
       className={cn(
         "flex items-center gap-2 w-full rounded-md text-sm transition-colors duration-150",
-        collapsed ? "justify-center px-0 py-2" : "px-3 py-2",
+        pick(collapsed, "justify-center px-0 py-2", "px-3 py-2"),
         active
           ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
           : "text-sidebar-foreground hover:bg-sidebar-accent/50",

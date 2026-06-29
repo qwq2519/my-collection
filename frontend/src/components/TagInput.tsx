@@ -1,6 +1,7 @@
 import { useState, useRef, KeyboardEvent } from "react"
 import { Badge } from "@/components/ui/badge"
 import { X } from "lucide-react"
+import { pick } from "@/lib/safe"
 
 interface TagInputProps {
   value: string[]
@@ -72,7 +73,7 @@ export function TagInput({ value, onChange, placeholder = "输入标签后按回
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={handleKeyDown}
         onBlur={() => addTag(input)}
-        placeholder={value.length === 0 ? placeholder : ""}
+        placeholder={pick(value.length === 0, placeholder, "")}
         className="flex-1 min-w-[80px] bg-transparent outline-none text-sm placeholder:text-muted-foreground"
       />
     </div>

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react"
 import { useURLStore, getActiveSiteId } from "@/stores/url"
+import { pick } from "@/lib/safe"
 
 /**
  * 键盘导航：↑↓ 切换站点列表项，Enter 选中，Esc 返回/清除搜索。
@@ -19,7 +20,11 @@ export function useKeyboardNav() {
       focusedIndexRef.current = -1
       return
     }
-    const ids = searchMode ? searchResults.map((r) => r.site.id) : sites.map((s) => s.id)
+    const ids = pick(
+      searchMode,
+      searchResults.map((r) => r.site.id),
+      sites.map((s) => s.id),
+    )
     const idx = ids.indexOf(selectedId)
     if (idx !== -1) focusedIndexRef.current = idx
   }, [detailView, sites, searchResults, searchMode])
@@ -33,7 +38,7 @@ export function useKeyboardNav() {
       }
 
       const state = useURLStore.getState()
-      const listLen = state.searchMode ? state.searchResults.length : state.sites.length
+      const listLen = pick(state.searchMode, state.searchResults.length, state.sites.length)
 
       switch (e.key) {
         case "ArrowDown": {

@@ -13,6 +13,7 @@ import { Trash2, Tags, X, Loader2 } from "lucide-react"
 import { URLService } from "../../../bindings/collections/internal/service"
 import { toast } from "sonner"
 import { callService } from "@/lib/async"
+import { pick } from "@/lib/safe"
 
 interface BatchToolbarProps {
   siteId: string
@@ -89,7 +90,7 @@ export function BatchToolbar({
           className="h-6 text-xs px-2"
           onClick={count === totalCount ? onDeselectAll : onSelectAll}
         >
-          {count === totalCount ? "取消全选" : "全选"}
+          {pick(count === totalCount, "取消全选", "全选")}
         </Button>
         <div className="flex-1" />
         <Button

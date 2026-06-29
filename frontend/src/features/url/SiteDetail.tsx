@@ -24,6 +24,7 @@ import { BookmarkGrid, BookmarkListView } from "./BookmarkViews"
 import { URLService } from "../../../bindings/collections/internal/service"
 import type { Site } from "../../../bindings/collections/internal/model"
 import { callService } from "@/lib/async"
+import { pick } from "@/lib/safe"
 
 /**
  * 站点详情面板：协调器，管理 view/edit-site/add-bookmark 三种模式。
@@ -222,7 +223,7 @@ function BookmarkSection({ site, onAddBookmark }: { site: Site; onAddBookmark: (
         </div>
         <div className="flex gap-1">
           <Button
-            variant={viewMode === "grid" ? "secondary" : "ghost"}
+            variant={pick(viewMode === "grid", "secondary", "ghost")}
             size="icon"
             className="h-7 w-7"
             onClick={() => setViewMode("grid")}
@@ -230,7 +231,7 @@ function BookmarkSection({ site, onAddBookmark }: { site: Site; onAddBookmark: (
             <LayoutGrid size={14} />
           </Button>
           <Button
-            variant={viewMode === "list" ? "secondary" : "ghost"}
+            variant={pick(viewMode === "list", "secondary", "ghost")}
             size="icon"
             className="h-7 w-7"
             onClick={() => setViewMode("list")}
@@ -257,29 +258,66 @@ function BookmarkSection({ site, onAddBookmark }: { site: Site; onAddBookmark: (
 
       {/* 书签内容 */}
       <div className="px-6 pb-4">
-        {bookmarksLoading && bookmarks.length === 0 ? (
-          <div className="flex justify-center py-8">
-            <Loader2 size={20} className="animate-spin text-muted-foreground" />
-          </div>
-        ) : bookmarks.length === 0 ? (
-          <EmptyState icon={Bookmark} message="暂无书签" />
-        ) : viewMode === "grid" ? (
-          <BookmarkGrid
-            bookmarks={bookmarks}
-            onSelect={onSelect}
-            batchMode={batchMode}
-            selectedIds={selectedIds}
-          />
-        ) : (
-          <BookmarkListView
-            bookmarks={bookmarks}
-            onSelect={onSelect}
-            batchMode={batchMode}
-            selectedIds={selectedIds}
-          />
-        )}
+        <BookmarkContent
+          bookmarks={bookmarks}
+          bookmarksLoading={bookmarksLoading}
+          viewMode={viewMode}
+          onSelect={onSelect}
+          batchMode={batchMode}
+          selectedIds={selectedIds}
+        />
       </div>
     </>
+  )
+}
+
+// ─── 书签内容：根据加载/空态/视图模式渲染 ─────────────────────
+
+function BookmarkContent({
+  bookmarks,
+  bookmarksLoading,
+  viewMode,
+  onSelect,
+  batchMode,
+  selectedIds,
+}: {
+  bookmarks: import("../../../bindings/collections/internal/model").Bookmark[]
+  bookmarksLoading: boolean
+  viewMode: import("@/stores/url").BookmarkViewMode
+  onSelect: (id: string) => void
+  batchMode: boolean
+  selectedIds: Set<string>
+}) {
+  if (bookmarksLoading && bookmarks.length === 0) {
+    return (
+      <div className="flex justify-center py-8">
+        <Loader2 size={20} className="animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (bookmarks.length === 0) {
+    return <EmptyState icon={Bookmark} message="暂无书签" />
+  }
+
+  if (viewMode === "grid") {
+    return (
+      <BookmarkGrid
+        bookmarks={bookmarks}
+        onSelect={onSelect}
+        batchMode={batchMode}
+        selectedIds={selectedIds}
+      />
+    )
+  }
+
+  return (
+    <BookmarkListView
+      bookmarks={bookmarks}
+      onSelect={onSelect}
+      batchMode={batchMode}
+      selectedIds={selectedIds}
+    />
   )
 }
 
