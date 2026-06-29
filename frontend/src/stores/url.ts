@@ -34,6 +34,8 @@
 import { create } from "zustand"
 import { URLService } from "../../bindings/collections/internal/service"
 import type { Site, Bookmark, SiteWithBookmarks } from "../../bindings/collections/internal/model"
+import { callService } from "../lib/async"
+import { unpackList } from "../lib/safe"
 
 // ─── 类型定义 ────────────────────────────────────────────────
 
@@ -150,36 +152,36 @@ export const useURLStore = create<URLState>((set, get) => ({
   /** 加载第一页站点（页面初始化 或 数据变更后刷新） */
   loadSites: async () => {
     set({ sitesLoading: true })
-    try {
-      const result = await URLService.ListSites({ page: 1, page_size: PAGE_SIZE })
-      set({
-        sites: result?.items ?? [],
-        sitesTotal: result?.total ?? 0,
-        sitesPage: 1,
-        sitesHasMore: result?.has_more ?? false,
-      })
-    } finally {
-      set({ sitesLoading: false })
-    }
+    const [result] = await callService(() =>
+      URLService.ListSites({ page: 1, page_size: PAGE_SIZE }),
+    )
+    const { items, total, hasMore } = unpackList(result)
+    set({
+      sites: items,
+      sitesTotal: total,
+      sitesPage: 1,
+      sitesHasMore: hasMore,
+      sitesLoading: false,
+    })
   },
 
   /** 加载下一页站点（无限滚动触发，由 useInfiniteScroll hook 调用） */
   loadMoreSites: async () => {
     const { sitesHasMore, sitesLoading, sitesPage, sites } = get()
-    if (!sitesHasMore || sitesLoading) return // 防止重复请求
+    if (!sitesHasMore || sitesLoading) return
+    const nextPage = sitesPage + 1
     set({ sitesLoading: true })
-    try {
-      const nextPage = sitesPage + 1
-      const result = await URLService.ListSites({ page: nextPage, page_size: PAGE_SIZE })
-      set({
-        sites: [...sites, ...(result?.items ?? [])], // 追加到已有列表
-        sitesTotal: result?.total ?? 0,
-        sitesPage: nextPage,
-        sitesHasMore: result?.has_more ?? false,
-      })
-    } finally {
-      set({ sitesLoading: false })
-    }
+    const [result] = await callService(() =>
+      URLService.ListSites({ page: nextPage, page_size: PAGE_SIZE }),
+    )
+    const { items, total, hasMore } = unpackList(result)
+    set({
+      sites: [...sites, ...items],
+      sitesTotal: total,
+      sitesPage: nextPage,
+      sitesHasMore: hasMore,
+      sitesLoading: false,
+    })
   },
 
   // ═══ 详情面板导航 ═══
@@ -198,59 +200,56 @@ export const useURLStore = create<URLState>((set, get) => ({
       currentBookmark: null,
       bookmarksLoading: true,
     })
-    try {
-      const [site, bmResult] = await Promise.all([
+    const [result] = await callService(() =>
+      Promise.all([
         URLService.GetSite(siteId),
         URLService.ListBookmarks({ site_id: siteId, page: 1, page_size: PAGE_SIZE }),
-      ])
-      if (getActiveSiteId(get().detailView) !== siteId) return
+      ]),
+    )
+    if (getActiveSiteId(get().detailView) !== siteId) return
+    if (result) {
+      const [site, bmResult] = result
+      const { items, total, hasMore } = unpackList(bmResult)
       set({
         currentSite: site ?? null,
-        bookmarks: bmResult?.items ?? [],
-        bookmarksTotal: bmResult?.total ?? 0,
-        bookmarksHasMore: bmResult?.has_more ?? false,
+        bookmarks: items,
+        bookmarksTotal: total,
+        bookmarksHasMore: hasMore,
       })
-    } finally {
-      if (getActiveSiteId(get().detailView) === siteId) {
-        set({ bookmarksLoading: false })
-      }
     }
+    set({ bookmarksLoading: false })
   },
 
   loadMoreBookmarks: async () => {
     const { detailView, bookmarksHasMore, bookmarksLoading, bookmarksPage, bookmarks } = get()
     if (detailView.type !== "site" || !bookmarksHasMore || bookmarksLoading) return
+    const nextPage = bookmarksPage + 1
     set({ bookmarksLoading: true })
-    try {
-      const nextPage = bookmarksPage + 1
-      const result = await URLService.ListBookmarks({
+    const [result] = await callService(() =>
+      URLService.ListBookmarks({
         site_id: detailView.siteId,
         page: nextPage,
         page_size: PAGE_SIZE,
-      })
-      set({
-        bookmarks: [...bookmarks, ...(result?.items ?? [])],
-        bookmarksTotal: result?.total ?? 0,
-        bookmarksPage: nextPage,
-        bookmarksHasMore: result?.has_more ?? false,
-      })
-    } finally {
-      set({ bookmarksLoading: false })
-    }
+      }),
+    )
+    const { items, total, hasMore } = unpackList(result)
+    set({
+      bookmarks: [...bookmarks, ...items],
+      bookmarksTotal: total,
+      bookmarksPage: nextPage,
+      bookmarksHasMore: hasMore,
+      bookmarksLoading: false,
+    })
   },
 
   selectBookmark: async (bookmarkId) => {
     const { detailView } = get()
     const siteId = getActiveSiteId(detailView) ?? ""
     set({ detailView: { type: "bookmark", bookmarkId, siteId }, currentBookmark: null })
-    try {
-      const bm = await URLService.GetBookmark(bookmarkId)
-      const current = get().detailView
-      if (current.type === "bookmark" && current.bookmarkId === bookmarkId) {
-        set({ currentBookmark: bm ?? null })
-      }
-    } catch {
-      // 加载失败保持空态，UI 会展示 loading 或错误提示
+    const [bm] = await callService(() => URLService.GetBookmark(bookmarkId))
+    const current = get().detailView
+    if (current.type === "bookmark" && current.bookmarkId === bookmarkId) {
+      set({ currentBookmark: bm ?? null })
     }
   },
 
@@ -274,17 +273,23 @@ export const useURLStore = create<URLState>((set, get) => ({
     const siteId = getActiveSiteId(get().detailView)
     if (!siteId) return
 
-    const [site, bmResult] = await Promise.all([
-      URLService.GetSite(siteId),
-      URLService.ListBookmarks({ site_id: siteId, page: 1, page_size: PAGE_SIZE }),
-    ])
-    set({
-      currentSite: site ?? null,
-      bookmarks: bmResult?.items ?? [],
-      bookmarksTotal: bmResult?.total ?? 0,
-      bookmarksPage: 1,
-      bookmarksHasMore: bmResult?.has_more ?? false,
-    })
+    const [result] = await callService(() =>
+      Promise.all([
+        URLService.GetSite(siteId),
+        URLService.ListBookmarks({ site_id: siteId, page: 1, page_size: PAGE_SIZE }),
+      ]),
+    )
+    if (result) {
+      const [site, bmResult] = result
+      const { items, total, hasMore } = unpackList(bmResult)
+      set({
+        currentSite: site ?? null,
+        bookmarks: items,
+        bookmarksTotal: total,
+        bookmarksPage: 1,
+        bookmarksHasMore: hasMore,
+      })
+    }
     get().loadSites()
   },
 
@@ -299,49 +304,49 @@ export const useURLStore = create<URLState>((set, get) => ({
     }
     const version = ++searchVersion
     set({ searchMode: true, searchQuery: query, searchLoading: true, detailView: { type: "none" } })
-    try {
-      const result = await URLService.SearchURL({
+    const [result] = await callService(() =>
+      URLService.SearchURL({
         search: query.trim() || undefined,
         tags: selectedTags.length > 0 ? selectedTags : undefined,
         page: 1,
         page_size: PAGE_SIZE,
-      })
-      if (searchVersion !== version) return
-      set({
-        searchResults: result?.items ?? [],
-        searchTotal: result?.total ?? 0,
-        searchPage: 1,
-        searchHasMore: result?.has_more ?? false,
-      })
-    } finally {
-      if (searchVersion === version) set({ searchLoading: false })
-    }
+      }),
+    )
+    if (searchVersion !== version) return
+    const { items, total, hasMore } = unpackList(result)
+    set({
+      searchResults: items,
+      searchTotal: total,
+      searchPage: 1,
+      searchHasMore: hasMore,
+      searchLoading: false,
+    })
   },
 
   loadMoreSearch: async () => {
     const { searchHasMore, searchLoading, searchPage, searchQuery, selectedTags } = get()
     if (!searchHasMore || searchLoading) return
     const version = searchVersion
+    const nextPage = searchPage + 1
     set({ searchLoading: true })
-    try {
-      const nextPage = searchPage + 1
-      const result = await URLService.SearchURL({
+    const [result] = await callService(() =>
+      URLService.SearchURL({
         search: searchQuery.trim() || undefined,
         tags: selectedTags.length > 0 ? selectedTags : undefined,
         page: nextPage,
         page_size: PAGE_SIZE,
-      })
-      if (searchVersion !== version) return
-      const current = get().searchResults
-      set({
-        searchResults: [...current, ...(result?.items ?? [])],
-        searchTotal: result?.total ?? 0,
-        searchPage: nextPage,
-        searchHasMore: result?.has_more ?? false,
-      })
-    } finally {
-      if (searchVersion === version) set({ searchLoading: false })
-    }
+      }),
+    )
+    if (searchVersion !== version) return
+    const { items, total, hasMore } = unpackList(result)
+    const current = get().searchResults
+    set({
+      searchResults: [...current, ...items],
+      searchTotal: total,
+      searchPage: nextPage,
+      searchHasMore: hasMore,
+      searchLoading: false,
+    })
   },
 
   /** 退出搜索模式，重置所有搜索状态 */
