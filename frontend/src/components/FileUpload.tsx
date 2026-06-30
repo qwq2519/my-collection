@@ -9,14 +9,7 @@
  * 上传/粘贴/验证逻辑集中在 useFileUpload hook，UI 只负责渲染。
  */
 
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type ClipboardEvent,
-  type DragEvent,
-} from "react"
+import { useEffect, useRef, useState, type ClipboardEvent, type DragEvent } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Upload,
@@ -29,7 +22,8 @@ import {
   GripVertical,
 } from "lucide-react"
 import { UploadService } from "../../bindings/collections/internal/service"
-import { cn, extractError, IMAGE_EXTS, VIDEO_EXTS } from "@/lib/utils"
+import { cn, IMAGE_EXTS, VIDEO_EXTS } from "@/lib/utils"
+import { callService, runAsync } from "@/lib/async"
 
 const TEXT_EXTS = new Set(["txt"])
 const ALL_EXTS = new Set([...IMAGE_EXTS, ...VIDEO_EXTS, ...TEXT_EXTS])
@@ -64,7 +58,7 @@ interface FileUploadProps {
 // ─── 主组件 ──────────────────────────────────────────────────
 
 export function FileUpload({ scene, entityId, files, onChange, className }: FileUploadProps) {
-  const { uploading, error, uploadFiles, handlePaste } = useFileUpload(
+  const { uploading, error, setError, uploadFiles, handlePaste } = useFileUpload(
     scene,
     entityId,
     files,
@@ -76,12 +70,7 @@ export function FileUpload({ scene, entityId, files, onChange, className }: File
       <DropZone uploading={uploading} uploadFiles={uploadFiles} handlePaste={handlePaste} />
       {error && <p className="text-xs text-destructive">{error}</p>}
       {files.length > 0 && (
-        <UploadedFileList
-          files={files}
-          entityId={entityId}
-          onChange={onChange}
-          onError={(msg) => uploadFiles._setError(msg)}
-        />
+        <UploadedFileList files={files} entityId={entityId} onChange={onChange} onError={setError} />
       )}
     </div>
   )
@@ -101,91 +90,88 @@ function useFileUpload(
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState("")
 
-  const uploadFiles = useCallback(
-    async (fileList: File[]) => {
-      setError("")
-      const validFiles: File[] = []
-      for (const file of fileList) {
-        const ext = file.name.split(".").pop()?.toLowerCase() ?? ""
-        if (!ALL_EXTS.has(ext)) {
-          setError(`不支持的文件格式：${file.name}`)
-          continue
-        }
-        validFiles.push(file)
-      }
-      if (validFiles.length === 0) return
+  // ref 持有最新闭包值，避免 useEffect 重建监听器
+  const stateRef = useRef({ scene, entityId, files, onChange })
+  stateRef.current = { scene, entityId, files, onChange }
 
-      setUploading(true)
-      try {
-        const newFiles: UploadedFile[] = []
-        for (const file of validFiles) {
-          const base64 = await readFileAsBase64(file)
-          const result = await UploadService.UploadFile({
-            scene,
-            entity_id: entityId,
-            filename: file.name,
-            data: base64,
-          })
-          if (result?.path) {
-            newFiles.push({ filename: file.name, path: result.path })
-          }
-        }
-        onChange([...files, ...newFiles])
-      } catch (e: any) {
-        setError(extractError(e))
-      } finally {
-        setUploading(false)
+  async function uploadFiles(fileList: File[]) {
+    setError("")
+    const validFiles: File[] = []
+    for (const file of fileList) {
+      const ext = file.name.split(".").pop()?.toLowerCase() ?? ""
+      if (!ALL_EXTS.has(ext)) {
+        setError(`不支持的文件格式：${file.name}`)
+        continue
       }
-    },
-    [scene, entityId, files, onChange],
-  ) as UploadFn
+      validFiles.push(file)
+    }
+    if (validFiles.length === 0) return
 
-  // 暴露 setError 给 UploadedFileList 的删除操作使用
-  uploadFiles._setError = setError
+    setUploading(true)
+    const { scene: s, entityId: eid, files: currentFiles, onChange: cb } = stateRef.current
+    const newFiles: UploadedFile[] = []
+    for (const file of validFiles) {
+      const base64 = await readFileAsBase64(file)
+      const [result, err] = await callService(() =>
+        UploadService.UploadFile({
+          scene: s,
+          entity_id: eid,
+          filename: file.name,
+          data: base64,
+        }),
+      )
+      if (err) {
+        setError(err)
+        break
+      }
+      if (result?.path) {
+        newFiles.push({ filename: file.name, path: result.path })
+      }
+    }
+    if (newFiles.length > 0) {
+      cb([...currentFiles, ...newFiles])
+    }
+    setUploading(false)
+  }
 
   /** 从剪贴板中提取文件（截图、复制的文件），为无文件名的 blob 生成名称 */
-  const handlePaste = useCallback(
-    (e: ClipboardEvent | globalThis.ClipboardEvent) => {
-      const items =
-        (e as ClipboardEvent).clipboardData?.items ??
-        (e as globalThis.ClipboardEvent).clipboardData?.items
-      if (!items || items.length === 0) return
+  function handlePaste(e: ClipboardEvent | globalThis.ClipboardEvent) {
+    const items =
+      (e as ClipboardEvent).clipboardData?.items ??
+      (e as globalThis.ClipboardEvent).clipboardData?.items
+    if (!items || items.length === 0) return
 
-      const pastedFiles: File[] = []
-      for (const item of Array.from(items)) {
-        if (item.kind !== "file") continue
-        const file = item.getAsFile()
-        if (!file) continue
+    const pastedFiles: File[] = []
+    for (const item of Array.from(items)) {
+      if (item.kind !== "file") continue
+      const file = item.getAsFile()
+      if (!file) continue
 
-        let name = file.name
-        if (!name || name === "image.png" || name === "image.jpeg") {
-          const ext = MIME_TO_EXT[file.type] ?? "png"
-          name = `paste-${Date.now()}.${ext}`
-        }
-
-        const ext = name.split(".").pop()?.toLowerCase() ?? ""
-        if (!ALL_EXTS.has(ext)) {
-          const guessedExt = MIME_TO_EXT[file.type]
-          if (guessedExt && ALL_EXTS.has(guessedExt)) {
-            name = `paste-${Date.now()}.${guessedExt}`
-          }
-        }
-
-        pastedFiles.push(new File([file], name, { type: file.type }))
+      let name = file.name
+      if (!name || name === "image.png" || name === "image.jpeg") {
+        const ext = MIME_TO_EXT[file.type] ?? "png"
+        name = `paste-${Date.now()}.${ext}`
       }
 
-      if (pastedFiles.length > 0) {
-        e.preventDefault()
-        uploadFiles(pastedFiles)
+      const ext = name.split(".").pop()?.toLowerCase() ?? ""
+      if (!ALL_EXTS.has(ext)) {
+        const guessedExt = MIME_TO_EXT[file.type]
+        if (guessedExt && ALL_EXTS.has(guessedExt)) {
+          name = `paste-${Date.now()}.${guessedExt}`
+        }
       }
-    },
-    [uploadFiles],
-  )
 
-  return { uploading, error, uploadFiles, handlePaste }
+      pastedFiles.push(new File([file], name, { type: file.type }))
+    }
+
+    if (pastedFiles.length > 0) {
+      e.preventDefault()
+      uploadFiles(pastedFiles)
+    }
+  }
+
+  return { uploading, error, setError, uploadFiles, handlePaste }
 }
-
-type UploadFn = ((fileList: File[]) => Promise<void>) & { _setError: (msg: string) => void }
 
 // ─── 拖拽/点击/粘贴上传区 ───────────────────────────────────
 
@@ -203,13 +189,19 @@ function DropZone({
   const [focused, setFocused] = useState(false)
 
   // 全局 paste 监听：当上传区域获得焦点时响应 Ctrl+V
+  const handlePasteRef = useRef(handlePaste)
+  handlePasteRef.current = handlePaste
+  const focusedRef = useRef(focused)
+  focusedRef.current = focused
+
+  // 触发：组件挂载时注册全局 paste 监听，卸载时清理
   useEffect(() => {
     const handler = (e: globalThis.ClipboardEvent) => {
-      if (focused) handlePaste(e)
+      if (focusedRef.current) handlePasteRef.current(e)
     }
     document.addEventListener("paste", handler)
     return () => document.removeEventListener("paste", handler)
-  }, [focused, handlePaste])
+  }, [])
 
   const handleDrop = (e: DragEvent) => {
     e.preventDefault()
@@ -219,42 +211,40 @@ function DropZone({
     }
   }
 
+  const handleDragOver = (e: DragEvent) => {
+    e.preventDefault()
+    setDragOver(true)
+  }
+
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) uploadFiles(Array.from(e.target.files))
+    e.target.value = ""
+  }
+
+  function getDropZoneClass(): string {
+    if (dragOver) return "border-primary bg-muted/50"
+    if (focused) return "border-primary/60 bg-muted/30"
+    return "border-input hover:border-primary/50"
+  }
+
   return (
     <div
       tabIndex={0}
       className={cn(
         "flex flex-col items-center justify-center gap-1 rounded-md border border-dashed py-4 cursor-pointer transition-colors duration-150 outline-none",
-        dragOver
-          ? "border-primary bg-muted/50"
-          : focused
-            ? "border-primary/60 bg-muted/30"
-            : "border-input hover:border-primary/50",
+        getDropZoneClass(),
       )}
       onClick={() => inputRef.current?.click()}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
-      onPaste={handlePaste as any}
-      onDragOver={(e) => {
-        e.preventDefault()
-        setDragOver(true)
-      }}
+      onPaste={handlePaste as unknown as React.ClipboardEventHandler}
+      onDragOver={handleDragOver}
       onDragLeave={() => setDragOver(false)}
       onDrop={handleDrop}
     >
-      {uploading ? (
-        <Loader2 size={20} className="animate-spin text-muted-foreground" />
-      ) : (
-        <Upload size={20} className="text-muted-foreground" />
-      )}
-      <p className="text-xs text-muted-foreground text-center">
-        {uploading ? (
-          "上传中..."
-        ) : (
-          <>
-            点击选择 / 拖拽 / <Clipboard size={10} className="inline -mt-0.5" /> 粘贴文件
-          </>
-        )}
-      </p>
+      {uploading && <Loader2 size={20} className="animate-spin text-muted-foreground" />}
+      {!uploading && <Upload size={20} className="text-muted-foreground" />}
+      <DropZoneLabel uploading={uploading} />
       <input
         ref={inputRef}
         type="file"
@@ -263,12 +253,22 @@ function DropZone({
         accept={Array.from(ALL_EXTS)
           .map((e) => `.${e}`)
           .join(",")}
-        onChange={(e) => {
-          if (e.target.files) uploadFiles(Array.from(e.target.files))
-          e.target.value = ""
-        }}
+        onChange={handleFileInput}
       />
     </div>
+  )
+}
+
+// ─── 上传区文案 ─────────────────────────────────────────────
+
+function DropZoneLabel({ uploading }: { uploading: boolean }) {
+  if (uploading) {
+    return <p className="text-xs text-muted-foreground text-center">上传中...</p>
+  }
+  return (
+    <p className="text-xs text-muted-foreground text-center">
+      点击选择 / 拖拽 / <Clipboard size={10} className="inline -mt-0.5" /> 粘贴文件
+    </p>
   )
 }
 
@@ -288,7 +288,7 @@ function UploadedFileList({
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [overIndex, setOverIndex] = useState<number | null>(null)
 
-  const handleReorderDrop = useCallback(() => {
+  function handleReorderDrop() {
     if (dragIndex === null || overIndex === null || dragIndex === overIndex) {
       setDragIndex(null)
       setOverIndex(null)
@@ -300,62 +300,100 @@ function UploadedFileList({
     onChange(reordered)
     setDragIndex(null)
     setOverIndex(null)
-  }, [dragIndex, overIndex, files, onChange])
+  }
 
-  const handleDelete = async (filename: string) => {
-    try {
-      await UploadService.DeleteAttachment(entityId, filename)
-      onChange(files.filter((f) => f.filename !== filename))
-    } catch (e: any) {
-      onError(extractError(e))
+  async function handleDelete(filename: string) {
+    const err = await runAsync(() => UploadService.DeleteAttachment(entityId, filename))
+    if (err) {
+      onError(err)
+      return
     }
+    onChange(files.filter((f) => f.filename !== filename))
+  }
+
+  const resetDragState = () => {
+    setDragIndex(null)
+    setOverIndex(null)
   }
 
   return (
     <div className="flex flex-col">
-      {files.map((f, idx) => {
-        const ext = f.filename.split(".").pop()?.toLowerCase() ?? ""
-        return (
-          <div
-            key={f.filename}
-            draggable
-            onDragStart={() => setDragIndex(idx)}
-            onDragOver={(e) => {
-              e.preventDefault()
-              setOverIndex(idx)
-            }}
-            onDragEnd={() => {
-              setDragIndex(null)
-              setOverIndex(null)
-            }}
-            onDrop={(e) => {
-              e.preventDefault()
-              handleReorderDrop()
-            }}
-            className={cn(
-              "flex items-center gap-2 px-2 py-1 rounded-md hover:bg-muted/50",
-              dragIndex === idx && "opacity-50",
-              overIndex === idx &&
-                dragIndex !== null &&
-                dragIndex !== idx &&
-                "border-t border-primary",
-            )}
-          >
-            <GripVertical size={14} className="shrink-0 text-muted-foreground/50 cursor-grab" />
-            <FileTypeIcon ext={ext} />
-            <span className="flex-1 text-xs truncate">{f.filename}</span>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-5 w-5 shrink-0"
-              onClick={() => handleDelete(f.filename)}
-            >
-              <X size={12} />
-            </Button>
-          </div>
-        )
-      })}
+      {files.map((f, idx) => (
+        <FileListItem
+          key={f.filename}
+          file={f}
+          idx={idx}
+          dragIndex={dragIndex}
+          overIndex={overIndex}
+          onDragStart={setDragIndex}
+          onDragOver={setOverIndex}
+          onDragEnd={resetDragState}
+          onDrop={handleReorderDrop}
+          onDelete={handleDelete}
+        />
+      ))}
+    </div>
+  )
+}
+
+function FileListItem({
+  file,
+  idx,
+  dragIndex,
+  overIndex,
+  onDragStart,
+  onDragOver,
+  onDragEnd,
+  onDrop,
+  onDelete,
+}: {
+  file: UploadedFile
+  idx: number
+  dragIndex: number | null
+  overIndex: number | null
+  onDragStart: (idx: number) => void
+  onDragOver: (idx: number) => void
+  onDragEnd: () => void
+  onDrop: () => void
+  onDelete: (filename: string) => void
+}) {
+  const ext = file.filename.split(".").pop()?.toLowerCase() ?? ""
+
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    onDragOver(idx)
+  }
+
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    onDrop()
+  }
+
+  return (
+    <div
+      draggable
+      onDragStart={() => onDragStart(idx)}
+      onDragOver={handleDragOver}
+      onDragEnd={onDragEnd}
+      onDrop={handleDrop}
+      className={cn(
+        "flex items-center gap-2 px-2 py-1 rounded-md hover:bg-muted/50",
+        dragIndex === idx && "opacity-50",
+        overIndex === idx && dragIndex !== null && dragIndex !== idx && "border-t border-primary",
+      )}
+    >
+      <GripVertical size={14} className="shrink-0 text-muted-foreground/50 cursor-grab" />
+      <FileTypeIcon ext={ext} />
+      <span className="flex-1 text-xs truncate">{file.filename}</span>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="h-5 w-5 shrink-0"
+        onClick={() => onDelete(file.filename)}
+      >
+        <X size={12} />
+      </Button>
     </div>
   )
 }
