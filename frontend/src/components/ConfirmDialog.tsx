@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { Loader2 } from "lucide-react"
-import { extractError } from "@/lib/utils"
+import { runAsync } from "@/lib/async"
 import { toast } from "sonner"
 
 interface ConfirmDialogProps {
@@ -45,16 +45,14 @@ export function ConfirmDialog({
   const handleConfirm = async () => {
     setLoading(true)
     setError("")
-    try {
-      await onConfirm()
-      onOpenChange(false)
-    } catch (e: unknown) {
-      const msg = extractError(e)
-      setError(msg)
-      toast.error(msg)
-    } finally {
-      setLoading(false)
+    const err = await runAsync(onConfirm)
+    setLoading(false)
+    if (err) {
+      setError(err)
+      toast.error(err)
+      return
     }
+    onOpenChange(false)
   }
 
   const handleOpenChange = (next: boolean) => {

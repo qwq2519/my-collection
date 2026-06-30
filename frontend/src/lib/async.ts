@@ -24,6 +24,22 @@ export async function callService<T>(fn: () => Promise<T>): Promise<Result<T>> {
 }
 
 /**
+ * 包装任意异步操作（非 Service 调用），将 try-catch 转换为 [result, err] 元组。
+ * 用于 ConfirmDialog 等需要包装用户传入回调的场景。
+ *
+ * 与 callService 的区别：callService 用于调用后端 Service 方法，
+ * runAsync 用于包装任意 Promise（如组件回调、FileReader 等）。
+ */
+export async function runAsync(fn: () => void | Promise<void>): Promise<string | null> {
+  try {
+    await fn()
+    return null
+  } catch (e: unknown) {
+    return extractError(e)
+  }
+}
+
+/**
  * 管理 loading 状态的 hook，内置 callService 调用。
  *
  * 用法：
