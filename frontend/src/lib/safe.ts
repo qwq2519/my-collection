@@ -1,12 +1,3 @@
-/**
- * 条件选择，替代三元运算符。
- * Go 类比：无（Go 用 if-else 赋值）
- */
-export function pick<T>(cond: boolean, ifTrue: T, ifFalse: T): T {
-  if (cond) return ifTrue
-  return ifFalse
-}
-
 /** 空字符串安全：null/undefined → "" */
 export function str(v: string | null | undefined): string {
   return v ?? ""

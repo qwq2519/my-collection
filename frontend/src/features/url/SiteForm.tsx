@@ -13,7 +13,7 @@ import { toast } from "sonner"
 import { FileUpload } from "@/components/FileUpload"
 import { useURLNormalize } from "./hooks"
 import { callService } from "@/lib/async"
-import { pick, str, arr } from "@/lib/safe"
+import { str, arr } from "@/lib/safe"
 
 const siteSchema = z.object({
   title: z.string().min(1, "标题不能为空"),
@@ -139,7 +139,7 @@ export function SiteForm({ site, onSave, onCancel }: SiteFormProps) {
       onSubmit={handleSubmit(onSubmit)}
       className="flex flex-col gap-4 px-6 py-5 overflow-y-auto"
     >
-      <h2 className="text-base font-semibold">{pick(isEdit, "编辑站点", "新建站点")}</h2>
+      <h2 className="text-base font-semibold">{isEdit ? "编辑站点" : "新建站点"}</h2>
 
       {/* URL + 抓取 */}
       <div className="flex flex-col gap-1">
@@ -169,11 +169,9 @@ export function SiteForm({ site, onSave, onCancel }: SiteFormProps) {
               onClick={handleFetch}
               disabled={fetching}
             >
-              {pick(
-                fetching,
-                <Loader2 size={14} className="animate-spin" />,
-                <Download size={14} />,
-              )}
+              {fetching
+                ? <Loader2 size={14} className="animate-spin" />
+                : <Download size={14} />}
               抓取
             </Button>
           )}

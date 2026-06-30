@@ -5,7 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Filter, ChevronRight, ChevronDown, X } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { pick } from "@/lib/safe"
+
 
 interface TagTreeFilterProps {
   /** 所有可用标签（扁平列表，层级用 :: 分割） */
@@ -110,7 +110,7 @@ function TreeNode({
       <button
         className={cn(
           "flex items-center gap-1 w-full rounded-md px-2 py-1 text-left text-sm transition-colors duration-150",
-          pick(isSelected, "bg-muted font-medium", "hover:bg-muted/50"),
+          isSelected ? "bg-muted font-medium" : "hover:bg-muted/50",
         )}
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
         onClick={() => onToggle(node.fullPath)}
@@ -124,7 +124,7 @@ function TreeNode({
               setExpanded(!expanded)
             }}
           >
-            {pick(expanded, <ChevronDown size={12} />, <ChevronRight size={12} />)}
+            {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
           </span>
         )}
         {!hasChildren && <span className="w-3 shrink-0" />}

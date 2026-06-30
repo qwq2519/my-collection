@@ -6,7 +6,7 @@
 
 ## 编码原则
 
-- 用 `if + return` 替代三元运算符（Go 没有三元运算符）
+- 单层三元 `a ? b : c` 允许，禁止嵌套三元（多分支用 `if + return` 或提取函数）
 - 用 `[result, err]` 元组替代 try-catch（类比 Go 的 `result, err := fn()`）
 - `?.` `??` 收敛到 `lib/` 工具函数，业务代码不直接写
 - 子组件直接调 store action，减少回调 prop 透传
@@ -20,7 +20,7 @@
 
 | 规则 | 级别 | 说明 |
 |------|------|------|
-| `no-ternary` | error | 禁止三元运算符，用 `if+return` 或 `pick()` |
+| `no-nested-ternary` | error | 禁止嵌套三元运算符，单层三元允许 |
 | `no-restricted-syntax[TryStatement]` | error | 禁止 try-catch，用 `callService()` |
 | `no-restricted-syntax[useCallback]` | error | 禁止 useCallback，直接写普通函数 |
 | `no-restricted-syntax[useMemo]` | error | 禁止 useMemo（有实测性能需求时加 eslint-disable） |
@@ -39,7 +39,7 @@
 | 文件 | 豁免 | 原因 |
 |------|------|------|
 | `src/lib/async.ts` | `no-restricted-syntax` | 唯一的 try-catch 封装点 |
-| `src/components/ui/**` | `no-ternary` + `max-lines-per-function` | shadcn CLI 生成 |
+| `src/components/ui/**` | `max-lines-per-function` | shadcn CLI 生成 |
 
 ---
 
@@ -48,8 +48,8 @@
 | 函数 | 位置 | 用途 | Go 类比 |
 |------|------|------|---------|
 | `callService(fn)` | `lib/async.ts` | 异步调用 → `[result, err]` 元组 | `result, err := fn()` |
+| `runAsync(fn)` | `lib/async.ts` | 包装任意异步回调 → `err \| null` | `if err := fn(); err != nil` |
 | `useLoading()` | `lib/async.ts` | loading 状态 + callService | 带进度的 `result, err` |
-| `pick(cond, a, b)` | `lib/safe.ts` | 条件值选择 | `if cond { a } else { b }` |
 | `str()` / `arr()` / `num()` / `bool()` | `lib/safe.ts` | null → 零值 | Go 零值语义 |
 | `unpackList(result)` | `lib/safe.ts` | 分页响应拆包 | 指针字段 → 值字段 |
 | `extractError(e)` | `lib/utils.ts` | Wails 错误解析 | `err.Error()` |
@@ -69,8 +69,8 @@ if (err) {
 const saving = useLoading()
 const [result, err] = await saving.run(() => URLService.UpdateSite(req))
 
-// 条件值：替代三元
-const title = pick(isEdit, "编辑站点", "新建站点")
+// 条件值：单层三元运算符
+const title = isEdit ? "编辑站点" : "新建站点"
 
 // 空值安全：替代 ?? 散落
 const defaults = {

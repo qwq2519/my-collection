@@ -24,7 +24,7 @@ import { BookmarkGrid, BookmarkListView } from "./BookmarkViews"
 import { URLService } from "../../../bindings/collections/internal/service"
 import type { Site } from "../../../bindings/collections/internal/model"
 import { callService } from "@/lib/async"
-import { pick } from "@/lib/safe"
+
 
 /**
  * 站点详情面板：协调器，管理 view/edit-site/add-bookmark 三种模式。
@@ -225,7 +225,7 @@ function BookmarkSection({ site, onAddBookmark }: { site: Site; onAddBookmark: (
         </div>
         <div className="flex gap-1">
           <Button
-            variant={pick(viewMode === "grid", "secondary", "ghost")}
+            variant={viewMode === "grid" ? "secondary" : "ghost"}
             size="icon"
             className="h-7 w-7"
             onClick={() => setViewMode("grid")}
@@ -233,7 +233,7 @@ function BookmarkSection({ site, onAddBookmark }: { site: Site; onAddBookmark: (
             <LayoutGrid size={14} />
           </Button>
           <Button
-            variant={pick(viewMode === "list", "secondary", "ghost")}
+            variant={viewMode === "list" ? "secondary" : "ghost"}
             size="icon"
             className="h-7 w-7"
             onClick={() => setViewMode("list")}

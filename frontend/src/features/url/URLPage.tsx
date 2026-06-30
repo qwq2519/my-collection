@@ -13,7 +13,7 @@ import { TagTreeFilter } from "@/components/TagTreeFilter"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Globe, Plus, Bookmark } from "lucide-react"
-import { pick } from "@/lib/safe"
+
 
 type CreateMode = null | "site" | "bookmark"
 
@@ -46,7 +46,7 @@ export function URLPage() {
         <div className="w-[260px] shrink-0 border-r flex flex-col">
           <div className="px-3 py-2 border-b">
             <h2 className="text-sm font-semibold text-foreground">
-              {pick(searchMode, "搜索结果", "站点")}
+              {searchMode ? "搜索结果" : "站点"}
             </h2>
           </div>
           <div className="flex-1 overflow-hidden py-1">
@@ -105,7 +105,7 @@ function CreateFormDialog({
     >
       <DialogContent className="sm:max-w-[500px] p-0 max-h-[85vh] overflow-y-auto">
         <DialogTitle className="sr-only">
-          {pick(mode === "site", "新建站点", "新建书签")}
+          {mode === "site" ? "新建站点" : "新建书签"}
         </DialogTitle>
         {mode === "site" && <SiteForm onSave={onCreated} onCancel={onClose} />}
         {mode === "bookmark" && (

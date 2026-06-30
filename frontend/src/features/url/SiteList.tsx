@@ -6,7 +6,7 @@ import { EmptyState } from "@/components/EmptyState"
 import { Badge } from "@/components/ui/badge"
 import { Globe, Loader2, Search } from "lucide-react"
 import { arr } from "@/lib/safe"
-import { pick } from "@/lib/safe"
+
 
 /**
  * 左侧站点列表：根据 searchMode 切换数据源。
@@ -91,7 +91,7 @@ function SearchResultList() {
             icon={item.site.icon}
             domain={item.site.domain}
             count={hitCount}
-            countLabel={pick(hitCount > 0, `${hitCount} 命中`, undefined)}
+            countLabel={hitCount > 0 ? `${hitCount} 命中` : undefined}
             updatedAt={item.site.updated_at}
             tags={item.site.tags}
             selected={selectedSiteId === item.site.id}
@@ -149,7 +149,7 @@ function SiteListItem({
       data-site-index={index}
       className={cn(
         "flex gap-2 px-3 py-2 text-left rounded-md mx-1 transition-colors duration-150",
-        pick(selected, "bg-muted font-medium", "hover:bg-muted/50"),
+        selected ? "bg-muted font-medium" : "hover:bg-muted/50",
       )}
     >
       <div className="pt-0.5 shrink-0">

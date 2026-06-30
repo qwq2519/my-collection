@@ -27,8 +27,9 @@ export default ts.config(
     rules: {
       // ── Go 风格约束 ──────────────────────────────────────────
 
-      // 禁止三元运算符 a ? b : c（Go 没有三元运算符，用 if-else）
-      "no-ternary": "error",
+      // 禁止嵌套三元运算符 a ? b : c ? d : e（可读性差，用 if-else 或提取函数）
+      // 单层三元 a ? b : c 允许使用
+      "no-nested-ternary": "error",
 
       // no-restricted-syntax: 万能禁令，用 AST 选择器匹配任意语法结构
       // 类比 golangci-lint 的 forbidigo（禁止调用特定函数）
@@ -110,7 +111,6 @@ export default ts.config(
     files: ["src/components/ui/**"],
     rules: {
       "max-lines-per-function": "off", // 生成的组件可能超 60 行
-      "no-ternary": "off", // 生成的组件可能用三元
     },
   },
 )
