@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { useForm, Controller } from "react-hook-form"
+import { useForm, Controller, type Control } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { Button } from "@/components/ui/button"
@@ -141,48 +141,14 @@ export function SiteForm({ site, onSave, onCancel }: SiteFormProps) {
     >
       <h2 className="text-base font-semibold">{isEdit ? "编辑站点" : "新建站点"}</h2>
 
-      {/* URL + 抓取 */}
-      <div className="flex flex-col gap-1">
-        <label className="text-sm">
-          URL <span className="text-destructive">*</span>
-        </label>
-        <div className="flex gap-2">
-          <Controller
-            name="url"
-            control={control}
-            render={({ field }) => (
-              <Input
-                {...field}
-                value={field.value ?? ""}
-                placeholder="https://example.com"
-                disabled={isEdit}
-                className="flex-1 h-8 text-sm"
-              />
-            )}
-          />
-          {!isEdit && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-8 gap-1 shrink-0"
-              onClick={handleFetch}
-              disabled={fetching}
-            >
-              {fetching
-                ? <Loader2 size={14} className="animate-spin" />
-                : <Download size={14} />}
-              抓取
-            </Button>
-          )}
-        </div>
-        {errors.url && <p className="text-xs text-destructive">{errors.url.message}</p>}
-        {normalizedURL && (
-          <p className="text-xs text-muted-foreground">
-            标准化：<span className="font-mono">{normalizedURL}</span>
-          </p>
-        )}
-      </div>
+      <URLField
+        control={control}
+        isEdit={isEdit}
+        fetching={fetching}
+        onFetch={handleFetch}
+        error={errors.url?.message}
+        normalizedURL={normalizedURL}
+      />
 
       {/* 标题 */}
       <FormField label="标题" required error={errors.title?.message}>
@@ -262,5 +228,68 @@ export function SiteForm({ site, onSave, onCancel }: SiteFormProps) {
         </Button>
       </div>
     </form>
+  )
+}
+
+// ─── Internal ───────────────────────────────────────────────
+
+/** URL 输入字段：输入框 + 抓取按钮 + 错误提示 + 标准化预览 */
+function URLField({
+  control,
+  isEdit,
+  fetching,
+  onFetch,
+  error,
+  normalizedURL,
+}: {
+  control: Control<SiteFormValues>
+  isEdit: boolean
+  fetching: boolean
+  onFetch: () => void
+  error?: string
+  normalizedURL: string
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-sm">
+        URL <span className="text-destructive">*</span>
+      </label>
+      <div className="flex gap-2">
+        <Controller
+          name="url"
+          control={control}
+          render={({ field }) => (
+            <Input
+              {...field}
+              value={field.value ?? ""}
+              placeholder="https://example.com"
+              disabled={isEdit}
+              className="flex-1 h-8 text-sm"
+            />
+          )}
+        />
+        {!isEdit && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1 shrink-0"
+            onClick={onFetch}
+            disabled={fetching}
+          >
+            {fetching
+              ? <Loader2 size={14} className="animate-spin" />
+              : <Download size={14} />}
+            抓取
+          </Button>
+        )}
+      </div>
+      {error && <p className="text-xs text-destructive">{error}</p>}
+      {normalizedURL && (
+        <p className="text-xs text-muted-foreground">
+          标准化：<span className="font-mono">{normalizedURL}</span>
+        </p>
+      )}
+    </div>
   )
 }
