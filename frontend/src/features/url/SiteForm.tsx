@@ -11,6 +11,7 @@ import type { Site } from "../../../bindings/collections/internal/model"
 import { TagInput } from "@/components/TagInput"
 import { FormField } from "@/components/FormField"
 import { toast } from "sonner"
+import { FormActions } from "@/components/FormActions"
 import { FileUpload } from "@/components/FileUpload"
 import { useURLNormalize } from "./hooks"
 import { callService } from "@/lib/async"
@@ -218,15 +219,7 @@ export function SiteForm({ site, onSave, onCancel }: SiteFormProps) {
       {error && <p className="text-xs text-destructive">{error}</p>}
 
       {/* 操作按钮 */}
-      <div className="flex justify-end gap-2 pt-2">
-        <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={saving}>
-          取消
-        </Button>
-        <Button type="submit" size="sm" disabled={saving}>
-          {saving && <Loader2 size={14} className="animate-spin mr-1" />}
-          保存
-        </Button>
-      </div>
+      <FormActions saving={saving} onCancel={onCancel} />
     </form>
   )
 }

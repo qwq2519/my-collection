@@ -2,7 +2,6 @@ import { useState } from "react"
 import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react"
@@ -10,6 +9,7 @@ import { URLService } from "../../../bindings/collections/internal/service"
 import type { Bookmark } from "../../../bindings/collections/internal/model"
 import { TagInput } from "@/components/TagInput"
 import { FormField } from "@/components/FormField"
+import { FormActions } from "@/components/FormActions"
 import { toast } from "sonner"
 import { useSiteLookup } from "./hooks"
 import { callService } from "@/lib/async"
@@ -172,15 +172,7 @@ export function BookmarkForm({ bookmark, onSave, onCancel, onCreateSite }: Bookm
 
       {error && <p className="text-xs text-destructive">{error}</p>}
 
-      <div className="flex justify-end gap-2 pt-2">
-        <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={saving}>
-          取消
-        </Button>
-        <Button type="submit" size="sm" disabled={saving}>
-          {saving && <Loader2 size={14} className="animate-spin mr-1" />}
-          保存
-        </Button>
-      </div>
+      <FormActions saving={saving} onCancel={onCancel} />
     </form>
   )
 }
