@@ -4,10 +4,10 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
+import { LoadingState } from "@/components/LoadingState"
 import {
   ArrowLeft,
   ExternalLink,
-  Loader2,
   FileText,
   ImageIcon,
   Video,
@@ -41,11 +41,7 @@ export function BookmarkDetail() {
   const [editing, setEditing] = useState(false)
 
   if (!bm) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <Loader2 size={20} className="animate-spin text-muted-foreground" />
-      </div>
-    )
+    return <LoadingState />
   }
 
   if (editing) {

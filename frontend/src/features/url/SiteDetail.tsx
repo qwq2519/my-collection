@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { EmptyState } from "@/components/EmptyState"
+import { LoadingState } from "@/components/LoadingState"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
 import {
   LayoutGrid,
@@ -53,11 +54,7 @@ export function SiteDetail() {
   }, [siteId])
 
   if (!site) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <Loader2 size={20} className="animate-spin text-muted-foreground" />
-      </div>
-    )
+    return <LoadingState />
   }
 
   if (mode === "edit-site") {
