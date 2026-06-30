@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Loader2 } from "lucide-react"
 import { runAsync } from "@/lib/async"
+import { pick } from "@/lib/safe"
 import { toast } from "sonner"
 
 interface ConfirmDialogProps {
@@ -74,11 +75,11 @@ export function ConfirmDialog({
           <Button
             onClick={handleConfirm}
             disabled={loading}
-            className={
-              destructive
-                ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                : ""
-            }
+            className={pick(
+              destructive,
+              "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+              "",
+            )}
           >
             {loading && <Loader2 size={14} className="animate-spin mr-1" />}
             {confirmLabel}
