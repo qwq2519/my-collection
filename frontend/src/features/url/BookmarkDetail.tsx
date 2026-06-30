@@ -5,9 +5,9 @@ import { Separator } from "@/components/ui/separator"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
 import { LoadingState } from "@/components/LoadingState"
 import { TagList } from "@/components/TagList"
+import { ExternalUrl } from "@/components/ExternalUrl"
 import {
   ArrowLeft,
-  ExternalLink,
   FileText,
   ImageIcon,
   Video,
@@ -135,15 +135,7 @@ function BookmarkInfo({ bm }: { bm: Bookmark }) {
   return (
     <div className="px-6 pt-5 pb-4">
       <h1 className="text-base font-semibold">{bm.title}</h1>
-      <a
-        href={bm.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1 mt-1"
-      >
-        {bm.url}
-        <ExternalLink size={10} />
-      </a>
+      <ExternalUrl href={bm.url} className="mt-1" />
 
       {bm.description && <p className="text-sm text-muted-foreground mt-3">{bm.description}</p>}
 

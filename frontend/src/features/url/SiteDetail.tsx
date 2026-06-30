@@ -5,12 +5,12 @@ import { Separator } from "@/components/ui/separator"
 import { EmptyState } from "@/components/EmptyState"
 import { LoadingState } from "@/components/LoadingState"
 import { TagList } from "@/components/TagList"
+import { ExternalUrl } from "@/components/ExternalUrl"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
 import {
   LayoutGrid,
   List,
   Loader2,
-  ExternalLink,
   Bookmark,
   Pencil,
   Plus,
@@ -118,15 +118,7 @@ function SiteHeader({ site, onEdit }: { site: Site; onEdit: () => void }) {
         <SiteIcon icon={site.icon} size={32} className="mt-0.5" />
         <div className="flex-1 min-w-0">
           <h1 className="text-base font-semibold truncate">{site.title}</h1>
-          <a
-            href={site.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1 mt-0.5"
-          >
-            {site.domain}
-            <ExternalLink size={10} />
-          </a>
+          <ExternalUrl href={site.url} className="mt-0.5">{site.domain}</ExternalUrl>
         </div>
         <div className="flex gap-1 shrink-0">
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}>
