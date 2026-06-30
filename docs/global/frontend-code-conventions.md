@@ -38,7 +38,8 @@
 
 | 文件 | 豁免 | 原因 |
 |------|------|------|
-| `src/lib/async.ts` | `no-restricted-syntax` | 唯一的 try-catch 封装点 |
+| `src/lib/async.ts` | `no-restricted-syntax` | try-catch 封装点（callService / runAsync） |
+| `src/lib/safe.ts` | `no-restricted-syntax` | try-catch 封装点（isValidURL） |
 | `src/components/ui/**` | `max-lines-per-function` | shadcn CLI 生成 |
 
 ---

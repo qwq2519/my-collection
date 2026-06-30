@@ -100,8 +100,8 @@ export default ts.config(
 
   // ── 文件级豁免 ────────────────────────────────────────────
   {
-    // lib/async.ts 是封装 try-catch 的唯一文件，允许它使用 try-catch
-    files: ["src/lib/async.ts"],
+    // lib/async.ts 和 lib/safe.ts 是封装 try-catch 的底层工具文件
+    files: ["src/lib/async.ts", "src/lib/safe.ts"],
     rules: {
       "no-restricted-syntax": "off",
     },

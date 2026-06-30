@@ -32,3 +32,16 @@ export function unpackList<T>(
     hasMore: result?.has_more ?? false,
   }
 }
+
+/**
+ * 检查字符串是否为合法 URL。
+ * 封装 new URL() 的 try-catch，业务代码无需 eslint-disable。
+ */
+export function isValidURL(value: string): boolean {
+  try {
+    new URL(value)
+    return true
+  } catch {
+    return false
+  }
+}

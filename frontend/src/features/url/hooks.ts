@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { URLService } from "../../../bindings/collections/internal/service"
 import { callService } from "@/lib/async"
-import { str } from "@/lib/safe"
+import { str, isValidURL } from "@/lib/safe"
 
 /**
  * URL 标准化 hook：输入 URL 后防抖调用后端 NormalizeURL，返回标准化结果。
@@ -76,16 +76,7 @@ export function useSiteLookup(
       return
     }
 
-    // 验证是否为合法 URL 格式
-    let valid = true
-    /* eslint-disable no-restricted-syntax */
-    try {
-      new URL(urlValue)
-    } catch {
-      valid = false
-    }
-    /* eslint-enable no-restricted-syntax */
-    if (!valid) {
+    if (!isValidURL(urlValue)) {
       setLookupState({ status: "idle" })
       setNormalizedURL("")
       return
