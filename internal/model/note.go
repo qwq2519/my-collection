@@ -37,3 +37,20 @@ type NoteListResult struct {
 	Total   int    `json:"total"`
 	HasMore bool   `json:"has_more"`
 }
+
+// DetectOrphanImagesReq 孤儿图片检测请求
+type DetectOrphanImagesReq struct {
+	NoteID string `json:"note_id"`
+	Body   string `json:"body"`
+}
+
+// DetectOrphanImagesResult 孤儿图片检测结果
+type DetectOrphanImagesResult struct {
+	OrphanFiles []string `json:"orphan_files"`
+}
+
+// DeleteOrphanImagesReq 删除孤儿图片请求
+type DeleteOrphanImagesReq struct {
+	NoteID string   `json:"note_id"`
+	Files  []string `json:"files"`
+}
