@@ -47,6 +47,7 @@ export function SiteDetail() {
   const [mode, setMode] = useState<"view" | "edit-site" | "add-bookmark">("view")
 
   const siteId = getActiveSiteId(detailView)
+  // 触发：siteId 变化时（用户切换站点），重置为查看模式
   useEffect(() => {
     setMode("view")
   }, [siteId])

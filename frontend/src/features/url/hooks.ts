@@ -19,6 +19,7 @@ export function useURLNormalize(urlValue: string, delayMs = 400): string {
   const timerRef = useRef<ReturnType<typeof setTimeout>>()
   const versionRef = useRef(0)
 
+  // 触发：urlValue 变化时防抖调用后端标准化 URL
   useEffect(() => {
     if (!urlValue || urlValue.trim().length < 8) {
       setNormalizedURL("")
@@ -67,6 +68,7 @@ export function useSiteLookup(
   const timerRef = useRef<ReturnType<typeof setTimeout>>()
   const versionRef = useRef(0)
 
+  // 触发：urlValue 或 enabled 变化时，防抖查找域名对应站点
   useEffect(() => {
     if (!enabled || !urlValue || urlValue.trim().length < 8) {
       setLookupState({ status: "idle" })

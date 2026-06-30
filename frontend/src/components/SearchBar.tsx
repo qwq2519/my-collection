@@ -27,7 +27,7 @@ export function SearchBar({
   const [localValue, setLocalValue] = useState(value)
   const timerRef = useRef<ReturnType<typeof setTimeout>>()
 
-  // 外部 value 变化时同步（如清除搜索）
+  // 触发：外部 value 变化时同步本地状态（如父组件清除搜索）
   useEffect(() => {
     setLocalValue(value)
   }, [value])
@@ -44,7 +44,7 @@ export function SearchBar({
     onChange("")
   }
 
-  // 组件卸载时清除定时器
+  // 触发：组件卸载时清除防抖定时器
   useEffect(() => () => clearTimeout(timerRef.current), [])
 
   return (

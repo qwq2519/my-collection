@@ -14,6 +14,7 @@ export function useKeyboardNav() {
   const searchResults = useURLStore((s) => s.searchResults)
   const searchMode = useURLStore((s) => s.searchMode)
 
+  // 触发：detailView/sites/searchResults 变化时，同步 focusedIndex 与当前选中项
   useEffect(() => {
     const selectedId = getActiveSiteId(detailView)
     if (!selectedId) {
@@ -27,6 +28,7 @@ export function useKeyboardNav() {
     if (idx !== -1) focusedIndexRef.current = idx
   }, [detailView, sites, searchResults, searchMode])
 
+  // 触发：组件挂载时注册全局 keydown 监听，卸载时清理
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.target instanceof HTMLElement) {

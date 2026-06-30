@@ -37,6 +37,7 @@ function DefaultSiteList() {
   const selectedSiteId = getActiveSiteId(detailView)
   const sentinelRef = useInfiniteScroll(loadMore, hasMore)
 
+  // 触发：组件首次挂载，加载站点列表
   useEffect(() => {
     loadSites()
   }, [loadSites])

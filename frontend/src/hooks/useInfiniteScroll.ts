@@ -25,6 +25,7 @@ export function useInfiniteScroll(loadMore: () => void, hasMore: boolean) {
   const loadMoreRef = useRef(loadMore)
   loadMoreRef.current = loadMore
 
+  // 触发：hasMore 变化时重建 IntersectionObserver（监听哨兵元素进入视口）
   useEffect(() => {
     const sentinel = sentinelRef.current
     if (!sentinel || !hasMore) return
