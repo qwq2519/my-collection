@@ -37,9 +37,9 @@ export function SettingsPage() {
                   key={preset.key}
                   onClick={() => setTheme(preset.key)}
                   className={cn(
-                    "relative flex flex-col rounded-lg border-2 p-3 text-left transition-all",
+                    "relative flex flex-col rounded-lg border p-3 text-left transition-colors duration-150",
                     active
-                      ? "border-primary ring-1 ring-primary/30"
+                      ? "border-primary bg-accent/30"
                       : "border-border hover:border-muted-foreground/40",
                   )}
                 >
