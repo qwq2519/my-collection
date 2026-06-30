@@ -12,7 +12,9 @@
     "fmt:check": "prettier --check src/",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
-    "check": "tsc --noEmit && eslint src/ && prettier --check src/"
+    "check": "tsc --noEmit && eslint src/ && prettier --check src/",
+    "deps": "madge --extensions ts,tsx --image deps.svg src/",
+    "deps:circular": "madge --extensions ts,tsx --circular src/"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
