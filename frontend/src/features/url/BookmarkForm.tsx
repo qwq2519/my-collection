@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react"
 import { URLService } from "../../../bindings/collections/internal/service"
 import type { Bookmark } from "../../../bindings/collections/internal/model"
@@ -154,12 +155,11 @@ export function BookmarkForm({ bookmark, onSave, onCancel, onCreateSite }: Bookm
           name="description"
           control={control}
           render={({ field }) => (
-            <textarea
+            <Textarea
               {...field}
               value={field.value ?? ""}
               placeholder="书签描述（可选）"
               rows={3}
-              className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
             />
           )}
         />
