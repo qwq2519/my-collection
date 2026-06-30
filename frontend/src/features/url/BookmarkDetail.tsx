@@ -1,10 +1,10 @@
 import { useState } from "react"
 import { useURLStore } from "@/stores/url"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
 import { LoadingState } from "@/components/LoadingState"
+import { TagList } from "@/components/TagList"
 import {
   ArrowLeft,
   ExternalLink,
@@ -147,15 +147,7 @@ function BookmarkInfo({ bm }: { bm: Bookmark }) {
 
       {bm.description && <p className="text-sm text-muted-foreground mt-3">{bm.description}</p>}
 
-      {bm.tags && bm.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1 mt-3">
-          {bm.tags.map((tag) => (
-            <Badge key={tag} variant="secondary">
-              {tag}
-            </Badge>
-          ))}
-        </div>
-      )}
+      <TagList tags={bm.tags} className="mt-3" />
 
       <div className="flex items-center gap-4 mt-4 text-xs text-muted-foreground">
         <span>状态: {bm.status === "alive" ? "正常" : "失效"}</span>

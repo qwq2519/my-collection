@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react"
 import { useURLStore, getActiveSiteId, useBookmarkSectionState } from "@/stores/url"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { EmptyState } from "@/components/EmptyState"
 import { LoadingState } from "@/components/LoadingState"
+import { TagList } from "@/components/TagList"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
 import {
   LayoutGrid,
@@ -145,15 +145,7 @@ function SiteHeader({ site, onEdit }: { site: Site; onEdit: () => void }) {
 
       {site.description && <p className="text-sm text-muted-foreground mt-3">{site.description}</p>}
 
-      {site.tags && site.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1 mt-3">
-          {site.tags.map((tag) => (
-            <Badge key={tag} variant="secondary">
-              {tag}
-            </Badge>
-          ))}
-        </div>
-      )}
+      <TagList tags={site.tags} className="mt-3" />
 
       <ConfirmDialog
         open={showDelete}
