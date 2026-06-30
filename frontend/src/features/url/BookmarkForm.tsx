@@ -123,41 +123,12 @@ export function BookmarkForm({ bookmark, onSave, onCancel, onCreateSite }: Bookm
         />
         {errors.url && <p className="text-xs text-destructive">{errors.url.message}</p>}
 
-        {/* 标准化 URL */}
-        {!isEdit && normalizedURL && (
-          <p className="text-xs text-muted-foreground">
-            标准化：<span className="font-mono">{normalizedURL}</span>
-          </p>
-        )}
-
-        {/* 站点匹配提示 */}
-        {!isEdit && lookupState.status === "checking" && (
-          <p className="text-xs text-muted-foreground flex items-center gap-1">
-            <Loader2 size={12} className="animate-spin" /> 检查站点...
-          </p>
-        )}
-        {!isEdit && lookupState.status === "found" && (
-          <p className="text-xs text-muted-foreground flex items-center gap-1">
-            <CheckCircle2 size={12} className="text-primary" />
-            已匹配站点（{lookupState.domain}）
-          </p>
-        )}
-        {!isEdit && lookupState.status === "not_found" && (
-          <div className="flex flex-col gap-1">
-            <p className="text-xs text-destructive flex items-center gap-1">
-              <AlertCircle size={12} />
-              无对应站点（{lookupState.domain}）
-            </p>
-            {onCreateSite && (
-              <button
-                type="button"
-                onClick={onCreateSite}
-                className="text-xs text-primary hover:underline self-start"
-              >
-                去创建站点 →
-              </button>
-            )}
-          </div>
+        {!isEdit && (
+          <SiteLookupHint
+            normalizedURL={normalizedURL}
+            lookupState={lookupState}
+            onCreateSite={onCreateSite}
+          />
         )}
       </div>
 
@@ -211,5 +182,56 @@ export function BookmarkForm({ bookmark, onSave, onCancel, onCreateSite }: Bookm
         </Button>
       </div>
     </form>
+  )
+}
+
+// ─── Internal ───────────────────────────────────────────────
+
+/** URL 输入后的站点查找状态提示：标准化结果 + 站点匹配/未匹配反馈 */
+function SiteLookupHint({
+  normalizedURL,
+  lookupState,
+  onCreateSite,
+}: {
+  normalizedURL: string
+  lookupState: import("./hooks").SiteLookupState
+  onCreateSite?: () => void
+}) {
+  return (
+    <>
+      {normalizedURL && (
+        <p className="text-xs text-muted-foreground">
+          标准化：<span className="font-mono">{normalizedURL}</span>
+        </p>
+      )}
+      {lookupState.status === "checking" && (
+        <p className="text-xs text-muted-foreground flex items-center gap-1">
+          <Loader2 size={12} className="animate-spin" /> 检查站点...
+        </p>
+      )}
+      {lookupState.status === "found" && (
+        <p className="text-xs text-muted-foreground flex items-center gap-1">
+          <CheckCircle2 size={12} className="text-primary" />
+          已匹配站点（{lookupState.domain}）
+        </p>
+      )}
+      {lookupState.status === "not_found" && (
+        <div className="flex flex-col gap-1">
+          <p className="text-xs text-destructive flex items-center gap-1">
+            <AlertCircle size={12} />
+            无对应站点（{lookupState.domain}）
+          </p>
+          {onCreateSite && (
+            <button
+              type="button"
+              onClick={onCreateSite}
+              className="text-xs text-primary hover:underline self-start"
+            >
+              去创建站点 →
+            </button>
+          )}
+        </div>
+      )}
+    </>
   )
 }
