@@ -84,6 +84,117 @@ const { items, total, hasMore } = unpackList(result)
 
 ---
 
+## Go 友好编码规范
+
+### useEffect 必须注释触发条件
+
+Go 开发者习惯显式调用链，`useEffect` 的执行时机不直观。每个 `useEffect` 上方加一行注释说明何时触发：
+
+```tsx
+// 触发：siteId 变化时（用户切换站点），重置为查看模式
+useEffect(() => {
+  setMode("view")
+}, [siteId])
+
+// 触发：组件首次挂载，加载站点列表（等价于 Go 的 init）
+useEffect(() => {
+  loadSites()
+}, [loadSites])
+
+// 触发：外部 value 变化时同步本地状态（父组件清除搜索）
+useEffect(() => {
+  setLocalValue(value)
+}, [value])
+```
+
+### Props 使用命名 interface
+
+组件参数超过 3 个时，提取为命名 interface（类比 Go 的参数 struct）：
+
+```tsx
+// ✓ 好：命名 interface，一目了然
+interface SiteListItemProps {
+  title: string
+  domain?: string
+  count: number
+  selected: boolean
+  onClick: () => void
+}
+
+function SiteListItem(props: SiteListItemProps) {
+  const { title, domain, count, selected, onClick } = props
+  // ...
+}
+
+// ✗ 差：内联类型，参数列表过长
+function SiteListItem({ title, domain, count, ... }: { title: string; domain?: string; ... }) {
+```
+
+3 个以内的简单 props 允许内联：
+
+```tsx
+// OK：参数少，内联清晰
+function SiteIcon({ icon, size }: { icon?: string; size: number }) {
+```
+
+### 复杂异步逻辑提取为命名函数
+
+闭包内超过 10 行的异步逻辑，提取为独立命名函数，让流程线性可读：
+
+```tsx
+// ✓ 好：步骤函数，流程清晰
+async function doSiteLookup(url: string, version: number): Promise<SiteLookupState | null> {
+  const [norm] = await callService(() => URLService.NormalizeURL(url))
+  if (versionRef.current !== version) return null
+  setNormalizedURL(str(norm))
+
+  const [result, err] = await callService(() => URLService.LookupSiteByURL({ url }))
+  if (versionRef.current !== version) return null
+  if (err) return { status: "idle" }
+  if (result?.found) return { status: "found", domain: result.domain }
+  return { status: "not_found", domain: str(result?.domain) }
+}
+
+// useEffect 内只做调度
+timerRef.current = setTimeout(async () => {
+  const state = await doSiteLookup(urlValue, version)
+  if (state) setLookupState(state)
+}, 500)
+
+// ✗ 差：setTimeout 内 20+ 行嵌套逻辑
+```
+
+### 文件内区域排序
+
+每个 `.tsx` 文件按以下顺序组织（类比 Go 文件：类型声明 → 导出函数 → 内部函数）：
+
+```
+1. import 语句
+2. 类型/interface 定义（Props 等）
+3. 常量
+4. 导出组件（export function）
+5. 内部子组件（function，不导出）
+6. 工具函数（纯逻辑，无 JSX）
+```
+
+区域之间用分隔注释：
+
+```tsx
+// ─── Types ──────────────────────────────────────────────────
+
+interface SiteListItemProps { ... }
+
+// ─── Exported ───────────────────────────────────────────────
+
+export function SiteList() { ... }
+
+// ─── Internal ───────────────────────────────────────────────
+
+function DefaultSiteList() { ... }
+```
+
+---
+
 ## 预组合 Hooks
 
 替代组件内多行 `useURLStore((s) => s.xxx)` 写法。
@@ -98,19 +209,6 @@ const { items, total, hasMore } = unpackList(result)
 // 替代 7 行 selector
 const { sites, loading, hasMore, loadSites, selectSite } = useSiteListState()
 ```
-
----
-
-## 人工 / AI 审查规则
-
-以下规则无法由 ESLint 自动检查，需人工或 AI 审查：
-
-1. **`?.` `??` 只写在 `lib/`** — 业务代码用 `str()`/`arr()`/`unpackList()`
-2. **单组件导出** — 每个 `.tsx` 文件只 `export` 1 个主组件，辅助组件不导出
-3. **回调限制** — 子组件直接调 store action，回调 prop 最多 1 个 `onDone`
-4. **条件渲染** — 超过 2 个分支必须提取为独立子组件（if + return）
-5. **表单字段** — 统一使用 `<FormField label="..." required error={...}>` 包裹
-6. **表单初始值** — 提取 `xxxDefaults()` 函数，用 `str()`/`arr()` 拆包
 
 ---
 

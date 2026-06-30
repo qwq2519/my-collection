@@ -24,8 +24,17 @@
 | [整体布局](./global/ui-layout.md) | 侧边栏、导航、搜索框、列表排序 |
 | [标签系统](./global/tag-system.md) | `::` 层级规则、生命周期、管理页面 |
 | [开发指南](./global/dev-guide.md) | WSL + Windows 开发环境与构建流程 |
-| [前端 UI/UX 设计规范](./global/frontend-design-guide.md) | 颜色、字体、间距、组件规范、反模式清单 |
-| [前端代码开发规范](./global/frontend-code-conventions.md) | ESLint 规则、工具函数、编码原则、npm scripts |
+
+## 前端文档
+
+按使用时机分为三类：写代码前参考、做界面前参考、写完后自查。
+
+| 文档 | 定位 | 何时读 |
+|------|------|--------|
+| [前端代码开发规范](./global/frontend-code-conventions.md) | 编码规范、工具函数、Go 友好模式 | 写代码前 |
+| [前端 UI/UX 设计规范](./global/frontend-design-guide.md) | 颜色、字体、间距、组件规范 | 做界面前 |
+| [前端代码审查清单](./global/frontend-review-checklist.md) | 代码 + UI 逐条自查 | 写完后 |
+| [React 概念速查](./global/react-for-go-devs.md) | React/Zustand 对照 Go 解释 | 遇到困惑时 |
 
 ## 待讨论
 
