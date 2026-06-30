@@ -61,3 +61,15 @@ export const VIDEO_EXTS = new Set(["mp4", "mkv", "avi", "mov", "webm", "wmv", "f
 export function isPreviewableExt(ext: string): boolean {
   return IMAGE_EXTS.has(ext) || VIDEO_EXTS.has(ext)
 }
+
+/**
+ * 将时间戳格式化为中文日期（YYYY/M/D）。
+ * 用于详情页展示创建时间、更新时间等精确日期。
+ * 与 formatRelativeTime 互补：后者用于列表的"N分钟前"形式。
+ */
+export function formatDate(input: string | Date | null | undefined): string {
+  if (!input) return ""
+  const date = input instanceof Date ? input : new Date(input)
+  if (isNaN(date.getTime())) return ""
+  return date.toLocaleDateString("zh-CN")
+}

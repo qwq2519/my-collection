@@ -14,7 +14,7 @@ import {
   Pencil,
   Trash2,
 } from "lucide-react"
-import { IMAGE_EXTS, VIDEO_EXTS, isPreviewableExt } from "@/lib/utils"
+import { IMAGE_EXTS, VIDEO_EXTS, isPreviewableExt, formatDate } from "@/lib/utils"
 import { toast } from "sonner"
 import { BookmarkForm } from "./BookmarkForm"
 import { ThumbnailImage } from "./BookmarkViews"
@@ -163,8 +163,8 @@ function BookmarkInfo({ bm }: { bm: Bookmark }) {
 
       <div className="flex items-center gap-4 mt-4 text-xs text-muted-foreground">
         <span>状态: {bm.status === "alive" ? "正常" : "失效"}</span>
-        {bm.created_at && <span>创建: {formatTime(bm.created_at)}</span>}
-        {bm.updated_at && <span>更新: {formatTime(bm.updated_at)}</span>}
+        {bm.created_at && <span>创建: {formatDate(bm.created_at)}</span>}
+        {bm.updated_at && <span>更新: {formatDate(bm.updated_at)}</span>}
       </div>
     </div>
   )
@@ -215,10 +215,4 @@ function AttachmentIcon({ ext }: { ext: string }) {
   if (IMAGE_EXTS.has(ext)) return <ImageIcon size={12} className="shrink-0 text-muted-foreground" />
   if (VIDEO_EXTS.has(ext)) return <Video size={12} className="shrink-0 text-muted-foreground" />
   return <FileText size={12} className="shrink-0 text-muted-foreground" />
-}
-
-function formatTime(t: string | undefined): string {
-  if (!t) return ""
-  const d = new Date(t)
-  return isNaN(d.getTime()) ? "" : d.toLocaleDateString("zh-CN")
 }
