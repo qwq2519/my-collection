@@ -6,7 +6,6 @@ import { Separator } from "@/components/ui/separator"
 import { EmptyState } from "@/components/EmptyState"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
 import {
-  Globe,
   LayoutGrid,
   List,
   Loader2,
@@ -24,6 +23,7 @@ import { BookmarkGrid, BookmarkListView } from "./BookmarkViews"
 import { URLService } from "../../../bindings/collections/internal/service"
 import type { Site } from "../../../bindings/collections/internal/model"
 import { callService } from "@/lib/async"
+import { SiteIcon } from "@/components/SiteIcon"
 
 
 /**
@@ -118,7 +118,7 @@ function SiteHeader({ site, onEdit }: { site: Site; onEdit: () => void }) {
   return (
     <div className="px-6 pt-5 pb-4">
       <div className="flex items-start gap-3">
-        <SiteIcon icon={site.icon} size={32} />
+        <SiteIcon icon={site.icon} size={32} className="mt-0.5" />
         <div className="flex-1 min-w-0">
           <h1 className="text-base font-semibold truncate">{site.title}</h1>
           <a
@@ -320,23 +320,6 @@ function BookmarkContent({
       onSelect={onSelect}
       batchMode={batchMode}
       selectedIds={selectedIds}
-    />
-  )
-}
-
-// ─── 站点图标（带 fallback） ──────────────────────────────────
-
-function SiteIcon({ icon, size }: { icon?: string; size: number }) {
-  const [failed, setFailed] = useState(false)
-  if (!icon || failed)
-    return <Globe size={size} className="shrink-0 text-muted-foreground mt-0.5" />
-  return (
-    <img
-      src={`/persist/url-assets/icons/${icon}`}
-      alt=""
-      className="rounded-md shrink-0 mt-0.5"
-      style={{ width: size, height: size }}
-      onError={() => setFailed(true)}
     />
   )
 }

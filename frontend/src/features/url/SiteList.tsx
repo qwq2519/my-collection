@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { cn, formatRelativeTime } from "@/lib/utils"
 import { useURLStore, getActiveSiteId, useSiteListState, useSearchResultState } from "@/stores/url"
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll"
 import { EmptyState } from "@/components/EmptyState"
 import { Badge } from "@/components/ui/badge"
 import { Globe, Loader2, Search } from "lucide-react"
+import { SiteIcon } from "@/components/SiteIcon"
 import { arr } from "@/lib/safe"
 
 
@@ -154,7 +155,7 @@ function SiteListItem({
       )}
     >
       <div className="pt-0.5 shrink-0">
-        <SiteListIcon icon={icon} />
+        <SiteIcon icon={icon} size={16} />
       </div>
       <div className="flex-1 min-w-0 space-y-0.5">
         <div className="text-sm font-medium truncate">{title}</div>
@@ -173,19 +174,6 @@ function SiteListItem({
         )}
       </div>
     </button>
-  )
-}
-
-function SiteListIcon({ icon }: { icon?: string }) {
-  const [failed, setFailed] = useState(false)
-  if (!icon || failed) return <Globe size={16} className="text-muted-foreground" />
-  return (
-    <img
-      src={`/persist/url-assets/icons/${icon}`}
-      alt=""
-      className="w-4 h-4 rounded-sm"
-      onError={() => setFailed(true)}
-    />
   )
 }
 
