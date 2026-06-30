@@ -397,41 +397,50 @@ export const useURLStore = create<URLState>((set, get) => ({
 // ─── 预组合 Selector Hooks ──────────────────────────────────
 //
 // 替代组件内多行 useURLStore((s) => s.xxx) 重复写法。
-// 每个 hook 聚合一个视图区域所需的全部状态和 action。
+// 使用 useShallow 将多字段聚合为一次浅比较订阅，
+// 只在选中的字段实际变化时才触发重渲染。
 
-/** 站点列表所需的全部状态（替代组件内 7 行 selector） */
+import { useShallow } from "zustand/react/shallow"
+
+/** 站点列表所需的全部状态（单次订阅替代 7 行 selector） */
 export function useSiteListState() {
-  return {
-    sites: useURLStore((s) => s.sites),
-    loading: useURLStore((s) => s.sitesLoading),
-    hasMore: useURLStore((s) => s.sitesHasMore),
-    detailView: useURLStore((s) => s.detailView),
-    loadSites: useURLStore((s) => s.loadSites),
-    loadMore: useURLStore((s) => s.loadMoreSites),
-    selectSite: useURLStore((s) => s.selectSite),
-  }
+  return useURLStore(
+    useShallow((s) => ({
+      sites: s.sites,
+      loading: s.sitesLoading,
+      hasMore: s.sitesHasMore,
+      detailView: s.detailView,
+      loadSites: s.loadSites,
+      loadMore: s.loadMoreSites,
+      selectSite: s.selectSite,
+    })),
+  )
 }
 
 /** 搜索结果列表所需的全部状态 */
 export function useSearchResultState() {
-  return {
-    results: useURLStore((s) => s.searchResults),
-    loading: useURLStore((s) => s.searchLoading),
-    hasMore: useURLStore((s) => s.searchHasMore),
-    detailView: useURLStore((s) => s.detailView),
-    loadMore: useURLStore((s) => s.loadMoreSearch),
-    selectResult: useURLStore((s) => s.selectSearchResult),
-  }
+  return useURLStore(
+    useShallow((s) => ({
+      results: s.searchResults,
+      loading: s.searchLoading,
+      hasMore: s.searchHasMore,
+      detailView: s.detailView,
+      loadMore: s.loadMoreSearch,
+      selectResult: s.selectSearchResult,
+    })),
+  )
 }
 
 /** 书签区域所需的全部状态 */
 export function useBookmarkSectionState() {
-  return {
-    bookmarks: useURLStore((s) => s.bookmarks),
-    loading: useURLStore((s) => s.bookmarksLoading),
-    viewMode: useURLStore((s) => s.bookmarkViewMode),
-    setViewMode: useURLStore((s) => s.setBookmarkViewMode),
-    selectBookmark: useURLStore((s) => s.selectBookmark),
-    refreshCurrentSite: useURLStore((s) => s.refreshCurrentSite),
-  }
+  return useURLStore(
+    useShallow((s) => ({
+      bookmarks: s.bookmarks,
+      loading: s.bookmarksLoading,
+      viewMode: s.bookmarkViewMode,
+      setViewMode: s.setBookmarkViewMode,
+      selectBookmark: s.selectBookmark,
+      refreshCurrentSite: s.refreshCurrentSite,
+    })),
+  )
 }
