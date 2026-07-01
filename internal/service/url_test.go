@@ -4,10 +4,22 @@ import (
 	"testing"
 
 	"collections/internal/model"
+	"collections/internal/store"
 )
 
+func newURLService(t *testing.T) *URLService {
+	t.Helper()
+	dir := t.TempDir()
+	s, err := store.New(dir)
+	if err != nil {
+		t.Fatalf("new store: %v", err)
+	}
+	t.Cleanup(func() { s.Close() })
+	return &URLService{Store: s}
+}
+
 func TestURLService_CreateSiteValidation(t *testing.T) {
-	svc := &URLService{Store: newTestStore(t)}
+	svc := newURLService(t)
 
 	tests := []struct {
 		name string
@@ -26,7 +38,7 @@ func TestURLService_CreateSiteValidation(t *testing.T) {
 }
 
 func TestURLService_CreateSiteAutoExtractDomain(t *testing.T) {
-	svc := &URLService{Store: newTestStore(t)}
+	svc := newURLService(t)
 
 	site, err := svc.CreateSite(model.CreateSiteReq{
 		Title: "GitHub",
@@ -41,7 +53,7 @@ func TestURLService_CreateSiteAutoExtractDomain(t *testing.T) {
 }
 
 func TestURLService_CreateSiteTagNormalization(t *testing.T) {
-	svc := &URLService{Store: newTestStore(t)}
+	svc := newURLService(t)
 
 	site, err := svc.CreateSite(model.CreateSiteReq{
 		Title: "Test",
@@ -60,7 +72,7 @@ func TestURLService_CreateSiteTagNormalization(t *testing.T) {
 }
 
 func TestURLService_CreateSiteInvalidTag(t *testing.T) {
-	svc := &URLService{Store: newTestStore(t)}
+	svc := newURLService(t)
 	_, err := svc.CreateSite(model.CreateSiteReq{
 		Title: "Test",
 		URL:   "https://test.com",
@@ -72,7 +84,7 @@ func TestURLService_CreateSiteInvalidTag(t *testing.T) {
 }
 
 func TestURLService_UpdateSiteValidation(t *testing.T) {
-	svc := &URLService{Store: newTestStore(t)}
+	svc := newURLService(t)
 	svc.CreateSite(model.CreateSiteReq{Title: "Test", URL: "https://test.com"})
 
 	emptyID := ""
@@ -89,7 +101,7 @@ func TestURLService_UpdateSiteValidation(t *testing.T) {
 }
 
 func TestURLService_UpdateSiteTagCountAdjustment(t *testing.T) {
-	svc := &URLService{Store: newTestStore(t)}
+	svc := newURLService(t)
 	site, _ := svc.CreateSite(model.CreateSiteReq{
 		Title: "Test", URL: "https://test.com",
 		Tags: []string{"old"},
@@ -106,7 +118,7 @@ func TestURLService_UpdateSiteTagCountAdjustment(t *testing.T) {
 }
 
 func TestURLService_DeleteSiteTagCountDecrease(t *testing.T) {
-	svc := &URLService{Store: newTestStore(t)}
+	svc := newURLService(t)
 	site, _ := svc.CreateSite(model.CreateSiteReq{
 		Title: "Test", URL: "https://test.com",
 		Tags: []string{"web"},
@@ -121,7 +133,7 @@ func TestURLService_DeleteSiteTagCountDecrease(t *testing.T) {
 }
 
 func TestURLService_CreateBookmarkValidation(t *testing.T) {
-	svc := &URLService{Store: newTestStore(t)}
+	svc := newURLService(t)
 
 	_, err := svc.CreateBookmark(model.CreateBookmarkReq{
 		URL: "not-a-url", Title: "Test",
@@ -139,7 +151,7 @@ func TestURLService_CreateBookmarkValidation(t *testing.T) {
 }
 
 func TestURLService_CreateBookmarkAutoMatchSite(t *testing.T) {
-	svc := &URLService{Store: newTestStore(t)}
+	svc := newURLService(t)
 	svc.CreateSite(model.CreateSiteReq{
 		Title: "GitHub", URL: "https://github.com",
 	})
@@ -160,7 +172,7 @@ func TestURLService_CreateBookmarkAutoMatchSite(t *testing.T) {
 }
 
 func TestURLService_CreateBookmarkNoSite(t *testing.T) {
-	svc := &URLService{Store: newTestStore(t)}
+	svc := newURLService(t)
 
 	_, err := svc.CreateBookmark(model.CreateBookmarkReq{
 		URL:   "https://unknown-domain.com/page",
@@ -172,7 +184,7 @@ func TestURLService_CreateBookmarkNoSite(t *testing.T) {
 }
 
 func TestURLService_UpdateBookmarkValidation(t *testing.T) {
-	svc := &URLService{Store: newTestStore(t)}
+	svc := newURLService(t)
 
 	_, err := svc.UpdateBookmark(model.UpdateBookmarkReq{ID: ""})
 	if err == nil {
@@ -187,7 +199,7 @@ func TestURLService_UpdateBookmarkValidation(t *testing.T) {
 }
 
 func TestURLService_DeleteBookmarkValidation(t *testing.T) {
-	svc := &URLService{Store: newTestStore(t)}
+	svc := newURLService(t)
 	err := svc.DeleteBookmark("")
 	if err == nil {
 		t.Error("DeleteBookmark should reject empty ID")
@@ -195,7 +207,7 @@ func TestURLService_DeleteBookmarkValidation(t *testing.T) {
 }
 
 func TestURLService_LookupSiteByURL(t *testing.T) {
-	svc := &URLService{Store: newTestStore(t)}
+	svc := newURLService(t)
 	svc.CreateSite(model.CreateSiteReq{Title: "GH", URL: "https://github.com"})
 
 	result, err := svc.LookupSiteByURL(model.LookupSiteByURLReq{
@@ -220,7 +232,7 @@ func TestURLService_LookupSiteByURL(t *testing.T) {
 }
 
 func TestURLService_LookupSiteByURLValidation(t *testing.T) {
-	svc := &URLService{Store: newTestStore(t)}
+	svc := newURLService(t)
 
 	_, err := svc.LookupSiteByURL(model.LookupSiteByURLReq{URL: ""})
 	if err == nil {
@@ -234,7 +246,7 @@ func TestURLService_LookupSiteByURLValidation(t *testing.T) {
 }
 
 func TestURLService_NormalizeURL(t *testing.T) {
-	svc := &URLService{Store: newTestStore(t)}
+	svc := newURLService(t)
 
 	result, err := svc.NormalizeURL("https://www.Example.COM/page/")
 	if err != nil {

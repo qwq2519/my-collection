@@ -6,10 +6,22 @@ import (
 	"testing"
 
 	"collections/internal/model"
+	"collections/internal/store"
 )
 
+func newNoteService(t *testing.T) *NoteService {
+	t.Helper()
+	dir := t.TempDir()
+	s, err := store.New(dir)
+	if err != nil {
+		t.Fatalf("new store: %v", err)
+	}
+	t.Cleanup(func() { s.Close() })
+	return &NoteService{Store: s}
+}
+
 func TestNoteService_CreateValidation(t *testing.T) {
-	svc := &NoteService{Store: newTestStore(t)}
+	svc := newNoteService(t)
 
 	_, err := svc.CreateNote(model.CreateNoteReq{Title: "", Body: "body"})
 	if err == nil {
@@ -23,7 +35,7 @@ func TestNoteService_CreateValidation(t *testing.T) {
 }
 
 func TestNoteService_GetValidation(t *testing.T) {
-	svc := &NoteService{Store: newTestStore(t)}
+	svc := newNoteService(t)
 	_, err := svc.GetNote("")
 	if err == nil {
 		t.Error("GetNote should reject empty ID")
@@ -31,7 +43,7 @@ func TestNoteService_GetValidation(t *testing.T) {
 }
 
 func TestNoteService_UpdateValidation(t *testing.T) {
-	svc := &NoteService{Store: newTestStore(t)}
+	svc := newNoteService(t)
 
 	_, err := svc.UpdateNote(model.UpdateNoteReq{ID: ""})
 	if err == nil {
@@ -46,7 +58,7 @@ func TestNoteService_UpdateValidation(t *testing.T) {
 }
 
 func TestNoteService_DeleteValidation(t *testing.T) {
-	svc := &NoteService{Store: newTestStore(t)}
+	svc := newNoteService(t)
 	err := svc.DeleteNote("")
 	if err == nil {
 		t.Error("DeleteNote should reject empty ID")
@@ -54,12 +66,11 @@ func TestNoteService_DeleteValidation(t *testing.T) {
 }
 
 func TestNoteService_DeleteCleansImages(t *testing.T) {
-	s := newTestStore(t)
-	svc := &NoteService{Store: s}
+	svc := newNoteService(t)
 
 	note, _ := svc.CreateNote(model.CreateNoteReq{Title: "Test", Body: "body"})
 
-	imgDir := filepath.Join(s.PersistDir(), "note-images", note.ID)
+	imgDir := filepath.Join(svc.Store.PersistDir(), "note-images", note.ID)
 	os.MkdirAll(imgDir, 0755)
 	os.WriteFile(filepath.Join(imgDir, "img.png"), []byte("fake"), 0644)
 
@@ -71,11 +82,10 @@ func TestNoteService_DeleteCleansImages(t *testing.T) {
 }
 
 func TestNoteService_DetectOrphanImages(t *testing.T) {
-	s := newTestStore(t)
-	svc := &NoteService{Store: s}
+	svc := newNoteService(t)
 
 	noteID := "test-note-id"
-	imgDir := filepath.Join(s.PersistDir(), "note-images", noteID)
+	imgDir := filepath.Join(svc.Store.PersistDir(), "note-images", noteID)
 	os.MkdirAll(imgDir, 0755)
 	os.WriteFile(filepath.Join(imgDir, "used.png"), []byte("x"), 0644)
 	os.WriteFile(filepath.Join(imgDir, "orphan.png"), []byte("x"), 0644)
@@ -98,7 +108,7 @@ func TestNoteService_DetectOrphanImages(t *testing.T) {
 }
 
 func TestNoteService_DetectOrphanImagesNoDir(t *testing.T) {
-	svc := &NoteService{Store: newTestStore(t)}
+	svc := newNoteService(t)
 	result, err := svc.DetectOrphanImages(model.DetectOrphanImagesReq{
 		NoteID: "nonexistent",
 		Body:   "some text",
@@ -112,11 +122,10 @@ func TestNoteService_DetectOrphanImagesNoDir(t *testing.T) {
 }
 
 func TestNoteService_DeleteOrphanImages(t *testing.T) {
-	s := newTestStore(t)
-	svc := &NoteService{Store: s}
+	svc := newNoteService(t)
 
 	noteID := "test-note-id"
-	imgDir := filepath.Join(s.PersistDir(), "note-images", noteID)
+	imgDir := filepath.Join(svc.Store.PersistDir(), "note-images", noteID)
 	os.MkdirAll(imgDir, 0755)
 	os.WriteFile(filepath.Join(imgDir, "orphan.png"), []byte("x"), 0644)
 
@@ -134,11 +143,10 @@ func TestNoteService_DeleteOrphanImages(t *testing.T) {
 }
 
 func TestNoteService_DeleteOrphanImagesTraversalRejected(t *testing.T) {
-	s := newTestStore(t)
-	svc := &NoteService{Store: s}
+	svc := newNoteService(t)
 
 	noteID := "test-note-id"
-	imgDir := filepath.Join(s.PersistDir(), "note-images", noteID)
+	imgDir := filepath.Join(svc.Store.PersistDir(), "note-images", noteID)
 	os.MkdirAll(imgDir, 0755)
 
 	err := svc.DeleteOrphanImages(model.DeleteOrphanImagesReq{

@@ -7,10 +7,22 @@ import (
 	"testing"
 
 	"collections/internal/model"
+	"collections/internal/store"
 )
 
+func newUploadService(t *testing.T) *UploadService {
+	t.Helper()
+	dir := t.TempDir()
+	s, err := store.New(dir)
+	if err != nil {
+		t.Fatalf("new store: %v", err)
+	}
+	t.Cleanup(func() { s.Close() })
+	return &UploadService{Store: s}
+}
+
 func TestUploadService_Validation(t *testing.T) {
-	svc := &UploadService{Store: newTestStore(t)}
+	svc := newUploadService(t)
 
 	tests := []struct {
 		name string
@@ -29,7 +41,7 @@ func TestUploadService_Validation(t *testing.T) {
 }
 
 func TestUploadService_FileSizeLimit(t *testing.T) {
-	svc := &UploadService{Store: newTestStore(t)}
+	svc := newUploadService(t)
 	bigData := make([]byte, 11<<20) // 11 MB
 
 	_, err := svc.UploadFile(model.UploadFileReq{
@@ -42,7 +54,7 @@ func TestUploadService_FileSizeLimit(t *testing.T) {
 }
 
 func TestUploadService_UnsupportedExtension(t *testing.T) {
-	svc := &UploadService{Store: newTestStore(t)}
+	svc := newUploadService(t)
 
 	_, err := svc.UploadFile(model.UploadFileReq{
 		Scene: "site-icon", Filename: "icon.exe",
@@ -62,7 +74,7 @@ func TestUploadService_UnsupportedExtension(t *testing.T) {
 }
 
 func TestUploadService_UnknownScene(t *testing.T) {
-	svc := &UploadService{Store: newTestStore(t)}
+	svc := newUploadService(t)
 
 	_, err := svc.UploadFile(model.UploadFileReq{
 		Scene: "unknown-scene", Filename: "a.png",
@@ -74,7 +86,7 @@ func TestUploadService_UnknownScene(t *testing.T) {
 }
 
 func TestUploadService_SiteIcon(t *testing.T) {
-	svc := &UploadService{Store: newTestStore(t)}
+	svc := newUploadService(t)
 
 	result, err := svc.UploadFile(model.UploadFileReq{
 		Scene: "site-icon", Filename: "icon.png",
@@ -98,7 +110,7 @@ func TestUploadService_SiteIcon(t *testing.T) {
 }
 
 func TestUploadService_NoteImage(t *testing.T) {
-	svc := &UploadService{Store: newTestStore(t)}
+	svc := newUploadService(t)
 
 	result, err := svc.UploadFile(model.UploadFileReq{
 		Scene: "note-image", Filename: "photo.jpg",
@@ -116,7 +128,7 @@ func TestUploadService_NoteImage(t *testing.T) {
 }
 
 func TestUploadService_Attachment(t *testing.T) {
-	svc := &UploadService{Store: newTestStore(t)}
+	svc := newUploadService(t)
 
 	result, err := svc.UploadFile(model.UploadFileReq{
 		Scene: "site-attachment", Filename: "readme.txt",
@@ -131,7 +143,7 @@ func TestUploadService_Attachment(t *testing.T) {
 }
 
 func TestUploadService_AttachmentAllowedFormats(t *testing.T) {
-	svc := &UploadService{Store: newTestStore(t)}
+	svc := newUploadService(t)
 
 	allowed := []string{"test.png", "test.mp4", "test.txt", "test.webm"}
 	for _, f := range allowed {
@@ -146,7 +158,7 @@ func TestUploadService_AttachmentAllowedFormats(t *testing.T) {
 }
 
 func TestUploadService_DeleteAttachment(t *testing.T) {
-	svc := &UploadService{Store: newTestStore(t)}
+	svc := newUploadService(t)
 
 	svc.UploadFile(model.UploadFileReq{
 		Scene: "site-attachment", Filename: "doc.txt",
@@ -165,7 +177,7 @@ func TestUploadService_DeleteAttachment(t *testing.T) {
 }
 
 func TestUploadService_DeleteAttachmentValidation(t *testing.T) {
-	svc := &UploadService{Store: newTestStore(t)}
+	svc := newUploadService(t)
 
 	if err := svc.DeleteAttachment("", "file.txt"); err == nil {
 		t.Error("should reject empty entityID")
