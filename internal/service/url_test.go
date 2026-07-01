@@ -4,19 +4,7 @@ import (
 	"testing"
 
 	"collections/internal/model"
-	"collections/internal/store"
 )
-
-func newURLService(t *testing.T) *URLService {
-	t.Helper()
-	dir := t.TempDir()
-	s, err := store.New(dir)
-	if err != nil {
-		t.Fatalf("new store: %v", err)
-	}
-	t.Cleanup(func() { s.Close() })
-	return &URLService{Store: s}
-}
 
 func TestURLService_CreateSiteValidation(t *testing.T) {
 	svc := newURLService(t)
@@ -85,7 +73,9 @@ func TestURLService_CreateSiteInvalidTag(t *testing.T) {
 
 func TestURLService_UpdateSiteValidation(t *testing.T) {
 	svc := newURLService(t)
-	svc.CreateSite(model.CreateSiteReq{Title: "Test", URL: "https://test.com"})
+	if _, err := svc.CreateSite(model.CreateSiteReq{Title: "Test", URL: "https://test.com"}); err != nil {
+		t.Fatalf("setup CreateSite: %v", err)
+	}
 
 	emptyID := ""
 	_, err := svc.UpdateSite(model.UpdateSiteReq{ID: emptyID})
@@ -102,10 +92,13 @@ func TestURLService_UpdateSiteValidation(t *testing.T) {
 
 func TestURLService_UpdateSiteTagCountAdjustment(t *testing.T) {
 	svc := newURLService(t)
-	site, _ := svc.CreateSite(model.CreateSiteReq{
+	site, err := svc.CreateSite(model.CreateSiteReq{
 		Title: "Test", URL: "https://test.com",
 		Tags: []string{"old"},
 	})
+	if err != nil {
+		t.Fatalf("setup CreateSite: %v", err)
+	}
 
 	newTags := []string{"new"}
 	updated, err := svc.UpdateSite(model.UpdateSiteReq{ID: site.ID, Tags: &newTags})
@@ -168,9 +161,11 @@ func TestURLService_CreateBookmarkValidation(t *testing.T) {
 
 func TestURLService_CreateBookmarkAutoMatchSite(t *testing.T) {
 	svc := newURLService(t)
-	svc.CreateSite(model.CreateSiteReq{
+	if _, err := svc.CreateSite(model.CreateSiteReq{
 		Title: "GitHub", URL: "https://github.com",
-	})
+	}); err != nil {
+		t.Fatalf("setup CreateSite: %v", err)
+	}
 
 	bm, err := svc.CreateBookmark(model.CreateBookmarkReq{
 		URL:   "https://github.com/golang/go",
@@ -224,7 +219,9 @@ func TestURLService_DeleteBookmarkValidation(t *testing.T) {
 
 func TestURLService_LookupSiteByURL(t *testing.T) {
 	svc := newURLService(t)
-	svc.CreateSite(model.CreateSiteReq{Title: "GH", URL: "https://github.com"})
+	if _, err := svc.CreateSite(model.CreateSiteReq{Title: "GH", URL: "https://github.com"}); err != nil {
+		t.Fatalf("setup CreateSite: %v", err)
+	}
 
 	result, err := svc.LookupSiteByURL(model.LookupSiteByURLReq{
 		URL: "https://github.com/golang/go",

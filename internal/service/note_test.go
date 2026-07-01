@@ -6,19 +6,7 @@ import (
 	"testing"
 
 	"collections/internal/model"
-	"collections/internal/store"
 )
-
-func newNoteService(t *testing.T) *NoteService {
-	t.Helper()
-	dir := t.TempDir()
-	s, err := store.New(dir)
-	if err != nil {
-		t.Fatalf("new store: %v", err)
-	}
-	t.Cleanup(func() { s.Close() })
-	return &NoteService{Store: s}
-}
 
 func TestNoteService_CreateValidation(t *testing.T) {
 	svc := newNoteService(t)

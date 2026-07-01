@@ -7,19 +7,7 @@ import (
 	"testing"
 
 	"collections/internal/model"
-	"collections/internal/store"
 )
-
-func newUploadService(t *testing.T) *UploadService {
-	t.Helper()
-	dir := t.TempDir()
-	s, err := store.New(dir)
-	if err != nil {
-		t.Fatalf("new store: %v", err)
-	}
-	t.Cleanup(func() { s.Close() })
-	return &UploadService{Store: s}
-}
 
 func TestUploadService_Validation(t *testing.T) {
 	svc := newUploadService(t)
