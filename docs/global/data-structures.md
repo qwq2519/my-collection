@@ -10,6 +10,8 @@
 persist/
 ├── main.db                    ← BuntDB 主存储（单文件）
 ├── search.bleve/              ← Bleve 搜索索引目录（可重建）
+├── bin/                       ← 可选工具二进制（ffmpeg 等，可重新下载）
+│   └── ffmpeg(.exe)
 ├── url-assets/                ← URL 模块资源（站点 + 书签相关文件）
 │   ├── icons/                 ← 站点图标（按域名命名，可重新抓取）
 │   │   └── {domain}.{ext}
@@ -31,6 +33,7 @@ persist/
 
 - `main.db` + `media-folders/*/media_meta.json` 是核心数据，丢失不可恢复
 - `search.bleve/` 可从 main.db + media_meta.json 全量重建
+- `bin/` 存放可选工具二进制（如 ffmpeg），可重新下载，备份时跳过
 - `url-assets/icons/` 可通过重新抓取恢复
 - `url-assets/attachments/` 是用户上传的附件（含封面），删除则附件丢失
 - `thumbnails/` 可从源文件重新生成

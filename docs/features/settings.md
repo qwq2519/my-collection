@@ -37,9 +37,14 @@
 
 ### ffmpeg 状态
 
-- 展示 ffmpeg 是否可用（启动时 `exec.LookPath("ffmpeg")` 检测）
-- 不可用时提示：视频缩略图和动画预览功能不可用
-- 提供 ffmpeg 下载链接和配置说明
+- 展示 ffmpeg 是否可用
+- **检测顺序**：`persist/bin/ffmpeg` → 系统 PATH（`exec.LookPath`）
+- 可用时展示版本号和二进制路径
+- 不可用时展示平台对应的安装指令（可复制），支持两种方式：
+  - 系统全局安装（推荐，如 `brew install ffmpeg`）
+  - 下载到项目本地 `persist/bin/` 目录
+- 提供**"重新检测"按钮**，用户安装后点击刷新状态
+- `persist/bin/` 存放的是可重新下载的工具二进制，备份时跳过
 
 ### 主题与外观
 
@@ -49,13 +54,15 @@
 
 设置页面涉及两个 Service：`SettingService` 负责应用级设置，`MediaService` 负责媒体文件夹管理和扫描。
 
-**SettingService：**
+**SettingService（已实现 ✅ / 待实现 ⏳）：**
 
-| 方法 | 用途 | 触发方式 |
-|------|------|---------|
-| `GetSettings()` | 获取当前设置（persist 路径、ffmpeg 状态、索引状态等） | 进入设置页时自动调用 |
-| `RebuildIndex()` | 重建 Bleve 索引 | "重建索引"按钮 |
-| `ExportBackup()` | 导出备份 zip（等待写入完成后打包） | "导出备份"按钮 |
+| 方法 | 用途 | 触发方式 | 状态 |
+|------|------|---------|------|
+| `GetSettings()` | 获取当前设置（persist 路径、ffmpeg 状态、索引状态等） | 进入设置页时自动调用 | ✅ |
+| `GetFFmpegStatus()` | 返回 ffmpeg 可用状态和安装指令 | `GetSettings` 内部调用 | ✅ |
+| `RecheckFFmpeg()` | 清除缓存重新检测 ffmpeg | "重新检测"按钮 | ✅ |
+| `RebuildIndex()` | 重建 Bleve 索引 | "重建索引"按钮 | ⏳ |
+| `ExportBackup()` | 导出备份 zip（等待写入完成后打包） | "导出备份"按钮 | ⏳ |
 
 **MediaService（媒体文件夹管理）：**
 
@@ -92,5 +99,20 @@
    [导出备份]                              → 打包为 zip，跳过可重建数据
 
 🎬 ffmpeg
-   状态: ✅ 已安装 (ffmpeg 7.0)
+   状态: ✅ 已安装 (7.1)    /usr/local/bin/ffmpeg    [重新检测]
+
+   ── 或（未安装时） ──
+
+🎬 ffmpeg
+   状态: ❌ 未安装                                     [重新检测]
+
+   视频缩略图和动画预览需要 ffmpeg，请选择一种方式安装：
+
+   ┌──────────────────────────────────────────────────┐
+   │ 方式一：Homebrew 安装（推荐）               [复制] │
+   │ brew install ffmpeg                               │
+   ├──────────────────────────────────────────────────┤
+   │ 方式二：下载到项目本地                       [复制] │
+   │ mkdir -p ".../persist/bin" && curl -L ...          │
+   └──────────────────────────────────────────────────┘
 ```

@@ -56,6 +56,29 @@ type ScanComplete struct {
 	Modified int    `json:"modified"`
 }
 
+// FFmpegStatus ffmpeg 检测结果。
+// Available 为 true 时 BinPath/Version 有值；
+// 为 false 时 Guide 包含平台对应的安装指令供前端展示。
+type FFmpegStatus struct {
+	Available bool             `json:"available"`
+	Version   string           `json:"version,omitempty"`
+	BinPath   string           `json:"bin_path,omitempty"`
+	Guide     []InstallCommand `json:"guide,omitempty"`
+}
+
+// InstallCommand 一条安装指令（标题 + 可复制的命令）
+type InstallCommand struct {
+	Label   string `json:"label"`
+	Command string `json:"command"`
+}
+
+// AppSettings 应用设置摘要（设置页进入时返回）
+type AppSettings struct {
+	PersistDir  string           `json:"persist_dir"`
+	FFmpeg      FFmpegStatus     `json:"ffmpeg"`
+	IndexStatus DirtyIndexStatus `json:"index_status"`
+}
+
 // FetchMetaReq 元数据抓取请求
 type FetchMetaReq struct {
 	URL string `json:"url"`
