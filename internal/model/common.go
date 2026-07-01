@@ -2,6 +2,13 @@ package model
 
 import "time"
 
+// ensureStringSlice 确保字符串切片非 nil，避免 JSON 序列化为 null
+func ensureStringSlice(s *[]string) {
+	if *s == nil {
+		*s = []string{}
+	}
+}
+
 // Attachment 附件信息（站点/书签共用）
 type Attachment struct {
 	Filename   string    `json:"filename"`

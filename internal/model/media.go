@@ -68,18 +68,9 @@ type MediaListResult struct {
 	HasMore bool            `json:"has_more"`
 }
 
-// MediaFileItem 媒体文件列表项（含文件夹信息和相对路径）
+// MediaFileItem 媒体文件列表项（内嵌 MediaFile，附加文件夹定位信息）
 type MediaFileItem struct {
-	FolderID    string    `json:"folder_id"`
-	RelPath     string    `json:"rel_path"`
-	MediaType   string    `json:"media_type"`
-	Tags        []string  `json:"tags"`
-	Description string    `json:"description,omitempty"`
-	Thumbnail   string    `json:"thumbnail,omitempty"`
-	Preview     string    `json:"preview,omitempty"`
-	FileSize    int64     `json:"file_size"`
-	Width       *int      `json:"width,omitempty"`
-	Height      *int      `json:"height,omitempty"`
-	Duration    *float64  `json:"duration,omitempty"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	MediaFile
+	FolderID string `json:"folder_id"`
+	RelPath  string `json:"rel_path"`
 }

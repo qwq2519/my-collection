@@ -20,23 +20,13 @@ func (s *Store) mediaFolderDir(folderID string) string {
 }
 
 func mediaFileToItem(folderID, relPath string, file model.MediaFile) model.MediaFileItem {
-	tags := file.Tags
-	if tags == nil {
-		tags = []string{}
+	if file.Tags == nil {
+		file.Tags = []string{}
 	}
 	return model.MediaFileItem{
-		FolderID:    folderID,
-		RelPath:     relPath,
-		MediaType:   file.MediaType,
-		Tags:        tags,
-		Description: file.Description,
-		Thumbnail:   file.Thumbnail,
-		Preview:     file.Preview,
-		FileSize:    file.FileSize,
-		Width:       file.Width,
-		Height:      file.Height,
-		Duration:    file.Duration,
-		UpdatedAt:   file.UpdatedAt,
+		MediaFile: file,
+		FolderID:  folderID,
+		RelPath:   relPath,
 	}
 }
 

@@ -20,9 +20,7 @@ type Bookmark struct {
 // EnsureSlices 确保切片字段非 nil，避免 JSON 序列化为 null。
 // Store 层写入前调用。
 func (b *Bookmark) EnsureSlices() {
-	if b.Tags == nil {
-		b.Tags = []string{}
-	}
+	ensureStringSlice(&b.Tags)
 	if b.Attachments == nil {
 		b.Attachments = []Attachment{}
 	}

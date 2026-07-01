@@ -79,9 +79,7 @@ type SearchURLResult struct {
 // EnsureSlices 确保切片字段非 nil，避免 JSON 序列化为 null。
 // Store 层写入前调用。
 func (s *Site) EnsureSlices() {
-	if s.Tags == nil {
-		s.Tags = []string{}
-	}
+	ensureStringSlice(&s.Tags)
 	if s.Attachments == nil {
 		s.Attachments = []Attachment{}
 	}
