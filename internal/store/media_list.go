@@ -102,7 +102,9 @@ func (s *Store) listMediaFromBleve(req model.MediaListReq) (*model.MediaListResu
 	if req.Search != "" {
 		fnQ := bleve.NewMatchQuery(req.Search)
 		fnQ.SetField("filename")
-		conjunction.AddQuery(fnQ)
+		descQ := bleve.NewMatchQuery(req.Search)
+		descQ.SetField("description")
+		conjunction.AddQuery(bleve.NewDisjunctionQuery(fnQ, descQ))
 	}
 	if len(req.Tags) > 0 {
 		tagOr := bleve.NewDisjunctionQuery()

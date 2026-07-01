@@ -207,14 +207,14 @@ scan(dir_path, cached_node):
 |---------|------|------|
 | 新增 | 新树有、旧树无 | 生成缩略图 + 写 media_meta.json + 更新 Bleve |
 | 删除 | 旧树有、新树无 | 删缩略图 + 从 media_meta.json 移除 + 更新 Bleve + 递减 media_tag count |
-| 修改 | hash 不同 | 重新生成缩略图 + 更新 media_meta.json |
+| 修改 | hash 不同 | 重新生成缩略图 + 更新 media_meta.json（更新 `scanned_at`，保留用户数据如 tags、description） |
 | 子目录重命名 | "A 消失 + B 出现"且 hash 相同 | 批量更新 relative_path + 重算缩略图名 |
 
 **扁平目录分桶**（可选）：目录下 > 500 文件时按 100 个一组分桶，首版可不做。
 
 ### 搜索索引
 
-Bleve 文档 ID = `{folder_id}/{relative_path}`，索引 tags、filename 和 media_type。可从 media_meta.json 全量重建。
+Bleve 文档 ID = `{folder_id}/{relative_path}`，索引 tags、filename、description 和 media_type。可从 media_meta.json 全量重建。
 
 ### 文件夹生命周期
 
@@ -252,7 +252,7 @@ Bleve 文档 ID = `{folder_id}/{relative_path}`，索引 tags、filename 和 med
 | 场景 | 处理 |
 |------|------|
 | tree_hash.json 不存在/损坏 | 全量扫描重建 |
-| media_meta.json 不存在/损坏 | 全量扫描重建（标签数据丢失） |
+| media_meta.json 不存在/损坏 | 全量扫描重建（标签、描述等用户数据丢失） |
 | thumbnails/ 缺失 | 从源文件重新生成 |
 | schema_version 不匹配 | 格式迁移或全量重建 |
 | 用户"强制重建" | 删除 `media-folders/{id}/` 目录后重新扫描 |
@@ -288,7 +288,7 @@ Bleve 文档 ID = `{folder_id}/{relative_path}`，索引 tags、filename 和 med
 
 - 点击媒体文件展开详情面板，面板中可直接增删标签
 - 标签修改即时保存，无需手动点保存按钮
-- 编辑标签时同步更新该文件的 `updated_at`，使其在默认排序（`updated_at` 降序）中上浮
+- 编辑标签或描述时同步更新该文件的 `updated_at`，使其在默认排序（`updated_at` 降序）中上浮
 
 **批量打标签：**
 

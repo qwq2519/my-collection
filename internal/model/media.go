@@ -14,21 +14,24 @@ type MediaFolder struct {
 
 // MediaFile 单个媒体文件的元数据（存储在 media_meta.json 的 files map 中）
 type MediaFile struct {
-	MediaType string    `json:"media_type"`
-	Tags      []string  `json:"tags"`
-	Thumbnail string    `json:"thumbnail,omitempty"`
-	Preview   string    `json:"preview,omitempty"`
-	UpdatedAt time.Time `json:"updated_at"`
-	FileSize  int64     `json:"file_size"`
-	Width     *int      `json:"width,omitempty"`
-	Height    *int      `json:"height,omitempty"`
-	Duration  *float64  `json:"duration,omitempty"`
+	MediaType   string    `json:"media_type"`
+	Tags        []string  `json:"tags"`
+	Description string    `json:"description,omitempty"`
+	Thumbnail   string    `json:"thumbnail,omitempty"`
+	Preview     string    `json:"preview,omitempty"`
+	ScannedAt   time.Time `json:"scanned_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	FileSize    int64     `json:"file_size"`
+	Width       *int      `json:"width,omitempty"`
+	Height      *int      `json:"height,omitempty"`
+	Duration    *float64  `json:"duration,omitempty"`
 }
 
 // MediaMeta media_meta.json 的完整结构
 type MediaMeta struct {
-	FolderID string               `json:"folder_id"`
-	Files    map[string]MediaFile `json:"files"`
+	SchemaVersion int                  `json:"schema_version"`
+	FolderID      string               `json:"folder_id"`
+	Files         map[string]MediaFile `json:"files"`
 }
 
 // TreeNode Merkle Tree 中的节点（文件或目录）。
@@ -43,8 +46,9 @@ type TreeNode struct {
 
 // TreeHashFile tree_hash.json 的完整结构
 type TreeHashFile struct {
-	FolderID string    `json:"folder_id"`
-	Root     *TreeNode `json:"root"`
+	SchemaVersion int       `json:"schema_version"`
+	FolderID      string    `json:"folder_id"`
+	Root          *TreeNode `json:"root"`
 }
 
 // MediaListReq 媒体文件列表请求
@@ -66,15 +70,16 @@ type MediaListResult struct {
 
 // MediaFileItem 媒体文件列表项（含文件夹信息和相对路径）
 type MediaFileItem struct {
-	FolderID  string    `json:"folder_id"`
-	RelPath   string    `json:"rel_path"`
-	MediaType string    `json:"media_type"`
-	Tags      []string  `json:"tags"`
-	Thumbnail string    `json:"thumbnail,omitempty"`
-	Preview   string    `json:"preview,omitempty"`
-	FileSize  int64     `json:"file_size"`
-	Width     *int      `json:"width,omitempty"`
-	Height    *int      `json:"height,omitempty"`
-	Duration  *float64  `json:"duration,omitempty"`
-	UpdatedAt time.Time `json:"updated_at"`
+	FolderID    string    `json:"folder_id"`
+	RelPath     string    `json:"rel_path"`
+	MediaType   string    `json:"media_type"`
+	Tags        []string  `json:"tags"`
+	Description string    `json:"description,omitempty"`
+	Thumbnail   string    `json:"thumbnail,omitempty"`
+	Preview     string    `json:"preview,omitempty"`
+	FileSize    int64     `json:"file_size"`
+	Width       *int      `json:"width,omitempty"`
+	Height      *int      `json:"height,omitempty"`
+	Duration    *float64  `json:"duration,omitempty"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }

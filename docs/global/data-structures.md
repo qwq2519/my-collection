@@ -412,7 +412,9 @@ BuntDB 支持基于 JSON 字段创建自定义索引，用于加速非主键查�
     "photo1.jpg": {
       "media_type": "image",
       "tags": ["风景", "2026"],
+      "description": "富士山春景",
       "thumbnail": "a3f2b8c1e5d7f9ab.jpg",
+      "scanned_at": "2026-06-22T10:00:00Z",
       "updated_at": "2026-06-22T10:00:00Z",
       "file_size": 2048576,
       "width": 1920,
@@ -423,6 +425,7 @@ BuntDB 支持基于 JSON 字段创建自定义索引，用于加速非主键查�
       "tags": ["旅行::日本"],
       "thumbnail": "9c1d4e7f20a3b6d8.jpg",
       "preview": "9c1d4e7f20a3b6d8.preview.webp",
+      "scanned_at": "2026-06-21T14:00:00Z",
       "updated_at": "2026-06-21T14:00:00Z",
       "file_size": 104857600,
       "width": 1920,
@@ -440,13 +443,15 @@ BuntDB 支持基于 JSON 字段创建自定义索引，用于加速非主键查�
 | `files` | Map，key 为相对路径，value 为媒体元数据 |
 | `files[*].media_type` | `"image"`、`"video"` 或 `"audio"` |
 | `files[*].tags` | 标签数组 |
+| `files[*].description` | 用户备注，可选 |
 | `files[*].thumbnail` | 静态缩略图文件名（`sha256(folder_id/rel_path)[:16].jpg`） |
 | `files[*].preview` | 动画预览文件名（视频 + GIF，`{hash}.preview.webp`），无则为空 |
-| `files[*].updated_at` | 首次扫描发现时设为当前时间，文件修改（hash 变化）或标签编辑时更新 |
+| `files[*].scanned_at` | 首次扫描发现时设为当前时间，文件变化（hash 变化）时更新 |
+| `files[*].updated_at` | 首次扫描发现时设为当前时间，用户编辑元数据（标签、描述）时更新，用于排序上浮 |
 | `files[*].file_size` | 文件大小（字节） |
 | `files[*].width` | 宽度（像素），获取失败时省略 |
 | `files[*].height` | 高度（像素），获取失败时省略 |
-| `files[*].duration` | 仅视频，时长（秒），ffmpeg 不可用时为 null |
+| `files[*].duration` | 仅视频/音频，时长（秒），ffmpeg 不可用时为 null |
 
 写入策略：写临时文件 → rename 原子替换。
 
@@ -560,6 +565,7 @@ Bleve 索引目录：`persist/search.bleve/`
 | `media_type` | `"image"`、`"video"` 或 `"audio"` | keyword |
 | `filename` | 从 relative_path 提取文件名 | text（分词） |
 | `tags` | file.tags | keyword（多值） |
+| `description` | file.description | text（分词） |
 | `updated_at` | file.updated_at | datetime |
 
 **笔记索引预处理**：笔记 body 索引前由后端 strip Markdown 语法标记（`#`、`[]`、` ``` ` 等），只保留纯文本内容。BuntDB 中存储原始 Markdown，Bleve 中存储过滤后的纯文本。
@@ -576,7 +582,7 @@ Bleve 索引目录：`persist/search.bleve/`
 |------|--------------|
 | URL（站点 + 书签） | `title` + `description` + `domain_text` |
 | 笔记 | `title` + `body` |
-| 媒体 | `filename` |
+| 媒体 | `filename` + `description` |
 
 `domain` 同时索引为 keyword（`domain`）和 text（`domain_text`）两种方式：搜索框走 `domain_text` 实现模糊匹配（输入"github"能命中 `github.com`），站点归组和精确过滤走 `domain` keyword。
 

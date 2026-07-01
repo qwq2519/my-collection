@@ -87,20 +87,24 @@ func TestMediaMetaReadWrite(t *testing.T) {
 	s := newTestStore(t)
 	folder, _ := s.CreateFolder("/home/photos", "Photos")
 
+	now := time.Now()
 	meta := &model.MediaMeta{
-		FolderID: folder.ID,
+		SchemaVersion: 1,
+		FolderID:      folder.ID,
 		Files: map[string]model.MediaFile{
 			"vacation/beach.jpg": {
 				MediaType: model.MediaTypeImage,
 				Tags:      []string{"vacation", "beach"},
 				FileSize:  1024000,
-				UpdatedAt: time.Now(),
+				ScannedAt: now,
+				UpdatedAt: now,
 			},
 			"cats/meow.mp4": {
 				MediaType: model.MediaTypeVideo,
 				Tags:      []string{"cats"},
 				FileSize:  5120000,
-				UpdatedAt: time.Now(),
+				ScannedAt: now,
+				UpdatedAt: now,
 			},
 		},
 	}
@@ -136,7 +140,8 @@ func TestTreeHashReadWrite(t *testing.T) {
 	now := time.Now()
 	size := int64(2048)
 	th := &model.TreeHashFile{
-		FolderID: folder.ID,
+		SchemaVersion: 1,
+		FolderID:      folder.ID,
 		Root: &model.TreeNode{
 			Type: model.TreeNodeDir,
 			Hash: "abc123",

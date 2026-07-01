@@ -131,6 +131,7 @@ func buildIndexMapping() mapping.IndexMapping {
 	mediaMapping.AddFieldMappingsAt("media_type", keywordField())
 	mediaMapping.AddFieldMappingsAt("filename", textField())
 	mediaMapping.AddFieldMappingsAt("tags", keywordField())
+	mediaMapping.AddFieldMappingsAt("description", textField())
 	mediaMapping.AddFieldMappingsAt("updated_at", datetimeField())
 	indexMapping.AddDocumentMapping("media", mediaMapping)
 

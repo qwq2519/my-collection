@@ -25,17 +25,18 @@ func mediaFileToItem(folderID, relPath string, file model.MediaFile) model.Media
 		tags = []string{}
 	}
 	return model.MediaFileItem{
-		FolderID:  folderID,
-		RelPath:   relPath,
-		MediaType: file.MediaType,
-		Tags:      tags,
-		Thumbnail: file.Thumbnail,
-		Preview:   file.Preview,
-		FileSize:  file.FileSize,
-		Width:     file.Width,
-		Height:    file.Height,
-		Duration:  file.Duration,
-		UpdatedAt: file.UpdatedAt,
+		FolderID:    folderID,
+		RelPath:     relPath,
+		MediaType:   file.MediaType,
+		Tags:        tags,
+		Description: file.Description,
+		Thumbnail:   file.Thumbnail,
+		Preview:     file.Preview,
+		FileSize:    file.FileSize,
+		Width:       file.Width,
+		Height:      file.Height,
+		Duration:    file.Duration,
+		UpdatedAt:   file.UpdatedAt,
 	}
 }
 
