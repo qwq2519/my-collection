@@ -33,6 +33,7 @@ func main() {
 	noteService := &service.NoteService{Store: s}
 	uploadService := &service.UploadService{Store: s}
 	settingService := &service.SettingService{Store: s}
+	mediaService := &service.MediaService{Store: s}
 
 	// 3. 创建 Wails 应用
 	app := application.New(application.Options{
@@ -43,6 +44,7 @@ func main() {
 			application.NewService(noteService),
 			application.NewService(uploadService),
 			application.NewService(settingService),
+			application.NewService(mediaService),
 		},
 		Assets: application.AssetOptions{
 			Handler: service.NewAssetHandler(application.AssetFileServerFS(assets), "persist"),
