@@ -34,7 +34,7 @@ internal/
 - **错误信息统一英文**：所有面向前端的 error message 使用简洁英文（如 `"site title required"`、`"bookmark not found"`），前端原样展示。日志用 `slog` 记录完整 error chain 供后端排错
 - **依赖注入**：service 通过 struct 字段持有 `*store.Store`，初始化在 main.go 完成组装后传入，不用全局变量
 - **指针与 omitempty 规范**：
-  - **实体 struct**：必有值字段不加 `omitempty`（确保始终输出），可能为空的字段加 `omitempty`（空时省略）。不用指针，除非零值有歧义（如 `*time.Time` 表示"从未发生"区别于零时间，`*int` 表示"未知"区别于 0）
+  - **实体/响应 struct**：值类型字段（`string`、`int`、`[]string` 等）一律**不加** `omitempty`，确保 JSON 始终输出，前端拿到稳定零值（`""`/`0`/`[]`），无需 `??` 防御。仅在**指针类型且零值有歧义**时才加 `omitempty`（如 `*int` 区分"未知"与 `0`，`*time.Time` 区分"从未发生"与零时间）
   - **Create 请求**：值类型。必填字段不加 `omitempty`，可选字段加 `omitempty`，不传就用零值
   - **Update 请求**：所有可更新字段用指针 + `omitempty`（`nil` = 不更新，非 `nil` = 更新）。`ID` 等定位字段为值类型不加 `omitempty`
   - **`omitempty` 双向影响**：序列化时零值字段不输出；Wails 生成 TypeScript 时映射为可选属性（`field?: type`）
