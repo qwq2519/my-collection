@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"math"
 	"strings"
-
+	"sync"
 	"time"
 
 	"collections/internal/model"
@@ -55,15 +55,22 @@ func (t *gseTokenizer) Tokenize(input []byte) analysis.TokenStream {
 	return tokens
 }
 
-var gseSeg gse.Segmenter
+var (
+	gseSeg  gse.Segmenter
+	gseOnce sync.Once
+	gseErr  error
+)
 
 func initGse() error {
-	seg, err := gse.New()
-	if err != nil {
-		return fmt.Errorf("init gse segmenter: %w", err)
-	}
-	gseSeg = seg
-	return nil
+	gseOnce.Do(func() {
+		seg, err := gse.New()
+		if err != nil {
+			gseErr = fmt.Errorf("init gse segmenter: %w", err)
+			return
+		}
+		gseSeg = seg
+	})
+	return gseErr
 }
 
 func gseTokenizerConstructor(config map[string]interface{}, cache *registry.Cache) (analysis.Tokenizer, error) {
