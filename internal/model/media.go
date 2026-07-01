@@ -51,6 +51,18 @@ type TreeHashFile struct {
 	Root          *TreeNode `json:"root"`
 }
 
+// AddFolderReq 添加媒体文件夹请求
+type AddFolderReq struct {
+	Path string `json:"path"`
+	Name string `json:"name,omitempty"`
+}
+
+// UpdateFolderPathReq 更新文件夹路径请求
+type UpdateFolderPathReq struct {
+	ID   string `json:"id"`
+	Path string `json:"path"`
+}
+
 // MediaListReq 媒体文件列表请求
 type MediaListReq struct {
 	FolderID  string   `json:"folder_id"`
