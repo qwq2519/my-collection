@@ -356,3 +356,166 @@ func TestQuery_SearchURL(t *testing.T) {
 	}
 	dumpJSON(t, result)
 }
+
+// --- 数据诊断：Tag Count 一致性检查 ---
+//
+//	go test -run TestQuery_TagConsistency -v ./internal/store/
+func TestQuery_TagConsistency(t *testing.T) {
+	s := openQueryStore(t)
+
+	actual := make(map[string]int)
+
+	sites, err := s.ListSites(model.SiteListReq{Page: 1, PageSize: 10000})
+	if err != nil {
+		t.Fatalf("list sites: %v", err)
+	}
+	for _, site := range sites.Items {
+		for _, tag := range site.Tags {
+			actual[tag]++
+		}
+		bms, err := s.ListBookmarks(model.BookmarkListReq{
+			SiteID: site.ID, Page: 1, PageSize: 10000,
+		})
+		if err != nil {
+			continue
+		}
+		for _, bm := range bms.Items {
+			for _, tag := range bm.Tags {
+				actual[tag]++
+			}
+		}
+	}
+
+	registered, err := s.ListTags("url_tag")
+	if err != nil {
+		t.Fatalf("list tags: %v", err)
+	}
+	regMap := make(map[string]int)
+	for _, tag := range registered.Items {
+		regMap[tag.Name] = tag.Count
+	}
+
+	type mismatch struct {
+		Tag         string `json:"tag"`
+		Registered  int    `json:"registered"`
+		ActualCount int    `json:"actual"`
+	}
+	var issues []mismatch
+
+	allTags := make(map[string]bool)
+	for k := range actual {
+		allTags[k] = true
+	}
+	for k := range regMap {
+		allTags[k] = true
+	}
+
+	for tag := range allTags {
+		reg := regMap[tag]
+		act := actual[tag]
+		if reg != act {
+			issues = append(issues, mismatch{Tag: tag, Registered: reg, ActualCount: act})
+		}
+	}
+
+	if len(issues) == 0 {
+		t.Logf("all %d tags consistent", len(allTags))
+	} else {
+		t.Logf("found %d tag count mismatches:", len(issues))
+		dumpJSON(t, issues)
+	}
+}
+
+// --- 数据诊断：孤儿文件检测 ---
+//
+//	go test -run TestQuery_OrphanAssets -v ./internal/store/
+func TestQuery_OrphanAssets(t *testing.T) {
+	s := openQueryStore(t)
+	persistDir := s.PersistDir()
+
+	sites, err := s.ListSites(model.SiteListReq{Page: 1, PageSize: 10000})
+	if err != nil {
+		t.Fatalf("list sites: %v", err)
+	}
+
+	type orphan struct {
+		Category string `json:"category"`
+		Path     string `json:"path"`
+	}
+	var orphans []orphan
+
+	// 1. icon 文件 vs site.Icon 引用
+	iconDir := filepath.Join(persistDir, "url-assets", "icons")
+	if entries, err := os.ReadDir(iconDir); err == nil {
+		iconRefs := make(map[string]bool)
+		for _, site := range sites.Items {
+			if site.Icon != "" {
+				iconRefs[site.Icon] = true
+			}
+		}
+		for _, e := range entries {
+			if e.IsDir() {
+				continue
+			}
+			if !iconRefs[e.Name()] {
+				orphans = append(orphans, orphan{"icon", e.Name()})
+			}
+		}
+	}
+
+	// 2. attachment 目录 vs site/bookmark ID
+	entityIDs := make(map[string]bool)
+	for _, site := range sites.Items {
+		entityIDs[site.ID] = true
+		bms, err := s.ListBookmarks(model.BookmarkListReq{
+			SiteID: site.ID, Page: 1, PageSize: 10000,
+		})
+		if err != nil {
+			continue
+		}
+		for _, bm := range bms.Items {
+			entityIDs[bm.ID] = true
+		}
+	}
+
+	attachDir := filepath.Join(persistDir, "url-assets", "attachments")
+	if entries, err := os.ReadDir(attachDir); err == nil {
+		for _, e := range entries {
+			if !e.IsDir() {
+				continue
+			}
+			if !entityIDs[e.Name()] {
+				orphans = append(orphans, orphan{"attachment-dir", e.Name()})
+			}
+		}
+	}
+
+	// 3. note-images 目录 vs note ID
+	notes, err := s.ListNotes(model.NoteListReq{Page: 1, PageSize: 10000})
+	if err != nil {
+		t.Fatalf("list notes: %v", err)
+	}
+	noteIDs := make(map[string]bool)
+	for _, n := range notes.Items {
+		noteIDs[n.ID] = true
+	}
+
+	noteImgDir := filepath.Join(persistDir, "note-images")
+	if entries, err := os.ReadDir(noteImgDir); err == nil {
+		for _, e := range entries {
+			if !e.IsDir() {
+				continue
+			}
+			if !noteIDs[e.Name()] {
+				orphans = append(orphans, orphan{"note-images-dir", e.Name()})
+			}
+		}
+	}
+
+	if len(orphans) == 0 {
+		t.Log("no orphan assets found")
+	} else {
+		t.Logf("found %d orphan assets:", len(orphans))
+		dumpJSON(t, orphans)
+	}
+}
