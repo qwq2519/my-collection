@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -129,4 +130,136 @@ func newURLServiceWithSaveDir(t *testing.T) *URLService {
 	}
 	t.Cleanup(func() { s.Close() })
 	return &URLService{Store: s}
+}
+
+// ────────────────────── 纯函数单测（自动运行） ──────────────────────
+
+func TestGuessExt(t *testing.T) {
+	tests := []struct {
+		url      string
+		fallback string
+		want     string
+	}{
+		{"https://example.com/icon.png", ".ico", ".png"},
+		{"https://example.com/icon.ico", ".png", ".ico"},
+		{"https://example.com/icon.svg", ".png", ".svg"},
+		{"https://example.com/icon.jpg", ".png", ".jpg"},
+		{"https://example.com/icon.jpeg", ".png", ".jpeg"},
+		{"https://example.com/icon.gif", ".png", ".gif"},
+		{"https://example.com/icon.webp", ".png", ".webp"},
+		{"https://example.com/favicon", ".png", ".png"},
+		{"https://example.com/path?q=1", ".ico", ".ico"},
+		{"https://example.com/icon.bmp", ".png", ".png"},
+		{"://invalid", ".png", ".png"},
+	}
+	for _, tt := range tests {
+		got := guessExt(tt.url, tt.fallback)
+		if got != tt.want {
+			t.Errorf("guessExt(%q, %q) = %q, want %q", tt.url, tt.fallback, got, tt.want)
+		}
+	}
+}
+
+func TestResolveHref(t *testing.T) {
+	tests := []struct {
+		base string
+		href string
+		want string
+	}{
+		{"https://example.com/page", "/favicon.ico", "https://example.com/favicon.ico"},
+		{"https://example.com/a/b", "../icon.png", "https://example.com/icon.png"},
+		{"https://example.com", "https://cdn.example.com/icon.png", "https://cdn.example.com/icon.png"},
+		{"https://example.com/page", "icon.png", "https://example.com/icon.png"},
+	}
+	for _, tt := range tests {
+		got := resolveHref(tt.base, tt.href)
+		if got != tt.want {
+			t.Errorf("resolveHref(%q, %q) = %q, want %q", tt.base, tt.href, got, tt.want)
+		}
+	}
+}
+
+func TestResolveHrefInvalid(t *testing.T) {
+	if got := resolveHref("://bad", "/icon.png"); got != "" {
+		t.Errorf("resolveHref with bad base = %q, want empty", got)
+	}
+	if got := resolveHref("https://example.com", "://bad"); got != "" {
+		t.Errorf("resolveHref with bad href = %q, want empty", got)
+	}
+}
+
+func TestFetchPageMeta_WithHTTPTest(t *testing.T) {
+	html := `<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Page</title>
+  <meta name="description" content="A test description">
+  <meta property="og:image" content="https://example.com/og.jpg">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="apple-touch-icon" href="/apple-icon.png">
+</head>
+<body>Hello</body>
+</html>`
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte(html))
+	}))
+	defer srv.Close()
+
+	meta, iconHrefs := fetchPageMeta(t.Context(), srv.URL)
+
+	if meta.title != "Test Page" {
+		t.Errorf("title = %q, want %q", meta.title, "Test Page")
+	}
+	if meta.description != "A test description" {
+		t.Errorf("description = %q, want %q", meta.description, "A test description")
+	}
+	if meta.ogImage != "https://example.com/og.jpg" {
+		t.Errorf("ogImage = %q, want %q", meta.ogImage, "https://example.com/og.jpg")
+	}
+	if len(iconHrefs) != 2 {
+		t.Fatalf("iconHrefs len = %d, want 2", len(iconHrefs))
+	}
+	if iconHrefs[0] != "/favicon.ico" {
+		t.Errorf("iconHrefs[0] = %q, want %q", iconHrefs[0], "/favicon.ico")
+	}
+}
+
+func TestFetchPageMeta_OGTitleOverrides(t *testing.T) {
+	html := `<html><head>
+  <title>Fallback Title</title>
+  <meta property="og:title" content="OG Title">
+  <meta property="og:description" content="OG Desc">
+</head></html>`
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(html))
+	}))
+	defer srv.Close()
+
+	meta, _ := fetchPageMeta(t.Context(), srv.URL)
+
+	if meta.title != "OG Title" {
+		t.Errorf("title = %q, want OG title to override <title>", meta.title)
+	}
+	if meta.description != "OG Desc" {
+		t.Errorf("description = %q, want OG description", meta.description)
+	}
+}
+
+func TestFetchPageMeta_Non200(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	meta, iconHrefs := fetchPageMeta(t.Context(), srv.URL)
+
+	if meta.title != "" {
+		t.Errorf("title = %q, want empty on 404", meta.title)
+	}
+	if len(iconHrefs) != 0 {
+		t.Errorf("iconHrefs = %v, want empty on 404", iconHrefs)
+	}
 }
