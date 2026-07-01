@@ -12,7 +12,7 @@ func ensureStringSlice(s *[]string) {
 // Attachment 附件信息（站点/书签共用）
 type Attachment struct {
 	Filename   string    `json:"filename"`
-	Label      string    `json:"label,omitempty"`
+	Label      string    `json:"label"`
 	Size       int64     `json:"size"`
 	UploadedAt time.Time `json:"uploaded_at"`
 }
@@ -68,8 +68,8 @@ type ScanComplete struct {
 // 为 false 时 Guide 包含平台对应的安装指令供前端展示。
 type FFmpegStatus struct {
 	Available bool             `json:"available"`
-	Version   string           `json:"version,omitempty"`
-	BinPath   string           `json:"bin_path,omitempty"`
+	Version   string           `json:"version"`
+	BinPath   string           `json:"bin_path"`
 	Guide     []InstallCommand `json:"guide,omitempty"`
 }
 
@@ -95,8 +95,8 @@ type FetchMetaReq struct {
 // Icon 为已保存的文件名（如 "github.com.png"），为空表示未获取到。
 // OGImage 为远程图片 URL，由前端决定是否展示或下载。
 type FetchMetaResult struct {
-	Title       string `json:"title,omitempty"`
-	Description string `json:"description,omitempty"`
-	Icon        string `json:"icon,omitempty"`
-	OGImage     string `json:"og_image,omitempty"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Icon        string `json:"icon"`
+	OGImage     string `json:"og_image"`
 }

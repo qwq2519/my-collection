@@ -154,7 +154,7 @@ function BookmarkInfo({ bm }: { bm: Bookmark }) {
 
 interface Attachment {
   filename: string
-  label?: string
+  label: string
 }
 
 function AttachmentGallery({
