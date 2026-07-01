@@ -31,3 +31,8 @@ func newUploadService(t *testing.T) *UploadService {
 	t.Helper()
 	return &UploadService{Store: newTestStore(t)}
 }
+
+func newMediaService(t *testing.T) *MediaService {
+	t.Helper()
+	return &MediaService{Store: newTestStore(t)}
+}
