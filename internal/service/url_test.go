@@ -127,13 +127,21 @@ func TestURLService_DeleteSiteTagCountDecrease(t *testing.T) {
 		t.Fatalf("CreateSite: %v", err)
 	}
 
+	tag, err := svc.Store.GetTag("url_tag", "web")
+	if err != nil {
+		t.Fatalf("GetTag after create: %v", err)
+	}
+	if tag == nil || tag.Count != 1 {
+		t.Fatalf("tag count after create = %v, want 1", tag)
+	}
+
 	if err := svc.DeleteSite(site.ID); err != nil {
 		t.Fatalf("DeleteSite: %v", err)
 	}
 
-	tag, err := svc.Store.GetTag("url_tag", "web")
+	tag, err = svc.Store.GetTag("url_tag", "web")
 	if err != nil {
-		t.Fatalf("GetTag: %v", err)
+		t.Fatalf("GetTag after delete: %v", err)
 	}
 	if tag != nil && tag.Count > 0 {
 		t.Errorf("tag count after delete = %d, want 0", tag.Count)

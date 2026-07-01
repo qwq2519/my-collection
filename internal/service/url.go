@@ -312,7 +312,7 @@ func (u *URLService) BatchTagBookmarks(ids []string, tagsToAdd []string) (err er
 	}
 
 	if len(deltas) > 0 {
-		if err := u.Store.BatchAdjustTagCounts("url_tag:", deltas); err != nil {
+		if err := u.Store.BatchAdjustTagCounts("url_tag", deltas); err != nil {
 			slog.Warn("failed to adjust url tag counts after batch tag", "err", err)
 		}
 	}
@@ -438,7 +438,7 @@ func (u *URLService) adjustURLTagCounts(newTags, oldTags []string) {
 		return
 	}
 
-	if err := u.Store.BatchAdjustTagCounts("url_tag:", nonZero); err != nil {
+	if err := u.Store.BatchAdjustTagCounts("url_tag", nonZero); err != nil {
 		slog.Warn("failed to adjust url tag counts", "err", err)
 	}
 }
