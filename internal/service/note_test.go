@@ -56,13 +56,18 @@ func TestNoteService_DeleteValidation(t *testing.T) {
 func TestNoteService_DeleteCleansImages(t *testing.T) {
 	svc := newNoteService(t)
 
-	note, _ := svc.CreateNote(model.CreateNoteReq{Title: "Test", Body: "body"})
+	note, err := svc.CreateNote(model.CreateNoteReq{Title: "Test", Body: "body"})
+	if err != nil {
+		t.Fatalf("setup CreateNote: %v", err)
+	}
 
 	imgDir := filepath.Join(svc.Store.PersistDir(), "note-images", note.ID)
 	os.MkdirAll(imgDir, 0755)
 	os.WriteFile(filepath.Join(imgDir, "img.png"), []byte("fake"), 0644)
 
-	svc.DeleteNote(note.ID)
+	if err := svc.DeleteNote(note.ID); err != nil {
+		t.Fatalf("DeleteNote: %v", err)
+	}
 
 	if _, err := os.Stat(imgDir); !os.IsNotExist(err) {
 		t.Error("note images dir should be removed after delete")
@@ -143,5 +148,94 @@ func TestNoteService_DeleteOrphanImagesTraversalRejected(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("DeleteOrphanImages should not error (skips unsafe): %v", err)
+	}
+}
+
+// ────────────────────── ListNotes ──────────────────────
+
+func TestNoteService_ListNotes(t *testing.T) {
+	svc := newNoteService(t)
+	for i := 0; i < 5; i++ {
+		if _, err := svc.CreateNote(model.CreateNoteReq{
+			Title: "Note", Body: "body",
+		}); err != nil {
+			t.Fatalf("setup CreateNote: %v", err)
+		}
+	}
+
+	result, err := svc.ListNotes(model.NoteListReq{Page: 1, PageSize: 3})
+	if err != nil {
+		t.Fatalf("ListNotes: %v", err)
+	}
+	if result.Total != 5 {
+		t.Errorf("Total = %d, want 5", result.Total)
+	}
+	if len(result.Items) != 3 {
+		t.Errorf("Items len = %d, want 3", len(result.Items))
+	}
+	if !result.HasMore {
+		t.Error("HasMore should be true")
+	}
+
+	page2, err := svc.ListNotes(model.NoteListReq{Page: 2, PageSize: 3})
+	if err != nil {
+		t.Fatalf("ListNotes page 2: %v", err)
+	}
+	if len(page2.Items) != 2 {
+		t.Errorf("page 2 Items len = %d, want 2", len(page2.Items))
+	}
+	if page2.HasMore {
+		t.Error("page 2 HasMore should be false")
+	}
+}
+
+func TestNoteService_ListNotesSearch(t *testing.T) {
+	svc := newNoteService(t)
+	if _, err := svc.CreateNote(model.CreateNoteReq{
+		Title: "React Hooks Guide", Body: "useState useEffect",
+	}); err != nil {
+		t.Fatalf("setup CreateNote: %v", err)
+	}
+	if _, err := svc.CreateNote(model.CreateNoteReq{
+		Title: "Go Concurrency", Body: "goroutines channels",
+	}); err != nil {
+		t.Fatalf("setup CreateNote: %v", err)
+	}
+
+	result, err := svc.ListNotes(model.NoteListReq{
+		Search: "react", Page: 1, PageSize: 10,
+	})
+	if err != nil {
+		t.Fatalf("ListNotes search: %v", err)
+	}
+	if result.Total != 1 {
+		t.Errorf("search Total = %d, want 1", result.Total)
+	}
+	if len(result.Items) == 1 && result.Items[0].Title != "React Hooks Guide" {
+		t.Errorf("result Title = %q, want %q", result.Items[0].Title, "React Hooks Guide")
+	}
+}
+
+func TestNoteService_ListNotesSearchChinese(t *testing.T) {
+	svc := newNoteService(t)
+	if _, err := svc.CreateNote(model.CreateNoteReq{
+		Title: "K8s 笔记", Body: "Kubernetes 容器编排",
+	}); err != nil {
+		t.Fatalf("setup CreateNote: %v", err)
+	}
+	if _, err := svc.CreateNote(model.CreateNoteReq{
+		Title: "Docker 笔记", Body: "Docker 镜像构建",
+	}); err != nil {
+		t.Fatalf("setup CreateNote: %v", err)
+	}
+
+	result, err := svc.ListNotes(model.NoteListReq{
+		Search: "容器", Page: 1, PageSize: 10,
+	})
+	if err != nil {
+		t.Fatalf("ListNotes body search: %v", err)
+	}
+	if result.Total < 1 {
+		t.Errorf("body search Total = %d, want >= 1", result.Total)
 	}
 }
