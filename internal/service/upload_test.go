@@ -1,6 +1,10 @@
 package service
 
 import (
+	"image"
+	"image/color"
+	"image/png"
+	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -172,5 +176,90 @@ func TestUploadService_DeleteAttachmentValidation(t *testing.T) {
 	}
 	if err := svc.DeleteAttachment("id", ""); err == nil {
 		t.Error("should reject empty filename")
+	}
+}
+
+// ────────────────────── fitDimensions ──────────────────────
+
+func TestFitDimensions(t *testing.T) {
+	tests := []struct {
+		name         string
+		w, h, maxDim int
+		wantW, wantH int
+	}{
+		{"smaller than max", 100, 80, 300, 100, 80},
+		{"equal to max", 300, 300, 300, 300, 300},
+		{"landscape", 600, 300, 300, 300, 150},
+		{"portrait", 300, 600, 300, 150, 300},
+		{"square larger", 500, 500, 300, 300, 300},
+		{"wide aspect", 1200, 100, 300, 300, 25},
+		{"tall aspect", 100, 1200, 300, 25, 300},
+		{"very small dimension clamped", 1000, 1, 300, 300, 1},
+	}
+	for _, tt := range tests {
+		gotW, gotH := fitDimensions(tt.w, tt.h, tt.maxDim)
+		if gotW != tt.wantW || gotH != tt.wantH {
+			t.Errorf("fitDimensions[%s](%d,%d,%d) = (%d,%d), want (%d,%d)",
+				tt.name, tt.w, tt.h, tt.maxDim, gotW, gotH, tt.wantW, tt.wantH)
+		}
+	}
+}
+
+// ────────────────────── generateThumbnail ──────────────────────
+
+func makePNG(t *testing.T, w, h int) []byte {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, w, h))
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			img.Set(x, y, color.RGBA{R: uint8(x % 256), G: uint8(y % 256), B: 128, A: 255})
+		}
+	}
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		t.Fatalf("encode png: %v", err)
+	}
+	return buf.Bytes()
+}
+
+func TestUploadService_AttachmentImageThumbnail(t *testing.T) {
+	svc := newUploadService(t)
+
+	pngData := makePNG(t, 600, 400)
+
+	result, err := svc.UploadFile(model.UploadFileReq{
+		Scene: "site-attachment", Filename: "photo.png",
+		EntityID: "ent-1", Data: pngData,
+	})
+	if err != nil {
+		t.Fatalf("UploadFile: %v", err)
+	}
+	if result.Path != "photo.png" {
+		t.Errorf("Path = %q, want %q", result.Path, "photo.png")
+	}
+
+	thumbPath := filepath.Join(svc.Store.PersistDir(), "url-assets", "attachments", "ent-1", "photo.png.thumb.jpg")
+	info, err := os.Stat(thumbPath)
+	if err != nil {
+		t.Fatalf("thumbnail should exist at %s: %v", thumbPath, err)
+	}
+	if info.Size() == 0 {
+		t.Error("thumbnail should not be empty")
+	}
+}
+
+func TestUploadService_NonImageAttachmentNoThumbnail(t *testing.T) {
+	svc := newUploadService(t)
+
+	if _, err := svc.UploadFile(model.UploadFileReq{
+		Scene: "site-attachment", Filename: "readme.txt",
+		EntityID: "ent-2", Data: []byte("hello"),
+	}); err != nil {
+		t.Fatalf("UploadFile: %v", err)
+	}
+
+	thumbPath := filepath.Join(svc.Store.PersistDir(), "url-assets", "attachments", "ent-2", "readme.txt.thumb.jpg")
+	if _, err := os.Stat(thumbPath); !os.IsNotExist(err) {
+		t.Error("text file should not have a thumbnail")
 	}
 }
