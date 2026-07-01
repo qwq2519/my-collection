@@ -3,7 +3,6 @@ package service
 import (
 	"encoding/json"
 	"flag"
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -40,7 +39,7 @@ func TestFetch_Metadata(t *testing.T) {
 	}
 
 	data, _ := json.MarshalIndent(result, "", "  ")
-	fmt.Println(string(data))
+	t.Log(string(data))
 
 	if result.Icon != "" {
 		t.Logf("icon saved: %s", filepath.Join(svc.Store.PersistDir(), "url-assets", "icons", result.Icon))
@@ -59,13 +58,13 @@ func TestFetch_PageMeta(t *testing.T) {
 
 	meta, iconHrefs := fetchPageMeta(t.Context(), rawURL)
 
-	fmt.Printf("title:       %s\n", meta.title)
-	fmt.Printf("description: %s\n", meta.description)
-	fmt.Printf("og:image:    %s\n", meta.ogImage)
+	t.Logf("title:       %s", meta.title)
+	t.Logf("description: %s", meta.description)
+	t.Logf("og:image:    %s", meta.ogImage)
 	if len(iconHrefs) > 0 {
-		fmt.Printf("icon hrefs:\n")
+		t.Log("icon hrefs:")
 		for _, href := range iconHrefs {
-			fmt.Printf("  - %s\n", href)
+			t.Logf("  - %s", href)
 		}
 	}
 }

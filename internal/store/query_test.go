@@ -3,9 +3,10 @@ package store
 import (
 	"encoding/json"
 	"flag"
-	"fmt"
 	"os"
 	"testing"
+
+	"collections/internal/model"
 
 	"github.com/blevesearch/bleve/v2"
 	"github.com/tidwall/buntdb"
@@ -45,17 +46,14 @@ func dumpJSON(t *testing.T, v interface{}) {
 	if err != nil {
 		t.Fatalf("marshal json: %v", err)
 	}
-	fmt.Println(string(data))
+	t.Log(string(data))
 }
 
 // --- Query Functions ---
 
 func TestQuery_AllSites(t *testing.T) {
 	s := openQueryStore(t)
-	result, err := s.ListSites(struct {
-		Page     int `json:"page"`
-		PageSize int `json:"page_size"`
-	}{Page: 1, PageSize: 1000})
+	result, err := s.ListSites(model.SiteListReq{Page: 1, PageSize: 10000})
 	if err != nil {
 		t.Fatalf("list sites: %v", err)
 	}
@@ -66,39 +64,37 @@ func TestQuery_AllSites(t *testing.T) {
 func TestQuery_AllBookmarks(t *testing.T) {
 	s := openQueryStore(t)
 
-	var all []interface{}
-	err := s.db.View(func(tx *buntdb.Tx) error {
-		return tx.AscendKeys("bm:*", func(key, value string) bool {
-			var v interface{}
-			json.Unmarshal([]byte(value), &v)
-			all = append(all, v)
-			return true
-		})
-	})
+	sites, err := s.ListSites(model.SiteListReq{Page: 1, PageSize: 10000})
 	if err != nil {
-		t.Fatalf("scan bookmarks: %v", err)
+		t.Fatalf("list sites: %v", err)
 	}
-	t.Logf("total: %d", len(all))
-	dumpJSON(t, all)
+
+	total := 0
+	for _, site := range sites.Items {
+		result, err := s.ListBookmarks(model.BookmarkListReq{
+			SiteID: site.ID, Page: 1, PageSize: 10000,
+		})
+		if err != nil {
+			t.Fatalf("list bookmarks for site %s: %v", site.Domain, err)
+		}
+		total += result.Total
+		if result.Total > 0 {
+			t.Logf("site %s (%d bookmarks):", site.Domain, result.Total)
+			dumpJSON(t, result.Items)
+		}
+	}
+	t.Logf("total bookmarks: %d", total)
 }
 
 func TestQuery_AllNotes(t *testing.T) {
 	s := openQueryStore(t)
 
-	var all []interface{}
-	err := s.db.View(func(tx *buntdb.Tx) error {
-		return tx.AscendKeys("note:*", func(key, value string) bool {
-			var v interface{}
-			json.Unmarshal([]byte(value), &v)
-			all = append(all, v)
-			return true
-		})
-	})
+	result, err := s.ListNotes(model.NoteListReq{Page: 1, PageSize: 10000})
 	if err != nil {
-		t.Fatalf("scan notes: %v", err)
+		t.Fatalf("list notes: %v", err)
 	}
-	t.Logf("total: %d", len(all))
-	dumpJSON(t, all)
+	t.Logf("total: %d", result.Total)
+	dumpJSON(t, result.Items)
 }
 
 func TestQuery_AllTags(t *testing.T) {
@@ -169,7 +165,7 @@ func TestQuery_BleveSearch(t *testing.T) {
 			"score":  hit.Score,
 			"fields": hit.Fields,
 		})
-		fmt.Println(string(data))
+		t.Log(string(data))
 	}
 }
 
