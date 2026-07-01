@@ -127,8 +127,9 @@ go test -run TestFetch_Icon -v ./internal/service/ -icon-url=https://react.dev/f
 
 | 测试文件 | 被测文件 | 覆盖场景 |
 |---------|---------|---------|
-| `url_test.go` | `url.go` | CreateSite 校验（空 title/URL）、自动提取 domain、标签归一化去重、非法标签拒绝；UpdateSite 校验、标签替换；DeleteSite 标签清理；CreateBookmark 校验（非法 URL、空 title）、自动匹配站点、无站点拒绝；Update/DeleteBookmark 校验；LookupSiteByURL found/not-found/校验；NormalizeURL |
-| `note_test.go` | `note.go` | Create/Get/Update/Delete 校验；DeleteNote 清理图片目录；DetectOrphanImages 比对 body 引用找孤儿文件、目录不存在；DeleteOrphanImages 删除文件、路径遍历跳过 |
-| `upload_test.go` | `upload.go` | 输入校验（空 scene/filename/data）；10MB 大小限制；不支持扩展名拒绝；未知 scene 拒绝；site-icon 路由和持久化；note-image 内容 hash 命名；attachment 保存和允许格式；DeleteAttachment 文件删除和校验 |
+| `testhelper_test.go` | — | 共享测试辅助：`newTestStore`、`newURLService`、`newNoteService`、`newUploadService` |
+| `url_test.go` | `url.go` | CreateSite 校验/自动提取 domain/标签归一化去重/非法标签拒绝；UpdateSite 校验/标签替换；DeleteSite 标签清理+tag count 验证；CreateBookmark 校验/自动匹配站点/无站点拒绝；Update/DeleteBookmark 校验；GetSite/GetSiteNotFound；ListSites 分页；GetBookmark/GetBookmarkNotFound；ListBookmarks 分页；BatchDeleteBookmarks count 递减；BatchTagBookmarks 追加/去重/空操作；SearchURL 文本搜索/标签搜索/校验；LookupSiteByURL found/not-found/校验；NormalizeURL |
+| `note_test.go` | `note.go` | Create/Get/Update/Delete 校验；DeleteNote 清理图片目录；DetectOrphanImages 比对 body 引用找孤儿文件、目录不存在；DeleteOrphanImages 删除文件、路径遍历跳过；ListNotes 分页；ListNotes Bleve 英文标题搜索；ListNotes 中文 body 搜索 |
+| `upload_test.go` | `upload.go` | 输入校验（空 scene/filename/data）；10MB 大小限制；不支持扩展名拒绝；未知 scene 拒绝；site-icon 路由和持久化；note-image 内容 hash 命名；attachment 保存和允许格式；DeleteAttachment 文件删除和校验；fitDimensions 边界值（landscape/portrait/square/clamping）；图片附件自动生成缩略图；非图片附件无缩略图 |
 | `asset_test.go` | `asset.go` | 白名单路径正常服务；Cache-Control 设置；非白名单路径 404；路径遍历拒绝；POST/PUT/DELETE 405；非 persist 路径委托给 embedded handler；三个白名单前缀全覆盖 |
-| `fetcher_test.go` | `fetcher.go` | 调试工具：Metadata 完整抓取、PageMeta 仅解析 HTML、Icon 下载保存（手动调用，无 flag 时 skip） |
+| `fetcher_test.go` | `fetcher.go` | 调试工具：Metadata 完整抓取、PageMeta 仅解析 HTML、Icon 下载保存（手动调用，无 flag 时 skip）；纯函数自动测试：guessExt 扩展名推断、resolveHref 相对/绝对路径解析、fetchPageMeta httptest 解析（title/description/og/icon/OG 优先级/非 200 响应） |
