@@ -20,6 +20,7 @@ var (
 
 // openQueryStore 打开真实 persist 目录的 Store（只读查询用途）。
 // persist 目录不存在时 skip，避免 CI 环境报错。
+// 设置 SyncPolicy=Never 和 AutoShrinkDisabled=true 避免后台写入。
 func openQueryStore(t *testing.T) *Store {
 	t.Helper()
 	dir := *flagPersistDir
@@ -30,6 +31,10 @@ func openQueryStore(t *testing.T) *Store {
 	if err != nil {
 		t.Fatalf("open store at %q: %v", dir, err)
 	}
+	s.db.SetConfig(buntdb.Config{
+		SyncPolicy:         buntdb.Never,
+		AutoShrinkDisabled: true,
+	})
 	t.Cleanup(func() { s.Close() })
 	return s
 }
