@@ -9,7 +9,7 @@ type Bookmark struct {
 	Domain      string       `json:"domain"`
 	SiteID      string       `json:"site_id"`
 	Title       string       `json:"title"`
-	Description string       `json:"description,omitempty"`
+	Description string       `json:"description"`
 	Tags        []string     `json:"tags"`
 	Attachments []Attachment `json:"attachments"`
 	Status      string       `json:"status"`
