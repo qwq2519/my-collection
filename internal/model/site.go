@@ -8,8 +8,8 @@ type Site struct {
 	Title         string       `json:"title"`
 	URL           string       `json:"url"`
 	Domain        string       `json:"domain"`
-	Icon          string       `json:"icon,omitempty"`
-	Description   string       `json:"description,omitempty"`
+	Icon          string       `json:"icon"`
+	Description   string       `json:"description"`
 	Tags          []string     `json:"tags"`
 	Attachments   []Attachment `json:"attachments"`
 	BookmarkCount int          `json:"bookmark_count"`
@@ -93,7 +93,7 @@ type LookupSiteByURLReq struct {
 // LookupSiteResult 站点查询结果
 type LookupSiteResult struct {
 	Found  bool   `json:"found"`
-	ID     string `json:"site_id,omitempty"`
-	URL    string `json:"url,omitempty"`
+	ID     string `json:"site_id"`
+	URL    string `json:"url"`
 	Domain string `json:"domain"`
 }
