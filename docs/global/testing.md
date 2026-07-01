@@ -49,7 +49,19 @@ go test -run TestQuery_AllFolders -v ./internal/store/
 # 按域名查站点
 go test -run TestQuery_SiteByDomain -v ./internal/store/ -domain=github.com
 
-# Bleve 全文搜索
+# 按 ID 查单条记录
+go test -run TestQuery_GetByID -v ./internal/store/ -type=site -id=xxx
+go test -run TestQuery_GetByID -v ./internal/store/ -type=bookmark -id=xxx
+go test -run TestQuery_GetByID -v ./internal/store/ -type=note -id=xxx
+
+# 按标签筛选 site + bookmark
+go test -run TestQuery_ByTag -v ./internal/store/ -tag=react
+
+# 统一搜索（走 SearchURL 接口，支持关键词 + 标签组合）
+go test -run TestQuery_SearchURL -v ./internal/store/ -search=github
+go test -run TestQuery_SearchURL -v ./internal/store/ -search=react -tag=frontend
+
+# Bleve 全文搜索（底层裸查询）
 go test -run TestQuery_BleveSearch -v ./internal/store/ -search="react"
 
 # 按前缀扫描原始 KV（调试利器）
@@ -64,7 +76,22 @@ go test -run TestQuery_DirtyItems -v ./internal/store/
 go test -run TestQuery_AllSites -v ./internal/store/ -persist-dir=/path/to/backup/persist
 ```
 
-默认读取项目根目录下的 `persist/`，目录不存在时自动 skip。所有查询函数以只读方式打开数据库（SyncPolicy=Never）。
+默认读取项目根目录下的 `persist/`，目录不存在时自动 skip。`main.db` 会被复制到临时目录打开，确保不会误写真实数据。
+
+## 数据诊断工具
+
+`internal/store/query_test.go` 还提供两个数据一致性检查工具：
+
+```bash
+# Tag Count 一致性：对比 url_tag 注册表 count 与实际实体中的标签使用次数
+go test -run TestQuery_TagConsistency -v ./internal/store/
+
+# 孤儿文件检测：对比 persist 目录中的文件与数据库引用（icon、附件、笔记图片）
+go test -run TestQuery_OrphanAssets -v ./internal/store/
+
+# 批量 URL 存活检测：并发 HEAD 请求所有站点和书签 URL，报告死链
+go test -run TestQuery_BatchCheckAlive -v ./internal/store/ -timeout 120s
+```
 
 ## Fetcher 调试工具
 
@@ -79,6 +106,9 @@ go test -run TestFetch_PageMeta -v ./internal/service/ -fetch-url=https://react.
 
 # 下载指定 URL 的图片/icon
 go test -run TestFetch_Icon -v ./internal/service/ -icon-url="https://www.google.com/s2/favicons?domain=github.com&sz=64"
+
+# 检测单个 URL 是否可达
+go test -run TestFetch_CheckAlive -v ./internal/service/ -fetch-url=https://github.com
 
 # 保存到指定目录（默认用临时目录，测试完自动清理）
 go test -run TestFetch_Metadata -v ./internal/service/ -fetch-url=https://github.com -save-dir=./tmp
