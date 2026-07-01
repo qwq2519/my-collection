@@ -87,7 +87,18 @@ go test -run TestQuery_AllSites -v ./internal/store/ -persist-dir=/path/to/backu
 
 ### internal/store/
 
-> 待补充（阶段二）
+集成测试，每个测试用 `t.TempDir()` 创建独立的 BuntDB + Bleve 实例，测试后自动清理。
+
+| 测试文件 | 被测文件 | 覆盖场景 |
+|---------|---------|---------|
+| `testhelper_test.go` | `store.go` | `newTestStore` 辅助函数：创建临时 Store 实例 |
+| `query_test.go` | 全部 | 查询调试工具：AllSites/AllBookmarks/AllNotes/AllTags/AllFolders/SiteByDomain/BleveSearch/RawKeys/DirtyItems |
+| `site_test.go` | `site.go`, `site_list.go` | 创建字段校验、域名唯一性、Get+Update、Delete、有书签时拒绝删除、分页列表、GetSiteByDomain |
+| `bookmark_test.go` | `bookmark.go`, `bookmark_list.go` | 创建+bookmark_count 递增、URL 去重、Get+Update、Delete+count 递减、BatchDelete、分页列表、NotFound |
+| `note_test.go` | `note.go` | 创建、Get+Update、Delete、NotFound、分页列表、Bleve 标题搜索、中文 body 搜索 |
+| `tag_test.go` | `tag.go`, `tag_ops.go` | Set/Get、NotFound、List、Delete、AdjustCount 自动创建/递增/递减/clamp、BatchAdjust、Rename+实体更新、Rename 冲突、Merge 去重、DeleteFromEntities、Recount |
+| `media_test.go` | `media.go` | 文件夹 CRUD、ListFolders、media_meta.json 读写 round-trip、tree_hash.json 读写、ReadMeta 文件不存在 |
+| `search_test.go` | `search.go`, `index.go` | IndexDoc+Search、DeleteDoc、文本搜索、标签搜索、dirty 队列生命周期、ClearDirtyByType、RebuildIndexByType 选择性重建 |
 
 ### internal/service/
 
