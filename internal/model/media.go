@@ -16,9 +16,9 @@ type MediaFolder struct {
 type MediaFile struct {
 	MediaType   string    `json:"media_type"`
 	Tags        []string  `json:"tags"`
-	Description string    `json:"description,omitempty"`
-	Thumbnail   string    `json:"thumbnail,omitempty"`
-	Preview     string    `json:"preview,omitempty"`
+	Description string    `json:"description"`
+	Thumbnail   string    `json:"thumbnail"`
+	Preview     string    `json:"preview"`
 	ScannedAt   time.Time `json:"scanned_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 	FileSize    int64     `json:"file_size"`
