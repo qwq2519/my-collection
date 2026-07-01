@@ -119,14 +119,22 @@ func TestURLService_UpdateSiteTagCountAdjustment(t *testing.T) {
 
 func TestURLService_DeleteSiteTagCountDecrease(t *testing.T) {
 	svc := newURLService(t)
-	site, _ := svc.CreateSite(model.CreateSiteReq{
+	site, err := svc.CreateSite(model.CreateSiteReq{
 		Title: "Test", URL: "https://test.com",
 		Tags: []string{"web"},
 	})
+	if err != nil {
+		t.Fatalf("CreateSite: %v", err)
+	}
 
-	svc.DeleteSite(site.ID)
+	if err := svc.DeleteSite(site.ID); err != nil {
+		t.Fatalf("DeleteSite: %v", err)
+	}
 
-	tag, _ := svc.Store.GetTag("url_tag", "web")
+	tag, err := svc.Store.GetTag("url_tag", "web")
+	if err != nil {
+		t.Fatalf("GetTag: %v", err)
+	}
 	if tag != nil && tag.Count > 0 {
 		t.Errorf("tag count after delete = %d, want 0", tag.Count)
 	}
