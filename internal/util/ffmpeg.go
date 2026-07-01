@@ -1,7 +1,7 @@
 package util
 
 import (
-	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -10,7 +10,6 @@ import (
 	"collections/internal/model"
 )
 
-// ffmpegBinName returns the platform-specific ffmpeg binary name.
 func ffmpegBinName() string {
 	if runtime.GOOS == "windows" {
 		return "ffmpeg.exe"
@@ -20,7 +19,8 @@ func ffmpegBinName() string {
 
 // DetectFFmpeg checks for ffmpeg availability.
 // Search order: persist/bin/ (project-local) → system PATH.
-// Returns the resolved status with install guide when unavailable.
+// When unavailable, returns platform-specific install guide
+// pointing to scripts/install-ffmpeg.{sh,bat}.
 func DetectFFmpeg(persistDir string) model.FFmpegStatus {
 	localBin := filepath.Join(persistDir, "bin", ffmpegBinName())
 	if path, ver, ok := probeFFmpeg(localBin); ok {
@@ -39,26 +39,22 @@ func DetectFFmpeg(persistDir string) model.FFmpegStatus {
 	}
 }
 
-// probeFFmpeg runs "ffmpeg -version" at the given path and extracts the version string.
+// probeFFmpeg runs "ffmpeg -version" and extracts path + version.
 func probeFFmpeg(binPath string) (absPath, version string, ok bool) {
 	abs, err := filepath.Abs(binPath)
 	if err != nil {
 		return "", "", false
 	}
-
 	out, err := exec.Command(abs, "-version").Output()
 	if err != nil {
 		return "", "", false
 	}
-
-	ver := parseFFmpegVersion(string(out))
-	return abs, ver, true
+	return abs, parseFFmpegVersion(string(out)), true
 }
 
 // parseFFmpegVersion extracts version from "ffmpeg version X.Y.Z ..." first line.
 func parseFFmpegVersion(output string) string {
 	line, _, _ := strings.Cut(output, "\n")
-	// "ffmpeg version 7.1 Copyright ..."
 	line = strings.TrimPrefix(line, "ffmpeg version ")
 	if sp := strings.IndexByte(line, ' '); sp > 0 {
 		return line[:sp]
@@ -66,56 +62,46 @@ func parseFFmpegVersion(output string) string {
 	return strings.TrimSpace(line)
 }
 
-// buildInstallGuide returns platform-specific install commands.
-// The "local install" command downloads ffmpeg into persist/bin/.
+// buildInstallGuide returns install commands.
+// "方式二" uses the project scripts (scripts/install-ffmpeg.sh or .bat),
+// resolving the script path relative to persistDir's parent (project root).
 func buildInstallGuide(persistDir string) []model.InstallCommand {
-	abs, _ := filepath.Abs(persistDir)
-	binDir := filepath.Join(abs, "bin")
+	scriptPath := resolveScriptPath(persistDir)
 
 	switch runtime.GOOS {
 	case "darwin":
 		return []model.InstallCommand{
-			{
-				Label:   "方式一：Homebrew 安装（推荐）",
-				Command: "brew install ffmpeg",
-			},
-			{
-				Label: "方式二：下载到项目本地",
-				Command: fmt.Sprintf(
-					`mkdir -p "%s" && curl -L "https://evermeet.cx/ffmpeg/getrelease/zip" -o /tmp/ffmpeg.zip && unzip -o /tmp/ffmpeg.zip -d "%s" && rm /tmp/ffmpeg.zip`,
-					binDir, binDir,
-				),
-			},
+			{Label: "方式一：Homebrew（推荐）", Command: "brew install ffmpeg"},
+			{Label: "方式二：运行安装脚本", Command: scriptPath},
 		}
-
 	case "windows":
 		return []model.InstallCommand{
-			{
-				Label:   "方式一：winget 安装（推荐）",
-				Command: "winget install Gyan.FFmpeg",
-			},
-			{
-				Label: "方式二：下载到项目本地",
-				Command: fmt.Sprintf(
-					`mkdir "%s" & curl -L "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip" -o %%TEMP%%\ffmpeg.zip & tar -xf %%TEMP%%\ffmpeg.zip --strip-components=2 -C "%s" "*/bin/ffmpeg.exe" & del %%TEMP%%\ffmpeg.zip`,
-					binDir, binDir,
-				),
-			},
+			{Label: "方式一：winget（推荐）", Command: "winget install Gyan.FFmpeg"},
+			{Label: "方式二：运行安装脚本", Command: scriptPath},
 		}
-
-	default: // linux
+	default:
 		return []model.InstallCommand{
-			{
-				Label:   "方式一：包管理器安装（推荐）",
-				Command: "sudo apt install ffmpeg   # Debian/Ubuntu\nsudo dnf install ffmpeg   # Fedora",
-			},
-			{
-				Label: "方式二：下载到项目本地",
-				Command: fmt.Sprintf(
-					`mkdir -p "%s" && curl -L "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz" -o /tmp/ffmpeg.tar.xz && tar -xf /tmp/ffmpeg.tar.xz --strip-components=1 -C "%s" --wildcards "*/ffmpeg" && rm /tmp/ffmpeg.tar.xz`,
-					binDir, binDir,
-				),
-			},
+			{Label: "方式一：包管理器（推荐）", Command: "sudo apt install ffmpeg"},
+			{Label: "方式二：运行安装脚本", Command: scriptPath},
 		}
 	}
+}
+
+// resolveScriptPath finds the install script's absolute path.
+// Assumes project layout: {project_root}/persist/ and {project_root}/scripts/.
+func resolveScriptPath(persistDir string) string {
+	abs, _ := filepath.Abs(persistDir)
+	projectRoot := filepath.Dir(abs)
+
+	var script string
+	if runtime.GOOS == "windows" {
+		script = filepath.Join(projectRoot, "scripts", "install-ffmpeg.bat")
+	} else {
+		script = filepath.Join(projectRoot, "scripts", "install-ffmpeg.sh")
+	}
+
+	if _, err := os.Stat(script); err == nil {
+		return script
+	}
+	return script
 }
