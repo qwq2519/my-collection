@@ -1,12 +1,16 @@
 package store
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
+	"time"
 
 	"collections/internal/model"
 
@@ -517,5 +521,102 @@ func TestQuery_OrphanAssets(t *testing.T) {
 	} else {
 		t.Logf("found %d orphan assets:", len(orphans))
 		dumpJSON(t, orphans)
+	}
+}
+
+// --- 批量 URL 存活检测 ---
+//
+//	go test -run TestQuery_BatchCheckAlive -v ./internal/store/ -timeout 120s
+//	go test -run TestQuery_BatchCheckAlive -v ./internal/store/ -persist-dir=/path/to/persist -timeout 120s
+func TestQuery_BatchCheckAlive(t *testing.T) {
+	s := openQueryStore(t)
+
+	sites, err := s.ListSites(model.SiteListReq{Page: 1, PageSize: 10000})
+	if err != nil {
+		t.Fatalf("list sites: %v", err)
+	}
+
+	type urlEntry struct {
+		URL    string `json:"url"`
+		Type   string `json:"type"`
+		Title  string `json:"title"`
+		SiteID string `json:"site_id,omitempty"`
+	}
+	var urls []urlEntry
+
+	for _, site := range sites.Items {
+		urls = append(urls, urlEntry{URL: site.URL, Type: "site", Title: site.Title})
+		bms, err := s.ListBookmarks(model.BookmarkListReq{
+			SiteID: site.ID, Page: 1, PageSize: 10000,
+		})
+		if err != nil {
+			continue
+		}
+		for _, bm := range bms.Items {
+			urls = append(urls, urlEntry{URL: bm.URL, Type: "bookmark", Title: bm.Title, SiteID: bm.SiteID})
+		}
+	}
+
+	if len(urls) == 0 {
+		t.Skip("no URLs found in database")
+	}
+	t.Logf("checking %d URLs...", len(urls))
+
+	client := &http.Client{Timeout: 10 * time.Second}
+
+	type checkResult struct {
+		urlEntry
+		Status string `json:"status"`
+		Code   int    `json:"code,omitempty"`
+		Error  string `json:"error,omitempty"`
+	}
+
+	results := make([]checkResult, len(urls))
+	sem := make(chan struct{}, 5)
+	var wg sync.WaitGroup
+
+	for i, u := range urls {
+		wg.Add(1)
+		go func(idx int, entry urlEntry) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+
+			ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+			defer cancel()
+
+			req, err := http.NewRequestWithContext(ctx, "HEAD", entry.URL, nil)
+			if err != nil {
+				results[idx] = checkResult{urlEntry: entry, Status: "ERROR", Error: err.Error()}
+				return
+			}
+			req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; link-checker)")
+
+			resp, err := client.Do(req)
+			if err != nil {
+				results[idx] = checkResult{urlEntry: entry, Status: "DEAD", Error: err.Error()}
+				return
+			}
+			resp.Body.Close()
+			results[idx] = checkResult{urlEntry: entry, Status: "ALIVE", Code: resp.StatusCode}
+		}(i, u)
+	}
+	wg.Wait()
+
+	alive, dead := 0, 0
+	var deadList []checkResult
+	for _, r := range results {
+		if r.Status == "ALIVE" && r.Code < 400 {
+			alive++
+		} else {
+			dead++
+			deadList = append(deadList, r)
+		}
+	}
+
+	t.Logf("results: %d alive, %d dead/error (total %d)", alive, dead, len(urls))
+	if len(deadList) > 0 {
+		t.Log("dead/error URLs:")
+		dumpJSON(t, deadList)
 	}
 }

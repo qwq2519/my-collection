@@ -262,3 +262,24 @@ func TestFetchPageMeta_Non200(t *testing.T) {
 		t.Errorf("iconHrefs = %v, want empty on 404", iconHrefs)
 	}
 }
+
+// --- URL 存活检测 ---
+//
+//	go test -run TestFetch_CheckAlive -v ./internal/service/ -fetch-url=https://github.com
+//	go test -run TestFetch_CheckAlive -v ./internal/service/ -fetch-url=https://example.com/broken
+func TestFetch_CheckAlive(t *testing.T) {
+	rawURL := *flagFetchURL
+	if rawURL == "" {
+		t.Skip("use -fetch-url=https://example.com to check")
+	}
+
+	resp, err := doGet(t.Context(), rawURL)
+	if err != nil {
+		t.Logf("DEAD  %s — error: %v", rawURL, err)
+		return
+	}
+	defer resp.Body.Close()
+
+	t.Logf("ALIVE %s — status: %d, content-type: %s",
+		rawURL, resp.StatusCode, resp.Header.Get("Content-Type"))
+}
