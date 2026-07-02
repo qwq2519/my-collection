@@ -234,9 +234,13 @@ export function NoteEditor({ note }: NoteEditorProps) {
         title="删除笔记"
         description={`确定删除「${note.title}」？此操作不可撤销。`}
         onConfirm={async () => {
+          const wasDirty = dirtyRef.current
           dirtyRef.current = false
           const err = await deleteNote(note.id)
-          if (err) toast.error(err)
+          if (err) {
+            dirtyRef.current = wasDirty
+            toast.error(err)
+          }
         }}
       />
 
