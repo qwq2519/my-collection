@@ -38,18 +38,19 @@ type NoteListResult struct {
 	HasMore bool   `json:"has_more"`
 }
 
-// DetectOrphanImagesReq 孤儿图片检测请求
+// DetectOrphanImagesReq 孤儿图片检测请求。
+// "孤儿"指存储在 note-images/{NoteID}/ 下但未被 Body 中引用的图片文件。
 type DetectOrphanImagesReq struct {
 	NoteID string `json:"note_id"`
 	Body   string `json:"body"`
 }
 
-// DetectOrphanImagesResult 孤儿图片检测结果
+// DetectOrphanImagesResult 孤儿图片检测结果。OrphanFiles 为未被引用的图片文件名列表。
 type DetectOrphanImagesResult struct {
 	OrphanFiles []string `json:"orphan_files"`
 }
 
-// DeleteOrphanImagesReq 删除孤儿图片请求
+// DeleteOrphanImagesReq 删除孤儿图片请求。Files 为待删除的孤儿图片文件名列表。
 type DeleteOrphanImagesReq struct {
 	NoteID string   `json:"note_id"`
 	Files  []string `json:"files"`

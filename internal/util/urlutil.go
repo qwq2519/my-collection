@@ -48,13 +48,15 @@ func normalizeHost(u *url.URL) string {
 	return strings.TrimPrefix(host, "www.")
 }
 
-// ValidateURL 校验 URL 是否合法，不合法返回错误描述
+// ValidateURL 校验 URL 是否合法，不合法返回错误描述。
+// 限制：仅允许 http/https、禁止带端口/凭证/IP 地址/localhost。
 func ValidateURL(rawURL string) error {
 	_, err := parseAndValidate(rawURL)
 	return err
 }
 
-// NormalizeURL 将 URL 归一化：保留协议、去 www、去尾部斜杠、去 fragment、域名转小写，query参数排序
+// NormalizeURL 将 URL 归一化：保留协议、去 www、去尾部斜杠、去 fragment、域名转小写、query 参数排序。
+// 输入需通过 ValidateURL 同等校验，不合法时返回 error。
 func NormalizeURL(rawURL string) (string, error) {
 	u, err := parseAndValidate(rawURL)
 	if err != nil {
@@ -69,7 +71,8 @@ func NormalizeURL(rawURL string) (string, error) {
 	return result, nil
 }
 
-// ExtractDomain 从已校验的 URL 中提取归一化域名（去 www、转小写）
+// ExtractDomain 从 URL 中提取归一化域名（去 www、转小写）。
+// 内部包含完整校验，不合法 URL 返回 error。
 func ExtractDomain(rawURL string) (string, error) {
 	u, err := parseAndValidate(rawURL)
 	if err != nil {

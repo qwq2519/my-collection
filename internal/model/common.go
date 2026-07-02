@@ -33,7 +33,8 @@ type UploadFileResult struct {
 	Path string `json:"path"`
 }
 
-// DirtyItem 索引脏队列条目（Bleve 写入失败时记录）
+// DirtyItem 索引脏队列条目（Bleve 写入失败时记录）。
+// DocType 取值：site / bookmark / note / media。DocID 为对应 Bleve 文档 ID。
 type DirtyItem struct {
 	DocID    string    `json:"doc_id"`
 	DocType  string    `json:"doc_type"`

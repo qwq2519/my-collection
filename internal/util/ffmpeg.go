@@ -10,6 +10,7 @@ import (
 	"collections/internal/model"
 )
 
+// ffmpegBinName 返回平台对应的 ffmpeg 二进制文件名
 func ffmpegBinName() string {
 	if runtime.GOOS == "windows" {
 		return "ffmpeg.exe"
@@ -87,8 +88,8 @@ func buildInstallGuide(persistDir string) []model.InstallCommand {
 	}
 }
 
-// resolveScriptPath finds the install script's absolute path.
-// Assumes project layout: {project_root}/persist/ and {project_root}/scripts/.
+// resolveScriptPath 推导安装脚本的绝对路径（基于 {project_root}/scripts/）。
+// 脚本不存在时仍返回构造的路径（用于展示安装指引）。
 func resolveScriptPath(persistDir string) string {
 	abs, _ := filepath.Abs(persistDir)
 	projectRoot := filepath.Dir(abs)

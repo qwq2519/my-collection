@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-// AtomicWrite 原子写入文件：先写临时文件，再 rename 替换目标文件
+// AtomicWrite 原子写入文件：自动创建父目录、写临时文件（带 Sync）、rename 替换目标文件
 func AtomicWrite(path string, data []byte, perm os.FileMode) error {
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0755); err != nil {
