@@ -293,3 +293,64 @@ func (s *Store) BatchDeleteBookmarks(siteID string, ids []string) ([]*model.Book
 	slog.Info("bookmarks batch deleted", "count", len(deleted), "site_id", siteID)
 	return deleted, nil
 }
+
+// BatchAppendBookmarkTags 在单事务内为多条书签追加标签（不覆盖已有标签）。
+// 返回实际新增的 tag delta（tag→count），以及需要重建 Bleve 索引的书签列表。
+// 不存在的 ID 跳过并记录日志。
+func (s *Store) BatchAppendBookmarkTags(ids []string, tags []string) (map[string]int, error) {
+	deltas := make(map[string]int)
+	var reindex []model.Bookmark
+	var sites []model.Site
+
+	siteSet := make(map[string]bool)
+
+	err := s.db.Update(func(tx *buntdb.Tx) error {
+		now := time.Now()
+		for _, id := range ids {
+			bm, err := getBookmarkTx(tx, id)
+			if err != nil {
+				slog.Warn("skip missing bookmark in batch tag", "id", id)
+				continue
+			}
+
+			merged, added := util.MergeUnique(bm.Tags, tags)
+			if len(added) == 0 {
+				continue
+			}
+
+			for _, t := range added {
+				deltas[t]++
+			}
+
+			bm.Tags = merged
+			bm.UpdatedAt = now
+			if err := setBookmarkTx(tx, bm); err != nil {
+				return err
+			}
+			reindex = append(reindex, *bm)
+
+			if !siteSet[bm.SiteID] {
+				siteSet[bm.SiteID] = true
+				siteObj, err := getSiteTx(tx, bm.SiteID)
+				if err == nil {
+					siteObj.UpdatedAt = now
+					setSiteTx(tx, siteObj)
+					sites = append(sites, *siteObj)
+				}
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range reindex {
+		s.IndexDoc("bm:"+reindex[i].ID, bmBleveFields(&reindex[i]))
+	}
+	for i := range sites {
+		s.IndexDoc("site:"+sites[i].ID, siteBleveFields(&sites[i]))
+	}
+
+	return deltas, nil
+}

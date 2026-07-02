@@ -245,7 +245,7 @@ func (u *URLService) BatchDeleteBookmarks(siteID string, ids []string) (err erro
 
 // BatchTagBookmarks 批量为书签追加标签（不覆盖已有标签）。
 // ids 或 tagsToAdd 为空时静默返回 nil。同步维护 url_tag 注册表 count。
-// 单条书签更新失败时记录日志并继续处理下一条。
+// 不存在的 ID 跳过并记录日志。
 func (u *URLService) BatchTagBookmarks(ids []string, tagsToAdd []string) (err error) {
 	defer logError(&err)
 	if len(ids) == 0 || len(tagsToAdd) == 0 {
@@ -257,29 +257,9 @@ func (u *URLService) BatchTagBookmarks(ids []string, tagsToAdd []string) (err er
 		return err
 	}
 
-	deltas := make(map[string]int)
-	for _, id := range ids {
-		bm, err := u.Store.GetBookmark(id)
-		if err != nil {
-			slog.Warn("skip missing bookmark in batch tag", "id", id)
-			continue
-		}
-
-		merged, added := util.MergeUnique(bm.Tags, tags)
-		if len(added) == 0 {
-			continue
-		}
-
-		for _, t := range added {
-			deltas[t]++
-		}
-
-		if _, _, err := u.Store.UpdateBookmark(model.UpdateBookmarkReq{
-			ID:   id,
-			Tags: &merged,
-		}); err != nil {
-			slog.Warn("failed to update bookmark tags", "id", id, "err", err)
-		}
+	deltas, err := u.Store.BatchAppendBookmarkTags(ids, tags)
+	if err != nil {
+		return err
 	}
 
 	if len(deltas) > 0 {
