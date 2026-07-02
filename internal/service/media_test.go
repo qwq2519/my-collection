@@ -1010,6 +1010,18 @@ func TestMediaService_OpenInExplorerValidation(t *testing.T) {
 	}
 }
 
+func TestMediaService_OpenInExplorerFileNotFound(t *testing.T) {
+	svc := newMediaService(t)
+	dir := t.TempDir()
+
+	folder, _ := svc.AddFolder(model.AddFolderReq{Path: dir})
+
+	err := svc.OpenInExplorer(folder.ID, "nonexistent.jpg")
+	if err == nil {
+		t.Error("should error for nonexistent file")
+	}
+}
+
 func TestMediaService_OpenInExplorerBuildPath(t *testing.T) {
 	svc := newMediaService(t)
 	dir := t.TempDir()
