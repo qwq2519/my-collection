@@ -3,11 +3,13 @@ import { useURLStore } from "@/stores/url"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
+import { EmptyState } from "@/components/EmptyState"
 import { LoadingState } from "@/components/LoadingState"
 import { TagList } from "@/components/TagList"
 import { ExternalUrl } from "@/components/ExternalUrl"
 import {
   ArrowLeft,
+  Bookmark as BookmarkIcon,
   FileText,
   ImageIcon,
   Video,
@@ -39,10 +41,12 @@ import { callService } from "@/lib/async"
  */
 export function BookmarkDetail() {
   const bm = useURLStore((s) => s.currentBookmark)
+  const detailView = useURLStore((s) => s.detailView)
   const [editing, setEditing] = useState(false)
 
   if (!bm) {
-    return <LoadingState />
+    if (detailView.type === "bookmark") return <LoadingState />
+    return <EmptyState icon={BookmarkIcon} message="书签加载失败" className="h-full" />
   }
 
   if (editing) {

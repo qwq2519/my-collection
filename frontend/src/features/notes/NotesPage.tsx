@@ -54,6 +54,9 @@ export function NotesPage() {
         {selectedId && !currentLoading && currentNote && (
           <NoteEditor key={currentNote.id} note={currentNote} />
         )}
+        {selectedId && !currentLoading && !currentNote && (
+          <EmptyState icon={FileText} message="笔记加载失败" className="h-full" />
+        )}
       </div>
     </div>
   )
