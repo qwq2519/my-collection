@@ -9,7 +9,7 @@
  * 上传/粘贴/验证逻辑集中在 useFileUpload hook，UI 只负责渲染。
  */
 
-import { useEffect, useRef, useState, type ClipboardEvent, type DragEvent } from "react"
+import { useRef, useState, type ClipboardEvent, type DragEvent } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Upload,
@@ -91,7 +91,7 @@ function useFileUpload(
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState("")
 
-  // ref 持有最新闭包值，避免 useEffect 重建监听器
+  // ref 持有最新闭包值，避免 uploadFiles 闭包过期
   const stateRef = useRef({ scene, entityId, files, onChange })
   stateRef.current = { scene, entityId, files, onChange }
 
@@ -186,21 +186,6 @@ function DropZone({
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
   const [focused, setFocused] = useState(false)
-
-  // 全局 paste 监听：当上传区域获得焦点时响应 Ctrl+V
-  const handlePasteRef = useRef(handlePaste)
-  handlePasteRef.current = handlePaste
-  const focusedRef = useRef(focused)
-  focusedRef.current = focused
-
-  // 触发：组件挂载时注册全局 paste 监听，卸载时清理
-  useEffect(() => {
-    const handler = (e: globalThis.ClipboardEvent) => {
-      if (focusedRef.current) handlePasteRef.current(e)
-    }
-    document.addEventListener("paste", handler)
-    return () => document.removeEventListener("paste", handler)
-  }, [])
 
   const handleDrop = (e: DragEvent) => {
     e.preventDefault()
