@@ -12,6 +12,16 @@ import (
 	"github.com/tidwall/buntdb"
 )
 
+// reindexURLEntities 重建站点和书签的 Bleve 索引（tag 变更事务提交后调用）
+func (s *Store) reindexURLEntities(sites []model.Site, bms []model.Bookmark) {
+	for i := range sites {
+		s.IndexDoc("site:"+sites[i].ID, siteBleveFields(&sites[i]))
+	}
+	for i := range bms {
+		s.IndexDoc("bm:"+bms[i].ID, bmBleveFields(&bms[i]))
+	}
+}
+
 // --- URL 标签编排事务（跨实体联动：遍历 site + bookmark） ---
 
 type entityKV struct {
@@ -92,12 +102,7 @@ func (s *Store) RenameURLTag(req model.RenameTagReq) (int, error) {
 		return 0, err
 	}
 
-	for i := range sitesReindex {
-		s.IndexDoc("site:"+sitesReindex[i].ID, siteBleveFields(&sitesReindex[i]))
-	}
-	for i := range bmsReindex {
-		s.IndexDoc("bm:"+bmsReindex[i].ID, bmBleveFields(&bmsReindex[i]))
-	}
+	s.reindexURLEntities(sitesReindex, bmsReindex)
 
 	affected := len(sitesReindex) + len(bmsReindex)
 	slog.Info("url tag renamed", "old", req.OldName, "new", req.NewName, "affected", affected)
@@ -182,12 +187,7 @@ func (s *Store) MergeURLTag(req model.MergeTagReq) (int, error) {
 		return 0, err
 	}
 
-	for i := range sitesReindex {
-		s.IndexDoc("site:"+sitesReindex[i].ID, siteBleveFields(&sitesReindex[i]))
-	}
-	for i := range bmsReindex {
-		s.IndexDoc("bm:"+bmsReindex[i].ID, bmBleveFields(&bmsReindex[i]))
-	}
+	s.reindexURLEntities(sitesReindex, bmsReindex)
 
 	affected := len(sitesReindex) + len(bmsReindex)
 	slog.Info("url tag merged", "source", req.Source, "target", req.Target, "affected", affected)
@@ -241,12 +241,7 @@ func (s *Store) DeleteURLTagFromEntities(name string) (int, error) {
 		return 0, err
 	}
 
-	for i := range sitesReindex {
-		s.IndexDoc("site:"+sitesReindex[i].ID, siteBleveFields(&sitesReindex[i]))
-	}
-	for i := range bmsReindex {
-		s.IndexDoc("bm:"+bmsReindex[i].ID, bmBleveFields(&bmsReindex[i]))
-	}
+	s.reindexURLEntities(sitesReindex, bmsReindex)
 
 	affected := len(sitesReindex) + len(bmsReindex)
 	slog.Info("url tag deleted from entities", "name", name, "affected", affected)
