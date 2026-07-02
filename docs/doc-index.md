@@ -23,6 +23,7 @@
 | [数据结构](./global/data-structures.md) | BuntDB Key Schema、JSON 格式、Bleve 索引、persist 目录结构 |
 | [整体布局](./global/ui-layout.md) | 侧边栏、导航、搜索框、列表排序 |
 | [标签系统](./global/tag-system.md) | `::` 层级规则、生命周期、管理页面 |
+| [后端分层规范](./global/backend-layer-conventions.md) | 分层职责边界、防御性编程准则、错误处理、Code Review 检查清单 |
 | [开发指南](./global/dev-guide.md) | WSL + Windows 开发环境与构建流程 |
 
 ## 前端文档
