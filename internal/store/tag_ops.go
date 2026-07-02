@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"slices"
 	"time"
 
 	"collections/internal/model"
-	"collections/internal/util"
 
 	"github.com/tidwall/buntdb"
 )
@@ -57,7 +57,7 @@ func (s *Store) RenameURLTag(req model.RenameTagReq) (int, error) {
 			if json.Unmarshal([]byte(kv.value), &site) != nil {
 				continue
 			}
-			if idx := util.StringIndex(site.Tags, req.OldName); idx >= 0 {
+			if idx := slices.Index(site.Tags, req.OldName); idx >= 0 {
 				site.Tags[idx] = req.NewName
 				site.EnsureSlices()
 				v, _ := json.Marshal(&site)
@@ -71,7 +71,7 @@ func (s *Store) RenameURLTag(req model.RenameTagReq) (int, error) {
 			if json.Unmarshal([]byte(kv.value), &bm) != nil {
 				continue
 			}
-			if idx := util.StringIndex(bm.Tags, req.OldName); idx >= 0 {
+			if idx := slices.Index(bm.Tags, req.OldName); idx >= 0 {
 				bm.Tags[idx] = req.NewName
 				bm.EnsureSlices()
 				v, _ := json.Marshal(&bm)
@@ -124,16 +124,16 @@ func (s *Store) MergeURLTag(req model.MergeTagReq) (int, error) {
 			if json.Unmarshal([]byte(kv.value), &site) != nil {
 				continue
 			}
-			if util.StringIndex(site.Tags, req.Source) < 0 {
-				if util.StringIndex(site.Tags, req.Target) >= 0 {
+			if !slices.Contains(site.Tags, req.Source) {
+				if slices.Contains(site.Tags, req.Target) {
 					targetCount++
 				}
 				continue
 			}
-			if util.StringIndex(site.Tags, req.Target) >= 0 {
-				site.Tags = util.StringRemove(site.Tags, req.Source)
+			if slices.Contains(site.Tags, req.Target) {
+				site.Tags = slices.DeleteFunc(site.Tags, func(s string) bool { return s == req.Source })
 			} else {
-				site.Tags[util.StringIndex(site.Tags, req.Source)] = req.Target
+				site.Tags[slices.Index(site.Tags, req.Source)] = req.Target
 			}
 			targetCount++
 			site.EnsureSlices()
@@ -147,16 +147,16 @@ func (s *Store) MergeURLTag(req model.MergeTagReq) (int, error) {
 			if json.Unmarshal([]byte(kv.value), &bm) != nil {
 				continue
 			}
-			if util.StringIndex(bm.Tags, req.Source) < 0 {
-				if util.StringIndex(bm.Tags, req.Target) >= 0 {
+			if !slices.Contains(bm.Tags, req.Source) {
+				if slices.Contains(bm.Tags, req.Target) {
 					targetCount++
 				}
 				continue
 			}
-			if util.StringIndex(bm.Tags, req.Target) >= 0 {
-				bm.Tags = util.StringRemove(bm.Tags, req.Source)
+			if slices.Contains(bm.Tags, req.Target) {
+				bm.Tags = slices.DeleteFunc(bm.Tags, func(s string) bool { return s == req.Source })
 			} else {
-				bm.Tags[util.StringIndex(bm.Tags, req.Source)] = req.Target
+				bm.Tags[slices.Index(bm.Tags, req.Source)] = req.Target
 			}
 			targetCount++
 			bm.EnsureSlices()
@@ -209,10 +209,10 @@ func (s *Store) DeleteURLTagFromEntities(name string) (int, error) {
 			if json.Unmarshal([]byte(kv.value), &site) != nil {
 				continue
 			}
-			if util.StringIndex(site.Tags, name) < 0 {
+			if !slices.Contains(site.Tags, name) {
 				continue
 			}
-			site.Tags = util.StringRemove(site.Tags, name)
+			site.Tags = slices.DeleteFunc(site.Tags, func(s string) bool { return s == name })
 			site.EnsureSlices()
 			v, _ := json.Marshal(&site)
 			tx.Set(kv.key, string(v), nil)
@@ -224,10 +224,10 @@ func (s *Store) DeleteURLTagFromEntities(name string) (int, error) {
 			if json.Unmarshal([]byte(kv.value), &bm) != nil {
 				continue
 			}
-			if util.StringIndex(bm.Tags, name) < 0 {
+			if !slices.Contains(bm.Tags, name) {
 				continue
 			}
-			bm.Tags = util.StringRemove(bm.Tags, name)
+			bm.Tags = slices.DeleteFunc(bm.Tags, func(s string) bool { return s == name })
 			bm.EnsureSlices()
 			v, _ := json.Marshal(&bm)
 			tx.Set(kv.key, string(v), nil)
