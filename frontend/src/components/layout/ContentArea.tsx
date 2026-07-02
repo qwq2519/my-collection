@@ -1,6 +1,7 @@
 import { useRef } from "react"
 import { useAppStore, type Page } from "@/stores/app"
 import { URLPage } from "@/features/url/URLPage"
+import { NotesPage } from "@/features/notes/NotesPage"
 import { SettingsPage } from "@/features/settings/SettingsPage"
 import { cn } from "@/lib/utils"
 
@@ -24,7 +25,7 @@ export function ContentArea() {
         <URLPage />
       </PageSlot>
       <PageSlot page="notes" currentPage={currentPage} mounted={mountedRef.current}>
-        <Placeholder label="笔记" />
+        <NotesPage />
       </PageSlot>
       <PageSlot page="media" currentPage={currentPage} mounted={mountedRef.current}>
         <Placeholder label="媒体" />
