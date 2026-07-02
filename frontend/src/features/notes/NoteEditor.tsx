@@ -121,22 +121,23 @@ export function NoteEditor({ note }: NoteEditorProps) {
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [])
 
-  // 组件卸载或切换笔记前自动保存
+  // 触发：note.id 变化或组件卸载时，自动保存未提交的修改
   useEffect(() => {
     return () => {
       if (dirtyRef.current) {
-        const trimmedTitle = title.trim()
+        const trimmedTitle = titleRef.current.trim()
         if (trimmedTitle) {
           NoteService.UpdateNote({ id: note.id, title: trimmedTitle, body: bodyRef.current })
         }
       }
     }
-  }, [note.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [note.id])
 
   // ── Paste Image Upload ──
 
   const editorRef = useRef<HTMLDivElement>(null)
 
+  // 触发：note.id 变化时重新绑定 paste 监听（确保上传到正确的 note）
   useEffect(() => {
     const container = editorRef.current
     if (!container) return
@@ -181,7 +182,7 @@ export function NoteEditor({ note }: NoteEditorProps) {
 
     container.addEventListener("paste", handlePaste)
     return () => container.removeEventListener("paste", handlePaste)
-  }, [note.id, markDirty])
+  }, [note.id])
 
   return (
     <div className="flex flex-col h-full">
