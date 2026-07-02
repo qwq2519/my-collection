@@ -155,26 +155,28 @@ func (s *Store) GetBookmark(id string) (*model.Bookmark, error) {
 
 // UpdateBookmark 部分更新书签（URL/domain/site_id 不可修改），
 // 同事务内更新所属站点的 updated_at。
-// BuntDB 提交后同步重建书签和站点的 Bleve 索引。
-func (s *Store) UpdateBookmark(req model.UpdateBookmarkReq) (*model.Bookmark, error) {
+// 返回更新后的书签和更新前的旧 tags（供调用方计算 tag delta，
+// 未更新 tags 时 oldTags 为 nil）。BuntDB 提交后同步重建书签和站点的 Bleve 索引。
+func (s *Store) UpdateBookmark(req model.UpdateBookmarkReq) (updated *model.Bookmark, oldTags []string, err error) {
 	var bm model.Bookmark
 	var site model.Site
 
-	err := s.db.Update(func(tx *buntdb.Tx) error {
+	err = s.db.Update(func(tx *buntdb.Tx) error {
 		existing, err := getBookmarkTx(tx, req.ID)
 		if err != nil {
 			return err
 		}
 		bm = *existing
 
+		if req.Tags != nil {
+			oldTags = existing.Tags
+			bm.Tags = *req.Tags
+		}
 		if req.Title != nil {
 			bm.Title = *req.Title
 		}
 		if req.Description != nil {
 			bm.Description = *req.Description
-		}
-		if req.Tags != nil {
-			bm.Tags = *req.Tags
 		}
 		if req.Attachments != nil {
 			bm.Attachments = *req.Attachments
@@ -194,12 +196,12 @@ func (s *Store) UpdateBookmark(req model.UpdateBookmarkReq) (*model.Bookmark, er
 		return setSiteTx(tx, siteObj)
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	s.IndexDoc("bm:"+bm.ID, bmBleveFields(&bm))
 	s.IndexDoc("site:"+site.ID, siteBleveFields(&site))
-	return &bm, nil
+	return &bm, oldTags, nil
 }
 
 // DeleteBookmark 删除书签并返回被删实体（供调用方做标签/资源清理），

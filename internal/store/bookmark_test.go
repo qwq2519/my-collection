@@ -86,7 +86,7 @@ func TestBookmarkGetAndUpdate(t *testing.T) {
 
 	newTitle := "Updated Page"
 	newTags := []string{"web"}
-	updated, err := s.UpdateBookmark(model.UpdateBookmarkReq{
+	updated, _, err := s.UpdateBookmark(model.UpdateBookmarkReq{
 		ID:    bm.ID,
 		Title: &newTitle,
 		Tags:  &newTags,

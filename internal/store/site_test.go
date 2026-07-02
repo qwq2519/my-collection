@@ -80,7 +80,7 @@ func TestSiteGetAndUpdate(t *testing.T) {
 
 	newTitle := "Updated Title"
 	newDesc := "new description"
-	updated, err := s.UpdateSite(model.UpdateSiteReq{
+	updated, _, err := s.UpdateSite(model.UpdateSiteReq{
 		ID:          site.ID,
 		Title:       &newTitle,
 		Description: &newDesc,

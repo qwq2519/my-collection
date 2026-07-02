@@ -133,25 +133,27 @@ func (s *Store) GetSiteByDomain(domain string) (*model.Site, error) {
 }
 
 // UpdateSite 部分更新站点（仅修改非 nil 字段），更新 updated_at。
-// BuntDB 事务提交后同步重建 Bleve 索引。
-func (s *Store) UpdateSite(req model.UpdateSiteReq) (*model.Site, error) {
+// 返回更新后的站点和更新前的旧 tags（供调用方计算 tag delta，
+// 未更新 tags 时 oldTags 为 nil）。BuntDB 事务提交后同步重建 Bleve 索引。
+func (s *Store) UpdateSite(req model.UpdateSiteReq) (updated *model.Site, oldTags []string, err error) {
 	var site model.Site
 
-	err := s.db.Update(func(tx *buntdb.Tx) error {
+	err = s.db.Update(func(tx *buntdb.Tx) error {
 		existing, err := getSiteTx(tx, req.ID)
 		if err != nil {
 			return err
 		}
 		site = *existing
 
+		if req.Tags != nil {
+			oldTags = existing.Tags
+			site.Tags = *req.Tags
+		}
 		if req.Title != nil {
 			site.Title = *req.Title
 		}
 		if req.Description != nil {
 			site.Description = *req.Description
-		}
-		if req.Tags != nil {
-			site.Tags = *req.Tags
 		}
 		if req.Icon != nil {
 			site.Icon = *req.Icon
@@ -164,11 +166,11 @@ func (s *Store) UpdateSite(req model.UpdateSiteReq) (*model.Site, error) {
 		return setSiteTx(tx, &site)
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	s.IndexDoc("site:"+site.ID, siteBleveFields(&site))
-	return &site, nil
+	return &site, oldTags, nil
 }
 
 // DeleteSite 删除站点并返回被删实体（供调用方做标签/资源清理）。

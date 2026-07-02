@@ -73,27 +73,20 @@ func (u *URLService) UpdateSite(req model.UpdateSiteReq) (_ *model.Site, err err
 		return nil, fmt.Errorf("site title required")
 	}
 
-	var oldTags []string
 	if req.Tags != nil {
 		tags, err := util.NormalizeTags(*req.Tags)
 		if err != nil {
 			return nil, err
 		}
 		req.Tags = &tags
-
-		old, err := u.Store.GetSite(req.ID)
-		if err != nil {
-			return nil, err
-		}
-		oldTags = old.Tags
 	}
 
-	site, err := u.Store.UpdateSite(req)
+	site, oldTags, err := u.Store.UpdateSite(req)
 	if err != nil {
 		return nil, err
 	}
 
-	if req.Tags != nil {
+	if oldTags != nil {
 		u.adjustURLTagCounts(site.Tags, oldTags)
 	}
 	return site, nil
@@ -193,27 +186,20 @@ func (u *URLService) UpdateBookmark(req model.UpdateBookmarkReq) (_ *model.Bookm
 		return nil, fmt.Errorf("bookmark title required")
 	}
 
-	var oldTags []string
 	if req.Tags != nil {
 		tags, err := util.NormalizeTags(*req.Tags)
 		if err != nil {
 			return nil, err
 		}
 		req.Tags = &tags
-
-		old, err := u.Store.GetBookmark(req.ID)
-		if err != nil {
-			return nil, err
-		}
-		oldTags = old.Tags
 	}
 
-	bm, err := u.Store.UpdateBookmark(req)
+	bm, oldTags, err := u.Store.UpdateBookmark(req)
 	if err != nil {
 		return nil, err
 	}
 
-	if req.Tags != nil {
+	if oldTags != nil {
 		u.adjustURLTagCounts(bm.Tags, oldTags)
 	}
 	return bm, nil
@@ -291,7 +277,7 @@ func (u *URLService) BatchTagBookmarks(ids []string, tagsToAdd []string) (err er
 			deltas[t]++
 		}
 
-		if _, err := u.Store.UpdateBookmark(model.UpdateBookmarkReq{
+		if _, _, err := u.Store.UpdateBookmark(model.UpdateBookmarkReq{
 			ID:   id,
 			Tags: &merged,
 		}); err != nil {
