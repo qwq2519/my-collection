@@ -15,10 +15,12 @@ import (
 	"github.com/tidwall/buntdb"
 )
 
+// mediaFolderDir 返回媒体文件夹的 persist 目录路径：persist/media-folders/{id}
 func (s *Store) mediaFolderDir(folderID string) string {
 	return filepath.Join(s.persistDir, "media-folders", folderID)
 }
 
+// mediaFileToItem 将 MediaFile 转换为带 FolderID/RelPath 的列表项，确保 Tags 非 nil
 func mediaFileToItem(folderID, relPath string, file model.MediaFile) model.MediaFileItem {
 	if file.Tags == nil {
 		file.Tags = []string{}
@@ -32,7 +34,7 @@ func mediaFileToItem(folderID, relPath string, file model.MediaFile) model.Media
 
 // --- 文件夹注册表 CRUD（BuntDB） ---
 
-// CreateFolder 注册媒体文件夹并创建 persist 目录
+// CreateFolder 注册媒体文件夹（BuntDB key: folder:{id}）并创建 persist 目录结构
 func (s *Store) CreateFolder(path, name string) (*model.MediaFolder, error) {
 	folder := &model.MediaFolder{
 		ID:        uuid.New().String(),

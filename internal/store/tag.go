@@ -13,7 +13,7 @@ import (
 
 // --- 标签注册表原子操作（url_tag / media_tag 共用） ---
 
-// GetTag 按名称查询标签。未找到返回 (nil, nil)。
+// GetTag 按名称查询标签（key: {prefix}:{name}）。未找到返回 (nil, nil)。
 func (s *Store) GetTag(prefix, name string) (*model.Tag, error) {
 	var tag model.Tag
 	err := s.db.View(func(tx *buntdb.Tx) error {
@@ -54,7 +54,7 @@ func (s *Store) ListTags(prefix string) (*model.TagListResult, error) {
 	return &model.TagListResult{Items: tags, Total: len(tags)}, nil
 }
 
-// SetTag 写入标签注册表条目（创建或覆盖）
+// SetTag 写入标签注册表条目（key: {prefix}:{name}，创建或覆盖）。纯 BuntDB 操作，无 Bleve。
 func (s *Store) SetTag(prefix string, tag *model.Tag) error {
 	val, err := json.Marshal(tag)
 	if err != nil {
@@ -66,7 +66,7 @@ func (s *Store) SetTag(prefix string, tag *model.Tag) error {
 	})
 }
 
-// DeleteTagEntry 删除标签注册表条目
+// DeleteTagEntry 删除标签注册表条目（key: {prefix}:{name}）。纯 BuntDB 操作，无 Bleve。
 func (s *Store) DeleteTagEntry(prefix, name string) error {
 	return s.db.Update(func(tx *buntdb.Tx) error {
 		_, err := tx.Delete(prefix + ":" + name)
@@ -81,6 +81,7 @@ func (s *Store) AdjustTagCount(prefix, name string, delta int) error {
 	})
 }
 
+// adjustTagCountTx 在事务内调整标签 count，标签不存在且 delta > 0 时自动创建
 func adjustTagCountTx(tx *buntdb.Tx, prefix, name string, delta int) error {
 	key := prefix + ":" + name
 	val, err := tx.Get(key)

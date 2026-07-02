@@ -31,6 +31,7 @@ type gseTokenizer struct {
 	seg *gse.Segmenter
 }
 
+// Tokenize 将输入文本通过 gse 分词，返回 Bleve TokenStream
 func (t *gseTokenizer) Tokenize(input []byte) analysis.TokenStream {
 	segments := t.seg.Segment(input)
 
@@ -61,6 +62,7 @@ var (
 	gseErr  error
 )
 
+// initGse 懒初始化 gse 分词器（sync.Once 保证只执行一次）
 func initGse() error {
 	gseOnce.Do(func() {
 		seg, err := gse.New()
@@ -73,6 +75,7 @@ func initGse() error {
 	return gseErr
 }
 
+// gseTokenizerConstructor Bleve registry 构造函数，注册 gse 分词器
 func gseTokenizerConstructor(config map[string]interface{}, cache *registry.Cache) (analysis.Tokenizer, error) {
 	return &gseTokenizer{seg: &gseSeg}, nil
 }
@@ -278,7 +281,7 @@ func (m *IndexManager) ReplaceByField(field, value string, newDocs []BleveDoc) (
 	return oldIDs, nil
 }
 
-// BatchReplace 批量删除指定文档并写入新文档。
+// BatchReplace 批量删除指定文档并写入新文档（RLock，允许并发）。
 func (m *IndexManager) BatchReplace(deleteIDs []string, newDocs []BleveDoc) error {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -434,6 +437,7 @@ func (s *Store) ClearDirtyByType(docType string) {
 
 // --- 辅助函数 ---
 
+// batchIndex 按固定批次大小写入 Bleve 索引，避免单次 batch 过大。
 // NOTE: 目前仅在 IndexManager.rebuild 中使用，rebuild 未启用故此函数也暂未调用。
 //
 //nolint:unused

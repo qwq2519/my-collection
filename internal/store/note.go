@@ -14,6 +14,7 @@ import (
 	"github.com/tidwall/buntdb"
 )
 
+// noteBleveFields 构建笔记的 Bleve 索引字段映射（body 经 StripMarkdown 预处理）
 func noteBleveFields(note *model.Note) map[string]interface{} {
 	return map[string]interface{}{
 		"_type":      "note",
@@ -71,7 +72,8 @@ func (s *Store) GetNote(id string) (*model.Note, error) {
 	return &note, nil
 }
 
-// UpdateNote 部分更新笔记，body 经 StripMarkdown 后重建索引
+// UpdateNote 部分更新笔记（仅修改非 nil 字段）。
+// BuntDB 事务提交后同步重建 Bleve 索引，body 经 StripMarkdown 预处理。
 func (s *Store) UpdateNote(req model.UpdateNoteReq) (*model.Note, error) {
 	var note model.Note
 
@@ -111,7 +113,8 @@ func (s *Store) UpdateNote(req model.UpdateNoteReq) (*model.Note, error) {
 	return &note, nil
 }
 
-// DeleteNote 删除笔记（关联图片清理由 service 层负责）
+// DeleteNote 删除笔记（关联图片清理由 service 层负责）。
+// BuntDB 删除后从 Bleve 移除对应文档。
 func (s *Store) DeleteNote(id string) error {
 	err := s.db.Update(func(tx *buntdb.Tx) error {
 		_, err := tx.Delete("note:" + id)
@@ -144,6 +147,7 @@ func (s *Store) ListNotes(req model.NoteListReq) (*model.NoteListResult, error) 
 	return s.listNotesFromBleve(req)
 }
 
+// listNotesFromDB 无搜索时从 BuntDB 分页读取，按 idx:note_updated 降序遍历
 func (s *Store) listNotesFromDB(req model.NoteListReq) (*model.NoteListResult, error) {
 	// TODO: 页满后仍继续遍历所有记录以统计 total，数据量增大后考虑维护独立 count key
 	skip := (req.Page - 1) * req.PageSize
@@ -179,6 +183,7 @@ func (s *Store) listNotesFromDB(req model.NoteListReq) (*model.NoteListResult, e
 	}, nil
 }
 
+// listNotesFromBleve 有搜索时走 Bleve 全文查询（title + body），结果从 BuntDB 补全
 func (s *Store) listNotesFromBleve(req model.NoteListReq) (*model.NoteListResult, error) {
 	typeQ := bleve.NewTermQuery("note")
 	typeQ.SetField("_type")

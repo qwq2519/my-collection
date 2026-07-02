@@ -20,6 +20,7 @@ const (
 	IndexError                        // 打开/创建失败
 )
 
+// String 返回索引状态的可读字符串表示
 func (s IndexState) String() string {
 	switch s {
 	case IndexClosed:
@@ -92,6 +93,7 @@ func (m *IndexManager) State() IndexState {
 	return m.state
 }
 
+// ensureOpen 检查索引是否处于可用状态，非 IndexOpen 时返回错误
 func (m *IndexManager) ensureOpen() error {
 	if m.state != IndexOpen {
 		return fmt.Errorf("bleve index unavailable (state: %s)", m.state)
@@ -99,7 +101,7 @@ func (m *IndexManager) ensureOpen() error {
 	return nil
 }
 
-// IndexDoc 索引单个文档
+// IndexDoc 索引单个文档（RLock，允许并发）
 func (m *IndexManager) IndexDoc(id string, fields map[string]interface{}) error {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -109,7 +111,7 @@ func (m *IndexManager) IndexDoc(id string, fields map[string]interface{}) error 
 	return m.index.Index(id, fields)
 }
 
-// DeleteDoc 从索引删除文档
+// DeleteDoc 从索引删除文档（RLock，允许并发）
 func (m *IndexManager) DeleteDoc(id string) error {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -119,7 +121,7 @@ func (m *IndexManager) DeleteDoc(id string) error {
 	return m.index.Delete(id)
 }
 
-// Search 执行搜索查询
+// Search 执行搜索查询（RLock，允许并发）
 func (m *IndexManager) Search(req *bleve.SearchRequest) (*bleve.SearchResult, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -209,7 +211,7 @@ func (m *IndexManager) rebuild(docs []BleveDoc) error {
 	return nil
 }
 
-// Close 关闭索引
+// Close 关闭索引（Lock 独占，阻塞所有读写直到关闭完成）
 func (m *IndexManager) Close() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

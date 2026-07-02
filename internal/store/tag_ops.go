@@ -18,6 +18,7 @@ type entityKV struct {
 	key, value string
 }
 
+// collectURLEntities 在事务内收集所有 site:* 和 bm:* 条目，供批量标签操作使用
 func (s *Store) collectURLEntities(tx *buntdb.Tx) (sites, bms []entityKV) {
 	tx.AscendKeys("site:*", func(key, value string) bool {
 		sites = append(sites, entityKV{key, value})
@@ -31,6 +32,7 @@ func (s *Store) collectURLEntities(tx *buntdb.Tx) (sites, bms []entityKV) {
 }
 
 // RenameURLTag 重命名 URL 标签：更新所有站点和书签的 tags 数组 + 注册表。
+// 单事务内完成 BuntDB 写入，提交后逐条重建受影响实体的 Bleve 索引。
 // 返回受影响的实体数量。
 func (s *Store) RenameURLTag(req model.RenameTagReq) (int, error) {
 	var sitesReindex []model.Site
@@ -104,6 +106,7 @@ func (s *Store) RenameURLTag(req model.RenameTagReq) (int, error) {
 
 // MergeURLTag 将 source 标签合并到 target：实体已有 target 则仅移除 source，
 // 否则替换 source 为 target。删除 source 注册表，重算 target count。
+// 单事务内完成 BuntDB 写入，提交后逐条重建受影响实体的 Bleve 索引。
 func (s *Store) MergeURLTag(req model.MergeTagReq) (int, error) {
 	var sitesReindex []model.Site
 	var bmsReindex []model.Bookmark
@@ -192,6 +195,7 @@ func (s *Store) MergeURLTag(req model.MergeTagReq) (int, error) {
 }
 
 // DeleteURLTagFromEntities 从所有站点和书签中移除指定标签并删除注册表条目。
+// 单事务内完成 BuntDB 写入，提交后逐条重建受影响实体的 Bleve 索引。
 // 返回受影响的实体数量。
 func (s *Store) DeleteURLTagFromEntities(name string) (int, error) {
 	var sitesReindex []model.Site

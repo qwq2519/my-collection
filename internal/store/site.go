@@ -12,6 +12,7 @@ import (
 	"github.com/tidwall/buntdb"
 )
 
+// siteBleveFields 构建站点的 Bleve 索引字段映射
 func siteBleveFields(site *model.Site) map[string]interface{} {
 	return map[string]interface{}{
 		"_type":       "site",
@@ -131,7 +132,8 @@ func (s *Store) GetSiteByDomain(domain string) (*model.Site, error) {
 	return site, nil
 }
 
-// UpdateSite 部分更新站点（仅修改非 nil 字段），更新 updated_at 并重建索引。
+// UpdateSite 部分更新站点（仅修改非 nil 字段），更新 updated_at。
+// BuntDB 事务提交后同步重建 Bleve 索引。
 func (s *Store) UpdateSite(req model.UpdateSiteReq) (*model.Site, error) {
 	var site model.Site
 
@@ -170,6 +172,7 @@ func (s *Store) UpdateSite(req model.UpdateSiteReq) (*model.Site, error) {
 }
 
 // DeleteSite 删除站点。站点下仍有书签时拒绝删除。
+// BuntDB 删除后从 Bleve 移除对应文档。
 func (s *Store) DeleteSite(id string) error {
 	err := s.db.Update(func(tx *buntdb.Tx) error {
 		site, err := getSiteTx(tx, id)

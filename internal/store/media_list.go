@@ -27,6 +27,7 @@ func (s *Store) ListMediaFiles(req model.MediaListReq) (*model.MediaListResult, 
 	return s.listMediaFromBleve(req)
 }
 
+// listMediaFromDisk 从 media_meta.json 加载全量文件，内存排序后分页返回
 func (s *Store) listMediaFromDisk(req model.MediaListReq) (*model.MediaListResult, error) {
 	var folderIDs []string
 	if req.FolderID != "" {
@@ -76,6 +77,7 @@ func (s *Store) listMediaFromDisk(req model.MediaListReq) (*model.MediaListResul
 	}, nil
 }
 
+// splitMediaID 解析 Bleve 文档 ID（格式: {folderID}/{relPath}）
 func splitMediaID(id string) (folderID, relPath string, ok bool) {
 	idx := strings.IndexByte(id, '/')
 	if idx < 0 {
@@ -84,6 +86,7 @@ func splitMediaID(id string) (folderID, relPath string, ok bool) {
 	return id[:idx], id[idx+1:], true
 }
 
+// listMediaFromBleve 有搜索/标签时走 Bleve 查询，结果从 media_meta.json 补全字段
 func (s *Store) listMediaFromBleve(req model.MediaListReq) (*model.MediaListResult, error) {
 	typeQ := bleve.NewTermQuery("media")
 	typeQ.SetField("_type")

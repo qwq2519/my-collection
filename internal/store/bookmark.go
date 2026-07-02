@@ -13,6 +13,7 @@ import (
 	"github.com/tidwall/buntdb"
 )
 
+// bmBleveFields 构建书签的 Bleve 索引字段映射
 func bmBleveFields(bm *model.Bookmark) map[string]interface{} {
 	return map[string]interface{}{
 		"_type":       "bookmark",
@@ -26,6 +27,7 @@ func bmBleveFields(bm *model.Bookmark) map[string]interface{} {
 	}
 }
 
+// getBookmarkTx 在已有事务中按 ID 读取书签（key: bm:{id}）
 func getBookmarkTx(tx *buntdb.Tx, id string) (*model.Bookmark, error) {
 	val, err := tx.Get("bm:" + id)
 	if err == buntdb.ErrNotFound {
@@ -41,6 +43,7 @@ func getBookmarkTx(tx *buntdb.Tx, id string) (*model.Bookmark, error) {
 	return &bm, nil
 }
 
+// setBookmarkTx 在已有事务中写入书签（key: bm:{id}）
 func setBookmarkTx(tx *buntdb.Tx, bm *model.Bookmark) error {
 	bm.EnsureSlices()
 	val, err := json.Marshal(bm)
@@ -76,6 +79,7 @@ func checkBookmarkDupTx(tx *buntdb.Tx, siteID, normalizedURL string) error {
 
 // CreateBookmark 创建书签。同一事务内完成：URL 去重、写入书签、
 // 递增站点 bookmark_count、更新站点 updated_at。
+// BuntDB 提交后同步更新书签和站点的 Bleve 索引。
 func (s *Store) CreateBookmark(req model.CreateBookmarkReq) (*model.Bookmark, error) {
 	normalizedURL, err := util.NormalizeURL(req.URL)
 	if err != nil {
@@ -148,6 +152,7 @@ func (s *Store) GetBookmark(id string) (*model.Bookmark, error) {
 
 // UpdateBookmark 部分更新书签（URL/domain/site_id 不可修改），
 // 同事务内更新所属站点的 updated_at。
+// BuntDB 提交后同步重建书签和站点的 Bleve 索引。
 func (s *Store) UpdateBookmark(req model.UpdateBookmarkReq) (*model.Bookmark, error) {
 	var bm model.Bookmark
 	var site model.Site
@@ -195,6 +200,7 @@ func (s *Store) UpdateBookmark(req model.UpdateBookmarkReq) (*model.Bookmark, er
 }
 
 // DeleteBookmark 删除书签，同事务内递减站点 bookmark_count 并更新 updated_at。
+// BuntDB 提交后从 Bleve 删除书签文档并重建站点索引。
 func (s *Store) DeleteBookmark(id string) error {
 	var site model.Site
 
@@ -232,6 +238,7 @@ func (s *Store) DeleteBookmark(id string) error {
 }
 
 // BatchDeleteBookmarks 批量删除同一站点下的书签，更新该站点的 bookmark_count。
+// BuntDB 提交后逐条从 Bleve 删除书签文档，并在有实际删除时重建站点索引。
 func (s *Store) BatchDeleteBookmarks(siteID string, ids []string) error {
 	if len(ids) == 0 {
 		return nil
