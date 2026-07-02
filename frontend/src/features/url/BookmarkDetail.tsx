@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useURLStore } from "@/stores/url"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
@@ -43,6 +43,12 @@ export function BookmarkDetail() {
   const bm = useURLStore((s) => s.currentBookmark)
   const detailView = useURLStore((s) => s.detailView)
   const [editing, setEditing] = useState(false)
+
+  const bookmarkId = detailView.type === "bookmark" ? detailView.bookmarkId : null
+  // 触发：bookmarkId 变化时（用户切换书签），重置为查看模式
+  useEffect(() => {
+    setEditing(false)
+  }, [bookmarkId])
 
   if (!bm) {
     if (detailView.type === "bookmark") return <LoadingState />
