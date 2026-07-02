@@ -54,6 +54,9 @@ func main() {
 		},
 	})
 
+	// 4. 启动后台扫描：检测已注册媒体文件夹的文件变化
+	go mediaService.ScanAllFolders()
+
 	app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title: "资料收藏夹",
 		Mac: application.MacWindow{
