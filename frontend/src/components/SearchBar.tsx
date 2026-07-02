@@ -29,16 +29,26 @@ export function SearchBar({
 }: SearchBarProps) {
   const [localValue, setLocalValue] = useState(value)
   const timerRef = useRef<ReturnType<typeof setTimeout>>()
+  const isInternalRef = useRef(false)
 
   // 触发：外部 value 变化时同步本地状态（如父组件清除搜索）
+  // 跳过由自身 onChange 引发的回流，避免快速输入时覆盖用户输入
   useEffect(() => {
+    if (isInternalRef.current) {
+      isInternalRef.current = false
+      return
+    }
     setLocalValue(value)
+    clearTimeout(timerRef.current)
   }, [value])
 
   const handleChange = (v: string) => {
     setLocalValue(v)
     clearTimeout(timerRef.current)
-    timerRef.current = setTimeout(() => onChange(v), debounceMs)
+    timerRef.current = setTimeout(() => {
+      isInternalRef.current = true
+      onChange(v)
+    }, debounceMs)
   }
 
   const handleClear = () => {
@@ -47,6 +57,7 @@ export function SearchBar({
     if (onClear) {
       onClear()
     } else {
+      isInternalRef.current = true
       onChange("")
     }
   }
