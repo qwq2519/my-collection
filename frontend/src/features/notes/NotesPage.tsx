@@ -1,6 +1,7 @@
 import { useNoteStore } from "@/stores/note"
 import { SearchBar } from "@/components/SearchBar"
 import { NoteList } from "./NoteList"
+import { NoteEditor } from "./NoteEditor"
 import { EmptyState } from "@/components/EmptyState"
 import { FileText } from "lucide-react"
 
@@ -30,7 +31,7 @@ export function NotesPage() {
         </div>
       </div>
 
-      {/* 右栏：笔记详情/编辑（当前为占位） */}
+      {/* 右栏：Markdown 编辑器 */}
       <div className="flex-1 h-full overflow-hidden">
         {!selectedId && (
           <EmptyState icon={FileText} message="选择一篇笔记" className="h-full" />
@@ -39,12 +40,7 @@ export function NotesPage() {
           <EmptyState icon={FileText} message="加载中..." className="h-full" />
         )}
         {selectedId && !currentLoading && currentNote && (
-          <div className="p-6">
-            <h1 className="text-xl font-semibold mb-4">{currentNote.title}</h1>
-            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-              {currentNote.body || "（空内容）"}
-            </p>
-          </div>
+          <NoteEditor key={currentNote.id} note={currentNote} />
         )}
       </div>
     </div>
