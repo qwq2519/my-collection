@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"collections/internal/model"
+	"collections/internal/util"
 
 	"github.com/blevesearch/bleve/v2"
 )
@@ -14,12 +15,7 @@ import (
 // ListMediaFiles 分页查询媒体文件。无搜索/标签时从 media_meta.json 读取，
 // 有搜索或标签时走 Bleve 查询。
 func (s *Store) ListMediaFiles(req model.MediaListReq) (*model.MediaListResult, error) {
-	if req.Page < 1 {
-		req.Page = 1
-	}
-	if req.PageSize < 1 {
-		req.PageSize = 40
-	}
+	req.Page, req.PageSize = util.NormalizePageParams(req.Page, req.PageSize, 40)
 
 	if req.Search == "" && len(req.Tags) == 0 {
 		return s.listMediaFromDisk(req)
@@ -61,20 +57,8 @@ func (s *Store) listMediaFromDisk(req model.MediaListReq) (*model.MediaListResul
 		return items[i].UpdatedAt.After(items[j].UpdatedAt)
 	})
 
-	total := len(items)
-	start := (req.Page - 1) * req.PageSize
-	if start >= total {
-		return &model.MediaListResult{Items: []model.MediaFileItem{}, Total: total, HasMore: false}, nil
-	}
-	end := start + req.PageSize
-	if end > total {
-		end = total
-	}
-	return &model.MediaListResult{
-		Items:   items[start:end],
-		Total:   total,
-		HasMore: end < total,
-	}, nil
+	p := util.Paginate(items, req.Page, req.PageSize, []model.MediaFileItem{})
+	return &model.MediaListResult{Items: p.Items, Total: p.Total, HasMore: p.HasMore}, nil
 }
 
 // splitMediaID 解析 Bleve 文档 ID（格式: {folderID}/{relPath}）

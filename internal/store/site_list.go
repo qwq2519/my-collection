@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"collections/internal/model"
+	"collections/internal/util"
 
 	"github.com/blevesearch/bleve/v2"
 	"github.com/tidwall/buntdb"
@@ -15,12 +16,7 @@ import (
 
 // ListSites 分页查询站点列表，按 updated_at 降序。纯列表，不含搜索。
 func (s *Store) ListSites(req model.SiteListReq) (*model.SiteListResult, error) {
-	if req.Page < 1 {
-		req.Page = 1
-	}
-	if req.PageSize < 1 {
-		req.PageSize = 20
-	}
+	req.Page, req.PageSize = util.NormalizePageParams(req.Page, req.PageSize, 20)
 
 	var sites []model.Site
 	err := s.db.View(func(tx *buntdb.Tx) error {
@@ -38,31 +34,14 @@ func (s *Store) ListSites(req model.SiteListReq) (*model.SiteListResult, error) 
 		return nil, fmt.Errorf("list sites: %w", err)
 	}
 
-	total := len(sites)
-	start := (req.Page - 1) * req.PageSize
-	if start >= total {
-		return &model.SiteListResult{Items: []model.Site{}, Total: total, HasMore: false}, nil
-	}
-	end := start + req.PageSize
-	if end > total {
-		end = total
-	}
-	return &model.SiteListResult{
-		Items:   sites[start:end],
-		Total:   total,
-		HasMore: end < total,
-	}, nil
+	p := util.Paginate(sites, req.Page, req.PageSize, []model.Site{})
+	return &model.SiteListResult{Items: p.Items, Total: p.Total, HasMore: p.HasMore}, nil
 }
 
 // SearchURL 同时搜索站点和书签，将书签结果按所属站点分组返回。
 // 站点自身命中或其下书签命中均会出现在结果中。
 func (s *Store) SearchURL(req model.SearchURLReq) (*model.SearchURLResult, error) {
-	if req.Page < 1 {
-		req.Page = 1
-	}
-	if req.PageSize < 1 {
-		req.PageSize = 20
-	}
+	req.Page, req.PageSize = util.NormalizePageParams(req.Page, req.PageSize, 20)
 	if req.Search == "" && len(req.Tags) == 0 {
 		return nil, fmt.Errorf("search keyword or tags required")
 	}
@@ -162,21 +141,6 @@ func (s *Store) SearchURL(req model.SearchURLReq) (*model.SearchURLResult, error
 		return items[i].Site.UpdatedAt.After(items[j].Site.UpdatedAt)
 	})
 
-	total := len(items)
-	start := (req.Page - 1) * req.PageSize
-	if start >= total {
-		return &model.SearchURLResult{
-			Items: []model.SiteWithBookmarks{}, Total: total, HasMore: false,
-		}, nil
-	}
-	end := start + req.PageSize
-	if end > total {
-		end = total
-	}
-
-	return &model.SearchURLResult{
-		Items:   items[start:end],
-		Total:   total,
-		HasMore: end < total,
-	}, nil
+	p := util.Paginate(items, req.Page, req.PageSize, []model.SiteWithBookmarks{})
+	return &model.SearchURLResult{Items: p.Items, Total: p.Total, HasMore: p.HasMore}, nil
 }

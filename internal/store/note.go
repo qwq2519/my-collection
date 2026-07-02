@@ -134,12 +134,7 @@ func (s *Store) DeleteNote(id string) error {
 
 // ListNotes 分页查询笔记列表。无搜索时走 BuntDB，有搜索时走 Bleve（title + body 全文）。
 func (s *Store) ListNotes(req model.NoteListReq) (*model.NoteListResult, error) {
-	if req.Page < 1 {
-		req.Page = 1
-	}
-	if req.PageSize < 1 {
-		req.PageSize = 20
-	}
+	req.Page, req.PageSize = util.NormalizePageParams(req.Page, req.PageSize, 20)
 
 	if req.Search == "" {
 		return s.listNotesFromDB(req)

@@ -7,6 +7,7 @@ import (
 	"sort"
 
 	"collections/internal/model"
+	"collections/internal/util"
 
 	"github.com/tidwall/buntdb"
 )
@@ -15,12 +16,7 @@ import (
 // TODO: 当前全量加载站点下所有书签到内存后排序再分页，数据量大时浪费内存。
 // 优化方案：建 site_id+updated_at 复合索引，让 BuntDB 按序扫描直接跳过 + 截断。
 func (s *Store) ListBookmarks(req model.BookmarkListReq) (*model.BookmarkListResult, error) {
-	if req.Page < 1 {
-		req.Page = 1
-	}
-	if req.PageSize < 1 {
-		req.PageSize = 20
-	}
+	req.Page, req.PageSize = util.NormalizePageParams(req.Page, req.PageSize, 20)
 
 	var bookmarks []model.Bookmark
 
@@ -44,18 +40,6 @@ func (s *Store) ListBookmarks(req model.BookmarkListReq) (*model.BookmarkListRes
 		return bookmarks[i].UpdatedAt.After(bookmarks[j].UpdatedAt)
 	})
 
-	total := len(bookmarks)
-	start := (req.Page - 1) * req.PageSize
-	if start >= total {
-		return &model.BookmarkListResult{Items: []model.Bookmark{}, Total: total, HasMore: false}, nil
-	}
-	end := start + req.PageSize
-	if end > total {
-		end = total
-	}
-	return &model.BookmarkListResult{
-		Items:   bookmarks[start:end],
-		Total:   total,
-		HasMore: end < total,
-	}, nil
+	p := util.Paginate(bookmarks, req.Page, req.PageSize, []model.Bookmark{})
+	return &model.BookmarkListResult{Items: p.Items, Total: p.Total, HasMore: p.HasMore}, nil
 }
