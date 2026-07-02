@@ -424,7 +424,7 @@ func TestMediaService_ScanFolderFirstScan(t *testing.T) {
 	if updated.FileCount != 2 {
 		t.Errorf("FileCount = %d, want 2", updated.FileCount)
 	}
-	if updated.LastScanAt.IsZero() {
+	if updated.LastScanAt == nil {
 		t.Error("LastScanAt should be set")
 	}
 }

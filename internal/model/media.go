@@ -9,7 +9,7 @@ type MediaFolder struct {
 	Name       string    `json:"name"`
 	FileCount  int       `json:"file_count"`
 	AddedAt    time.Time `json:"added_at"`
-	LastScanAt time.Time `json:"last_scan_at,omitempty"`
+	LastScanAt *time.Time `json:"last_scan_at,omitempty"`
 }
 
 // MediaFile 单个媒体文件的元数据（存储在 media_meta.json 的 files map 中）

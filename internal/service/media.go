@@ -311,7 +311,8 @@ func (m *MediaService) ScanFolder(id string) (_ *model.ScanComplete, err error) 
 	}
 
 	folder.FileCount = len(meta.Files)
-	folder.LastScanAt = time.Now()
+	now := time.Now()
+	folder.LastScanAt = &now
 	if err := m.Store.UpdateFolder(folder); err != nil {
 		slog.Warn("failed to update folder after scan", "folder_id", id, "err", err)
 	}

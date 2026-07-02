@@ -41,7 +41,8 @@ func TestFolderGetAndUpdate(t *testing.T) {
 
 	got.Name = "My Photos"
 	got.FileCount = 42
-	got.LastScanAt = time.Now()
+	now := time.Now()
+	got.LastScanAt = &now
 	if err := s.UpdateFolder(got); err != nil {
 		t.Fatalf("UpdateFolder: %v", err)
 	}
