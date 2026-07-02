@@ -447,9 +447,11 @@ export function useBookmarkSectionState() {
     useShallow((s) => ({
       bookmarks: s.bookmarks,
       loading: s.bookmarksLoading,
+      hasMore: s.bookmarksHasMore,
       viewMode: s.bookmarkViewMode,
       setViewMode: s.setBookmarkViewMode,
       selectBookmark: s.selectBookmark,
+      loadMore: s.loadMoreBookmarks,
       refreshCurrentSite: s.refreshCurrentSite,
     })),
   )

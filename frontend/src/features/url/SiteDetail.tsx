@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { useInfiniteScroll } from "@/hooks/useInfiniteScroll"
 import { useURLStore, getActiveSiteId, useBookmarkSectionState } from "@/stores/url"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
@@ -166,9 +167,11 @@ function BookmarkSection({ site, onAddBookmark }: { site: Site; onAddBookmark: (
   const {
     bookmarks,
     loading: bookmarksLoading,
+    hasMore: bookmarksHasMore,
     viewMode,
     setViewMode,
     selectBookmark,
+    loadMore: loadMoreBookmarks,
     refreshCurrentSite,
   } = useBookmarkSectionState()
 
@@ -250,6 +253,8 @@ function BookmarkSection({ site, onAddBookmark }: { site: Site; onAddBookmark: (
         <BookmarkContent
           bookmarks={bookmarks}
           bookmarksLoading={bookmarksLoading}
+          bookmarksHasMore={bookmarksHasMore}
+          loadMoreBookmarks={loadMoreBookmarks}
           viewMode={viewMode}
           onSelect={onSelect}
           batchMode={batchMode}
@@ -265,6 +270,8 @@ function BookmarkSection({ site, onAddBookmark }: { site: Site; onAddBookmark: (
 function BookmarkContent({
   bookmarks,
   bookmarksLoading,
+  bookmarksHasMore,
+  loadMoreBookmarks,
   viewMode,
   onSelect,
   batchMode,
@@ -272,11 +279,15 @@ function BookmarkContent({
 }: {
   bookmarks: import("../../../bindings/collections/internal/model").Bookmark[]
   bookmarksLoading: boolean
+  bookmarksHasMore: boolean
+  loadMoreBookmarks: () => void
   viewMode: import("@/stores/url").BookmarkViewMode
   onSelect: (id: string) => void
   batchMode: boolean
   selectedIds: Set<string>
 }) {
+  const sentinelRef = useInfiniteScroll(loadMoreBookmarks, bookmarksHasMore)
+
   if (bookmarksLoading && bookmarks.length === 0) {
     return (
       <div className="flex justify-center py-8">
@@ -289,23 +300,31 @@ function BookmarkContent({
     return <EmptyState icon={Bookmark} message="暂无书签" />
   }
 
-  if (viewMode === "grid") {
-    return (
-      <BookmarkGrid
-        bookmarks={bookmarks}
-        onSelect={onSelect}
-        batchMode={batchMode}
-        selectedIds={selectedIds}
-      />
-    )
-  }
-
-  return (
+  const view = viewMode === "grid" ? (
+    <BookmarkGrid
+      bookmarks={bookmarks}
+      onSelect={onSelect}
+      batchMode={batchMode}
+      selectedIds={selectedIds}
+    />
+  ) : (
     <BookmarkListView
       bookmarks={bookmarks}
       onSelect={onSelect}
       batchMode={batchMode}
       selectedIds={selectedIds}
     />
+  )
+
+  return (
+    <>
+      {view}
+      {bookmarksLoading && (
+        <div className="flex justify-center py-3">
+          <Loader2 size={16} className="animate-spin text-muted-foreground" />
+        </div>
+      )}
+      {bookmarksHasMore && <div ref={sentinelRef} className="h-4 shrink-0" />}
+    </>
   )
 }
