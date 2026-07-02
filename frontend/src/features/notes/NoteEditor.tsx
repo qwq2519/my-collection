@@ -186,8 +186,8 @@ export function NoteEditor({ note }: NoteEditorProps) {
 
   return (
     <div className="flex flex-col h-full">
-      {/* 顶部：标题 + 操作按钮 */}
-      <div className="flex items-center gap-3 px-6 py-4 border-b border-border">
+      {/* 顶部：标题 + 操作按钮（pt-9 避开 macOS 交通灯区域） */}
+      <div className="flex items-center gap-3 px-6 py-4 pt-9 border-b border-border">
         <Input
           value={title}
           onChange={(e) => handleTitleChange(e.target.value)}
