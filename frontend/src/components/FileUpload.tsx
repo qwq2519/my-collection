@@ -108,7 +108,7 @@ function useFileUpload(
     if (validFiles.length === 0) return
 
     setUploading(true)
-    const { scene: s, entityId: eid, files: currentFiles, onChange: cb } = stateRef.current
+    const { scene: s, entityId: eid } = stateRef.current
     const newFiles: UploadedFile[] = []
     for (const file of validFiles) {
       const base64 = await readFileAsBase64(file)
@@ -129,7 +129,8 @@ function useFileUpload(
       }
     }
     if (newFiles.length > 0) {
-      cb([...currentFiles, ...newFiles])
+      const { files: latestFiles, onChange: cb } = stateRef.current
+      cb([...latestFiles, ...newFiles])
     }
     setUploading(false)
   }
@@ -157,6 +158,8 @@ function useFileUpload(
         const guessedExt = MIME_TO_EXT[file.type]
         if (guessedExt && ALL_EXTS.has(guessedExt)) {
           name = `paste-${Date.now()}.${guessedExt}`
+        } else {
+          continue
         }
       }
 
