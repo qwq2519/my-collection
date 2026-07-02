@@ -67,6 +67,9 @@ func (s *Store) GetFolder(id string) (*model.MediaFolder, error) {
 	var folder model.MediaFolder
 	err := s.db.View(func(tx *buntdb.Tx) error {
 		val, err := tx.Get("folder:" + id)
+		if err == buntdb.ErrNotFound {
+			return fmt.Errorf("folder not found")
+		}
 		if err != nil {
 			return err
 		}

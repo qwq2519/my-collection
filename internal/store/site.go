@@ -29,6 +29,9 @@ func siteBleveFields(site *model.Site) map[string]interface{} {
 // getSiteTx 在已有事务中读取站点（bookmark.go 等同包文件复用）
 func getSiteTx(tx *buntdb.Tx, id string) (*model.Site, error) {
 	val, err := tx.Get("site:" + id)
+	if err == buntdb.ErrNotFound {
+		return nil, fmt.Errorf("site not found")
+	}
 	if err != nil {
 		return nil, err
 	}

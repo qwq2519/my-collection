@@ -97,7 +97,7 @@ func (m *MediaService) RemoveFolder(id string) (err error) {
 
 	folder, err := m.Store.GetFolder(id)
 	if err != nil {
-		return fmt.Errorf("folder not found: %w", err)
+		return err
 	}
 
 	meta, err := m.Store.ReadMediaMeta(folder.ID)
@@ -165,7 +165,7 @@ func (m *MediaService) UpdateFolderPath(req model.UpdateFolderPathReq) (_ *model
 
 	folder, err := m.Store.GetFolder(req.ID)
 	if err != nil {
-		return nil, fmt.Errorf("folder not found: %w", err)
+		return nil, err
 	}
 
 	folder.Path = absPath
@@ -189,7 +189,7 @@ func (m *MediaService) ScanFolder(id string) (_ *model.ScanComplete, err error) 
 
 	folder, err := m.Store.GetFolder(id)
 	if err != nil {
-		return nil, fmt.Errorf("folder not found: %w", err)
+		return nil, err
 	}
 
 	var cachedRoot *model.TreeNode
@@ -668,7 +668,7 @@ func (m *MediaService) OpenInExplorer(folderID, relPath string) (err error) {
 
 	folder, err := m.Store.GetFolder(folderID)
 	if err != nil {
-		return fmt.Errorf("folder not found: %w", err)
+		return err
 	}
 
 	absPath := filepath.Join(folder.Path, filepath.FromSlash(relPath))
