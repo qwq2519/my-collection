@@ -105,7 +105,10 @@ export const useNoteStore = create<NoteState>((set, get) => ({
     const [result] = await callService(() =>
       NoteService.ListNotes({ page: 1, page_size: PAGE_SIZE, search: query.trim() }),
     )
-    if (searchVersion !== version) return
+    if (searchVersion !== version) {
+      set({ notesLoading: false })
+      return
+    }
     const { items, total, hasMore } = unpackList(result)
     set({
       notes: items,
@@ -117,6 +120,7 @@ export const useNoteStore = create<NoteState>((set, get) => ({
   },
 
   clearSearch: () => {
+    ++searchVersion
     set({ searchMode: false, searchQuery: "" })
     get().loadNotes()
   },

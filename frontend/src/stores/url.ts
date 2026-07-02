@@ -313,7 +313,10 @@ export const useURLStore = create<URLState>((set, get) => ({
         page_size: PAGE_SIZE,
       }),
     )
-    if (searchVersion !== version) return
+    if (searchVersion !== version) {
+      set({ searchLoading: false })
+      return
+    }
     const { items, total, hasMore } = unpackList(result)
     set({
       searchResults: items,
@@ -338,7 +341,10 @@ export const useURLStore = create<URLState>((set, get) => ({
         page_size: PAGE_SIZE,
       }),
     )
-    if (searchVersion !== version) return
+    if (searchVersion !== version) {
+      set({ searchLoading: false })
+      return
+    }
     const { items, total, hasMore } = unpackList(result)
     const current = get().searchResults
     set({
@@ -350,8 +356,9 @@ export const useURLStore = create<URLState>((set, get) => ({
     })
   },
 
-  /** 退出搜索模式，重置所有搜索状态 */
+  /** 退出搜索模式，重置所有搜索状态。递增 searchVersion 使在途请求失效。 */
   clearSearch: () => {
+    ++searchVersion
     set({
       searchMode: false,
       searchQuery: "",
