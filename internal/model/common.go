@@ -49,11 +49,22 @@ type DirtyIndexStatus struct {
 	MediaCount int  `json:"media_count"`
 }
 
+// ScanStatus 当前扫描状态（前端可查询）
+type ScanStatus struct {
+	Scanning   bool   `json:"scanning"`
+	FolderID   string `json:"folder_id"`
+	FolderName string `json:"folder_name"`
+	Scanned    int    `json:"scanned"`
+	Total      int    `json:"total"`
+	Queued     int    `json:"queued"`
+}
+
 // ScanProgress 媒体扫描进度事件载荷
 type ScanProgress struct {
-	FolderID string `json:"folder_id"`
-	Scanned  int    `json:"scanned"`
-	Total    int    `json:"total"`
+	FolderID   string `json:"folder_id"`
+	FolderName string `json:"folder_name"`
+	Scanned    int    `json:"scanned"`
+	Total      int    `json:"total"`
 }
 
 // ScanComplete 媒体扫描完成事件载荷

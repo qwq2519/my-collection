@@ -377,7 +377,7 @@ func setupFolderWithFiles(t *testing.T, svc *MediaService, files map[string][]by
 
 func TestMediaService_ScanFolderValidation(t *testing.T) {
 	svc := newMediaService(t)
-	_, err := svc.ScanFolder("")
+	err := svc.ScanFolder("")
 	if err == nil {
 		t.Error("ScanFolder should reject empty ID")
 	}
@@ -390,9 +390,9 @@ func TestMediaService_ScanFolderFirstScan(t *testing.T) {
 		"image.png": createPNGBytes(t, 50, 50),
 	})
 
-	result, err := svc.ScanFolder(folder.ID)
+	result, err := svc.scanFolderInternal(folder.ID)
 	if err != nil {
-		t.Fatalf("ScanFolder: %v", err)
+		t.Fatalf("scanFolderInternal: %v", err)
 	}
 	if result.Added != 2 {
 		t.Errorf("Added = %d, want 2", result.Added)
@@ -435,11 +435,11 @@ func TestMediaService_ScanFolderNoChange(t *testing.T) {
 		"a.jpg": createJPEGBytes(t, 10, 10),
 	})
 
-	svc.ScanFolder(folder.ID)
+	svc.scanFolderInternal(folder.ID)
 
-	result, err := svc.ScanFolder(folder.ID)
+	result, err := svc.scanFolderInternal(folder.ID)
 	if err != nil {
-		t.Fatalf("second ScanFolder: %v", err)
+		t.Fatalf("second scanFolderInternal: %v", err)
 	}
 	if result.Added+result.Removed+result.Modified != 0 {
 		t.Errorf("no-change scan: added=%d removed=%d modified=%d, want all 0",
@@ -453,12 +453,12 @@ func TestMediaService_ScanFolderFileAdded(t *testing.T) {
 	os.WriteFile(filepath.Join(dir, "old.jpg"), createJPEGBytes(t, 10, 10), 0644)
 
 	folder, _ := svc.AddFolder(model.AddFolderReq{Path: dir})
-	svc.ScanFolder(folder.ID)
+	svc.scanFolderInternal(folder.ID)
 
 	os.WriteFile(filepath.Join(dir, "new.png"), createPNGBytes(t, 20, 20), 0644)
-	result, err := svc.ScanFolder(folder.ID)
+	result, err := svc.scanFolderInternal(folder.ID)
 	if err != nil {
-		t.Fatalf("ScanFolder: %v", err)
+		t.Fatalf("scanFolderInternal: %v", err)
 	}
 	if result.Added != 1 {
 		t.Errorf("Added = %d, want 1", result.Added)
@@ -477,12 +477,12 @@ func TestMediaService_ScanFolderFileRemoved(t *testing.T) {
 	os.WriteFile(filepath.Join(dir, "delete.png"), createPNGBytes(t, 10, 10), 0644)
 
 	folder, _ := svc.AddFolder(model.AddFolderReq{Path: dir})
-	svc.ScanFolder(folder.ID)
+	svc.scanFolderInternal(folder.ID)
 
 	os.Remove(filepath.Join(dir, "delete.png"))
-	result, err := svc.ScanFolder(folder.ID)
+	result, err := svc.scanFolderInternal(folder.ID)
 	if err != nil {
-		t.Fatalf("ScanFolder: %v", err)
+		t.Fatalf("scanFolderInternal: %v", err)
 	}
 	if result.Removed != 1 {
 		t.Errorf("Removed = %d, want 1", result.Removed)
@@ -508,7 +508,7 @@ func TestMediaService_ScanFolderTagCleanupOnRemove(t *testing.T) {
 	os.WriteFile(filepath.Join(dir, "tagged.jpg"), createJPEGBytes(t, 10, 10), 0644)
 
 	folder, _ := svc.AddFolder(model.AddFolderReq{Path: dir})
-	svc.ScanFolder(folder.ID)
+	svc.scanFolderInternal(folder.ID)
 
 	meta, _ := svc.Store.ReadMediaMeta(folder.ID)
 	f := meta.Files["tagged.jpg"]
@@ -519,9 +519,9 @@ func TestMediaService_ScanFolderTagCleanupOnRemove(t *testing.T) {
 	svc.Store.AdjustTagCount("media_tag", "nature", 1)
 
 	os.Remove(filepath.Join(dir, "tagged.jpg"))
-	result, err := svc.ScanFolder(folder.ID)
+	result, err := svc.scanFolderInternal(folder.ID)
 	if err != nil {
-		t.Fatalf("ScanFolder: %v", err)
+		t.Fatalf("scanFolderInternal: %v", err)
 	}
 	if result.Removed != 1 {
 		t.Errorf("Removed = %d, want 1", result.Removed)
@@ -544,7 +544,7 @@ func TestMediaService_ScanFolderPreservesUserData(t *testing.T) {
 	os.WriteFile(f, createJPEGBytes(t, 10, 10), 0644)
 
 	folder, _ := svc.AddFolder(model.AddFolderReq{Path: dir})
-	svc.ScanFolder(folder.ID)
+	svc.scanFolderInternal(folder.ID)
 
 	meta, _ := svc.Store.ReadMediaMeta(folder.ID)
 	file := meta.Files["photo.jpg"]
@@ -556,9 +556,9 @@ func TestMediaService_ScanFolderPreservesUserData(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 	os.WriteFile(f, createJPEGBytes(t, 20, 20), 0644)
 
-	result, err := svc.ScanFolder(folder.ID)
+	result, err := svc.scanFolderInternal(folder.ID)
 	if err != nil {
-		t.Fatalf("ScanFolder: %v", err)
+		t.Fatalf("scanFolderInternal: %v", err)
 	}
 	if result.Modified != 1 {
 		t.Errorf("Modified = %d, want 1", result.Modified)
@@ -582,9 +582,9 @@ func TestMediaService_ScanFolderSubDir(t *testing.T) {
 	os.WriteFile(filepath.Join(sub, "deep.jpg"), createJPEGBytes(t, 10, 10), 0644)
 
 	folder, _ := svc.AddFolder(model.AddFolderReq{Path: dir})
-	result, err := svc.ScanFolder(folder.ID)
+	result, err := svc.scanFolderInternal(folder.ID)
 	if err != nil {
-		t.Fatalf("ScanFolder: %v", err)
+		t.Fatalf("scanFolderInternal: %v", err)
 	}
 	if result.Added != 1 {
 		t.Errorf("Added = %d, want 1", result.Added)
@@ -602,7 +602,7 @@ func TestMediaService_ScanFolderGeneratesThumbnail(t *testing.T) {
 		"photo.jpg": createJPEGBytes(t, 200, 150),
 	})
 
-	svc.ScanFolder(folder.ID)
+	svc.scanFolderInternal(folder.ID)
 
 	meta, _ := svc.Store.ReadMediaMeta(folder.ID)
 	f := meta.Files["photo.jpg"]
@@ -626,17 +626,14 @@ func TestMediaService_ScanAllFolders(t *testing.T) {
 	svc.AddFolder(model.AddFolderReq{Path: dir1, Name: "one"})
 	svc.AddFolder(model.AddFolderReq{Path: dir2, Name: "two"})
 
-	results, err := svc.ScanAllFolders()
-	if err != nil {
-		t.Fatalf("ScanAllFolders: %v", err)
-	}
-	if len(results) != 2 {
-		t.Errorf("results len = %d, want 2", len(results))
-	}
-
+	folders, _ := svc.Store.ListFolders()
 	totalAdded := 0
-	for _, r := range results {
-		totalAdded += r.Added
+	for _, f := range folders {
+		result, err := svc.scanFolderInternal(f.ID)
+		if err != nil {
+			t.Fatalf("scanFolderInternal %s: %v", f.ID, err)
+		}
+		totalAdded += result.Added
 	}
 	if totalAdded != 2 {
 		t.Errorf("total added = %d, want 2", totalAdded)
@@ -696,7 +693,7 @@ func TestMediaService_ListMediaFiles(t *testing.T) {
 		"a.jpg": createJPEGBytes(t, 10, 10),
 		"b.png": createPNGBytes(t, 10, 10),
 	})
-	svc.ScanFolder(folder.ID)
+	svc.scanFolderInternal(folder.ID)
 
 	result, err := svc.ListMediaFiles(model.MediaListReq{Page: 1, PageSize: 10})
 	if err != nil {
@@ -719,7 +716,7 @@ func TestMediaService_ListMediaFilesFilterType(t *testing.T) {
 	os.WriteFile(filepath.Join(dir, "sound.mp3"), []byte("fake mp3"), 0644)
 
 	folder, _ := svc.AddFolder(model.AddFolderReq{Path: dir})
-	svc.ScanFolder(folder.ID)
+	svc.scanFolderInternal(folder.ID)
 
 	result, err := svc.ListMediaFiles(model.MediaListReq{
 		Page: 1, PageSize: 10, MediaType: "image",
@@ -739,7 +736,7 @@ func TestMediaService_GetMediaFile(t *testing.T) {
 	folder := setupFolderWithFiles(t, svc, map[string][]byte{
 		"photo.jpg": createJPEGBytes(t, 100, 80),
 	})
-	svc.ScanFolder(folder.ID)
+	svc.scanFolderInternal(folder.ID)
 
 	item, err := svc.GetMediaFile(folder.ID, "photo.jpg")
 	if err != nil {
@@ -772,7 +769,7 @@ func TestMediaService_GetMediaFileNotFound(t *testing.T) {
 	folder := setupFolderWithFiles(t, svc, map[string][]byte{
 		"a.jpg": createJPEGBytes(t, 10, 10),
 	})
-	svc.ScanFolder(folder.ID)
+	svc.scanFolderInternal(folder.ID)
 
 	_, err := svc.GetMediaFile(folder.ID, "nonexistent.jpg")
 	if err == nil {
@@ -787,7 +784,7 @@ func TestMediaService_UpdateMediaFileTags(t *testing.T) {
 	folder := setupFolderWithFiles(t, svc, map[string][]byte{
 		"photo.jpg": createJPEGBytes(t, 10, 10),
 	})
-	svc.ScanFolder(folder.ID)
+	svc.scanFolderInternal(folder.ID)
 
 	tags := []string{"landscape", "Nature"}
 	item, err := svc.UpdateMediaFile(model.UpdateMediaFileReq{
@@ -816,7 +813,7 @@ func TestMediaService_UpdateMediaFileTagsReplacesOld(t *testing.T) {
 	folder := setupFolderWithFiles(t, svc, map[string][]byte{
 		"photo.jpg": createJPEGBytes(t, 10, 10),
 	})
-	svc.ScanFolder(folder.ID)
+	svc.scanFolderInternal(folder.ID)
 
 	oldTags := []string{"old-tag"}
 	svc.UpdateMediaFile(model.UpdateMediaFileReq{
@@ -850,7 +847,7 @@ func TestMediaService_UpdateMediaFileDescription(t *testing.T) {
 	folder := setupFolderWithFiles(t, svc, map[string][]byte{
 		"photo.jpg": createJPEGBytes(t, 10, 10),
 	})
-	svc.ScanFolder(folder.ID)
+	svc.scanFolderInternal(folder.ID)
 
 	desc := "Beautiful sunset"
 	item, err := svc.UpdateMediaFile(model.UpdateMediaFileReq{
@@ -876,7 +873,7 @@ func TestMediaService_UpdateMediaFileTagsAndDesc(t *testing.T) {
 	folder := setupFolderWithFiles(t, svc, map[string][]byte{
 		"photo.jpg": createJPEGBytes(t, 10, 10),
 	})
-	svc.ScanFolder(folder.ID)
+	svc.scanFolderInternal(folder.ID)
 
 	tags := []string{"travel"}
 	desc := "Tokyo tower"
@@ -902,7 +899,7 @@ func TestMediaService_UpdateMediaFileNoop(t *testing.T) {
 	folder := setupFolderWithFiles(t, svc, map[string][]byte{
 		"photo.jpg": createJPEGBytes(t, 10, 10),
 	})
-	svc.ScanFolder(folder.ID)
+	svc.scanFolderInternal(folder.ID)
 
 	item, err := svc.UpdateMediaFile(model.UpdateMediaFileReq{
 		FolderID: folder.ID, RelPath: "photo.jpg",
@@ -934,7 +931,7 @@ func TestMediaService_BatchUpdateMediaTags(t *testing.T) {
 		"a.jpg": createJPEGBytes(t, 10, 10),
 		"b.png": createPNGBytes(t, 10, 10),
 	})
-	svc.ScanFolder(folder.ID)
+	svc.scanFolderInternal(folder.ID)
 
 	err := svc.BatchUpdateMediaTags(model.BatchUpdateMediaTagsReq{
 		FolderID: folder.ID,
@@ -965,7 +962,7 @@ func TestMediaService_BatchUpdateMediaTagsDedup(t *testing.T) {
 	folder := setupFolderWithFiles(t, svc, map[string][]byte{
 		"a.jpg": createJPEGBytes(t, 10, 10),
 	})
-	svc.ScanFolder(folder.ID)
+	svc.scanFolderInternal(folder.ID)
 
 	existingTags := []string{"existing"}
 	svc.UpdateMediaFile(model.UpdateMediaFileReq{
@@ -1081,9 +1078,9 @@ func TestMediaService_FullWorkflow(t *testing.T) {
 	}
 
 	// 2. First scan
-	scanResult, err := svc.ScanFolder(folder.ID)
+	scanResult, err := svc.scanFolderInternal(folder.ID)
 	if err != nil {
-		t.Fatalf("ScanFolder: %v", err)
+		t.Fatalf("scanFolderInternal: %v", err)
 	}
 	if scanResult.Added != 3 {
 		t.Fatalf("scan added = %d, want 3", scanResult.Added)
@@ -1152,7 +1149,7 @@ func TestMediaService_FullWorkflow(t *testing.T) {
 	os.WriteFile(filepath.Join(dir, "new.jpg"), createJPEGBytes(t, 10, 10), 0644)
 	os.Remove(filepath.Join(dir, "morning.png"))
 
-	rescan, err := svc.ScanFolder(folder.ID)
+	rescan, err := svc.scanFolderInternal(folder.ID)
 	if err != nil {
 		t.Fatalf("rescan: %v", err)
 	}

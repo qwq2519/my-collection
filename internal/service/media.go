@@ -18,9 +18,13 @@ import (
 // MediaService 媒体文件夹管理、扫描、缩略图、标签的业务逻辑层。
 // 公开方法即前端可调用接口（通过 Wails 绑定）。
 // FFmpegPathFunc 由 main.go 注入，统一从 SettingService 获取 ffmpeg 路径。
+// 扫描通过内部单 goroutine worker 串行执行，通过 scanCh 接收请求。
 type MediaService struct {
 	Store          *store.Store
 	FFmpegPathFunc func() string
+
+	scanCh chan scanRequest
+	state  *scanState
 }
 
 // ────────────────────── Folder Management ──────────────────────
@@ -32,7 +36,7 @@ func (m *MediaService) ListFolders() (_ []model.MediaFolder, err error) {
 }
 
 // AddFolder 添加媒体文件夹。校验路径存在、可读、不与已有文件夹嵌套，
-// 创建注册表记录和 persist 目录。Name 为空时取路径末段目录名。
+// 创建注册表记录和 persist 目录，成功后自动提交扫描。Name 为空时取路径末段目录名。
 func (m *MediaService) AddFolder(req model.AddFolderReq) (_ *model.MediaFolder, err error) {
 	defer logError(&err)
 
@@ -56,6 +60,9 @@ func (m *MediaService) AddFolder(req model.AddFolderReq) (_ *model.MediaFolder, 
 	}
 
 	slog.Info("media folder added", "id", folder.ID, "path", absPath, "name", name)
+
+	m.enqueue(scanRequest{FolderIDs: []string{folder.ID}})
+
 	return folder, nil
 }
 
@@ -179,14 +186,51 @@ func (m *MediaService) UpdateFolderPath(req model.UpdateFolderPathReq) (_ *model
 
 // ────────────────────── Scan ──────────────────────
 
-// ScanFolder 扫描单个媒体文件夹，检测文件变化并处理。
-// 流程：构建 Merkle Tree → diff → 处理新增/删除/修改 → 更新 meta + Bleve + tree_hash → 更新注册表。
-func (m *MediaService) ScanFolder(id string) (_ *model.ScanComplete, err error) {
+// StartScanner 初始化扫描协调器并提交全量扫描。
+// 由 main.go 在应用启动后调用一次。
+func (m *MediaService) StartScanner() {
+	m.initScanner()
+	m.enqueue(scanRequest{})
+}
+
+// GetScanStatus 查询当前扫描状态（是否在扫描、哪个文件夹、进度）。
+func (m *MediaService) GetScanStatus() model.ScanStatus {
+	m.state.mu.RLock()
+	defer m.state.mu.RUnlock()
+	return model.ScanStatus{
+		Scanning:   m.state.scanning,
+		FolderID:   m.state.folderID,
+		FolderName: m.state.folderName,
+		Scanned:    m.state.scanned,
+		Total:      m.state.total,
+		Queued:     m.state.queued,
+	}
+}
+
+// ScanFolder 将指定文件夹加入扫描队列（非阻塞）。
+// 前端调用后立即返回，扫描进度和完成通过事件推送。
+func (m *MediaService) ScanFolder(id string) (err error) {
 	defer logError(&err)
 	if id == "" {
-		return nil, fmt.Errorf("folder ID required")
+		return fmt.Errorf("folder ID required")
 	}
+	if _, err := m.Store.GetFolder(id); err != nil {
+		return err
+	}
+	m.enqueue(scanRequest{FolderIDs: []string{id}})
+	return nil
+}
 
+// ScanAllFolders 将所有已注册文件夹加入扫描队列（非阻塞）。
+// 前端调用后立即返回，逐个扫描进度通过事件推送。
+func (m *MediaService) ScanAllFolders() (err error) {
+	defer logError(&err)
+	m.enqueue(scanRequest{})
+	return nil
+}
+
+// scanFolderInternal 执行单个文件夹的实际扫描逻辑（由 worker goroutine 调用）。
+func (m *MediaService) scanFolderInternal(id string) (*model.ScanComplete, error) {
 	folder, err := m.Store.GetFolder(id)
 	if err != nil {
 		return nil, err
@@ -230,20 +274,27 @@ func (m *MediaService) ScanFolder(id string) (_ *model.ScanComplete, err error) 
 		ffmpeg = m.FFmpegPathFunc()
 	}
 
+	total := len(diff.Added) + len(diff.Removed) + len(diff.Modified)
+	scanned := 0
+
 	var newDocs []store.BleveDoc
 	var deleteIDs []string
 	var tagDeltas map[string]int
 
 	if len(diff.Added) > 0 {
-		newDocs = append(newDocs, m.processFiles(id, folder.Path, thumbDir, ffmpeg, diff.Added, meta)...)
+		docs := m.processFilesWithProgress(id, folder.Path, folder.Name, thumbDir, ffmpeg, diff.Added, meta, &scanned, total)
+		newDocs = append(newDocs, docs...)
 	}
 
 	if len(diff.Removed) > 0 {
 		tagDeltas, deleteIDs = m.processRemoved(id, thumbDir, diff.Removed, meta)
+		scanned += len(diff.Removed)
+		m.reportProgress(id, folder.Name, scanned, total)
 	}
 
 	if len(diff.Modified) > 0 {
-		newDocs = append(newDocs, m.processFiles(id, folder.Path, thumbDir, ffmpeg, diff.Modified, meta)...)
+		docs := m.processFilesWithProgress(id, folder.Path, folder.Name, thumbDir, ffmpeg, diff.Modified, meta, &scanned, total)
+		newDocs = append(newDocs, docs...)
 	}
 
 	if err := m.Store.WriteMediaMeta(id, meta); err != nil {
@@ -287,27 +338,6 @@ func (m *MediaService) ScanFolder(id string) (_ *model.ScanComplete, err error) 
 	slog.Info("folder scan complete",
 		"folder_id", id, "added", result.Added, "removed", result.Removed, "modified", result.Modified)
 	return result, nil
-}
-
-// ScanAllFolders 依次扫描所有已注册媒体文件夹。
-// 单个文件夹扫描失败时记录日志并跳过，不中止整批操作。
-func (m *MediaService) ScanAllFolders() (_ []model.ScanComplete, err error) {
-	defer logError(&err)
-	folders, err := m.Store.ListFolders()
-	if err != nil {
-		return nil, err
-	}
-
-	var results []model.ScanComplete
-	for _, f := range folders {
-		result, err := m.ScanFolder(f.ID)
-		if err != nil {
-			slog.Warn("scan folder failed, skipping", "folder_id", f.ID, "err", err)
-			continue
-		}
-		results = append(results, *result)
-	}
-	return results, nil
 }
 
 // ────────────────────── Scan Helpers ──────────────────────
@@ -419,6 +449,33 @@ func (m *MediaService) processFiles(folderID, folderPath, thumbDir, ffmpeg strin
 			ID:     folderID + "/" + relPath,
 			Fields: mediaBleveFields(folderID, relPath, file),
 		})
+	}
+	return docs
+}
+
+// processFilesWithProgress 同 processFiles，但额外逐个文件推送扫描进度事件
+func (m *MediaService) processFilesWithProgress(folderID, folderPath, folderName, thumbDir, ffmpeg string, relPaths []string, meta *model.MediaMeta, scanned *int, total int) []store.BleveDoc {
+	var docs []store.BleveDoc
+	for _, relPath := range relPaths {
+		existing, ok := meta.Files[relPath]
+		var existingPtr *model.MediaFile
+		if ok {
+			existingPtr = &existing
+		}
+		file, err := m.processFile(folderID, folderPath, thumbDir, ffmpeg, relPath, existingPtr)
+		if err != nil {
+			slog.Warn("skip file", "path", relPath, "err", err)
+			*scanned++
+			m.reportProgress(folderID, folderName, *scanned, total)
+			continue
+		}
+		meta.Files[relPath] = file
+		docs = append(docs, store.BleveDoc{
+			ID:     folderID + "/" + relPath,
+			Fields: mediaBleveFields(folderID, relPath, file),
+		})
+		*scanned++
+		m.reportProgress(folderID, folderName, *scanned, total)
 	}
 	return docs
 }
