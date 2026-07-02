@@ -219,6 +219,17 @@ func (m *MediaService) ScanFolder(id string) (_ *model.ScanComplete, err error) 
 
 	diff := diffTrees(cachedRoot, newRoot)
 
+	if len(diff.Added) == 0 && len(diff.Removed) == 0 && len(diff.Modified) == 0 {
+		now := time.Now()
+		folder.LastScanAt = &now
+		if err := m.Store.UpdateFolder(folder); err != nil {
+			slog.Warn("failed to update folder after scan", "folder_id", id, "err", err)
+		}
+		result := &model.ScanComplete{FolderID: id}
+		slog.Info("folder scan complete, no changes", "folder_id", id)
+		return result, nil
+	}
+
 	meta, err := m.Store.ReadMediaMeta(id)
 	if err != nil {
 		meta = &model.MediaMeta{
