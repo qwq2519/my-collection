@@ -10,7 +10,7 @@
  *       → BookmarkGrid / BookmarkListView（本文件）
  */
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { cn, isPreviewableExt, VIDEO_EXTS } from "@/lib/utils"
 import { getFileExt } from "@/lib/safe"
 import { Video } from "lucide-react"
@@ -115,6 +115,11 @@ export function ThumbnailImage({ bookmarkId, filename }: { bookmarkId: string; f
   const ext = getFileExt(filename)
   const isVideo = VIDEO_EXTS.has(ext)
   const [fallback, setFallback] = useState<"none" | "original" | "icon">("none")
+
+  // 触发：bookmarkId 或 filename 变化时重置 fallback，允许新缩略图尝试加载
+  useEffect(() => {
+    setFallback("none")
+  }, [bookmarkId, filename])
 
   if (fallback === "icon") {
     return (

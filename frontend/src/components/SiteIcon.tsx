@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Globe } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -14,6 +14,11 @@ interface SiteIconProps {
  */
 export function SiteIcon({ icon, size = 16, className }: SiteIconProps) {
   const [failed, setFailed] = useState(false)
+
+  // 触发：icon prop 变化时重置 failed 状态，允许新图标尝试加载
+  useEffect(() => {
+    setFailed(false)
+  }, [icon])
 
   if (!icon || failed) {
     return <Globe size={size} className={cn("shrink-0 text-muted-foreground", className)} />
