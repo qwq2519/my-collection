@@ -93,7 +93,7 @@ export function SiteDetail() {
     <div className="flex flex-col h-full overflow-y-auto">
       <SiteHeader site={site} onEdit={() => setMode("edit-site")} />
       <Separator />
-      <BookmarkSection site={site} onAddBookmark={() => setMode("add-bookmark")} />
+      <BookmarkSection key={site.id} site={site} onAddBookmark={() => setMode("add-bookmark")} />
     </div>
   )
 }
