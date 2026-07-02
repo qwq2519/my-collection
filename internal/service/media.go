@@ -265,8 +265,7 @@ func (m *MediaService) ScanFolder(id string) (_ *model.ScanComplete, err error) 
 	var tagDeltas map[string]int
 
 	if len(diff.Added) > 0 {
-		docs := m.processAdded(id, folder.Path, thumbDir, ffmpeg, diff.Added, meta)
-		newDocs = append(newDocs, docs...)
+		newDocs = append(newDocs, m.processFiles(id, folder.Path, thumbDir, ffmpeg, diff.Added, meta)...)
 	}
 
 	if len(diff.Removed) > 0 {
@@ -274,8 +273,7 @@ func (m *MediaService) ScanFolder(id string) (_ *model.ScanComplete, err error) 
 	}
 
 	if len(diff.Modified) > 0 {
-		docs := m.processModified(id, folder.Path, thumbDir, ffmpeg, diff.Modified, meta)
-		newDocs = append(newDocs, docs...)
+		newDocs = append(newDocs, m.processFiles(id, folder.Path, thumbDir, ffmpeg, diff.Modified, meta)...)
 	}
 
 	if err := m.Store.WriteMediaMeta(id, meta); err != nil {
@@ -430,12 +428,19 @@ func (m *MediaService) processFile(folderID, folderPath, thumbDir, ffmpeg, relPa
 	return file, nil
 }
 
-func (m *MediaService) processAdded(folderID, folderPath, thumbDir, ffmpeg string, relPaths []string, meta *model.MediaMeta) []store.BleveDoc {
+// processFiles 处理新增或修改的文件：生成缩略图/预览、提取元数据、更新 meta 和 Bleve 索引。
+// 新增文件在 meta 中无记录，自动以 nil existing 处理；修改文件则保留已有用户数据。
+func (m *MediaService) processFiles(folderID, folderPath, thumbDir, ffmpeg string, relPaths []string, meta *model.MediaMeta) []store.BleveDoc {
 	var docs []store.BleveDoc
 	for _, relPath := range relPaths {
-		file, err := m.processFile(folderID, folderPath, thumbDir, ffmpeg, relPath, nil)
+		existing, ok := meta.Files[relPath]
+		var existingPtr *model.MediaFile
+		if ok {
+			existingPtr = &existing
+		}
+		file, err := m.processFile(folderID, folderPath, thumbDir, ffmpeg, relPath, existingPtr)
 		if err != nil {
-			slog.Warn("skip added file", "path", relPath, "err", err)
+			slog.Warn("skip file", "path", relPath, "err", err)
 			continue
 		}
 		meta.Files[relPath] = file
@@ -462,28 +467,6 @@ func (m *MediaService) processRemoved(folderID, thumbDir string, relPaths []stri
 		deleteIDs = append(deleteIDs, folderID+"/"+relPath)
 	}
 	return tagDeltas, deleteIDs
-}
-
-func (m *MediaService) processModified(folderID, folderPath, thumbDir, ffmpeg string, relPaths []string, meta *model.MediaMeta) []store.BleveDoc {
-	var docs []store.BleveDoc
-	for _, relPath := range relPaths {
-		existing, ok := meta.Files[relPath]
-		var existingPtr *model.MediaFile
-		if ok {
-			existingPtr = &existing
-		}
-		file, err := m.processFile(folderID, folderPath, thumbDir, ffmpeg, relPath, existingPtr)
-		if err != nil {
-			slog.Warn("skip modified file", "path", relPath, "err", err)
-			continue
-		}
-		meta.Files[relPath] = file
-		docs = append(docs, store.BleveDoc{
-			ID:     folderID + "/" + relPath,
-			Fields: mediaBleveFields(folderID, relPath, file),
-		})
-	}
-	return docs
 }
 
 // mediaBleveFields 构建媒体文件的 Bleve 索引字段
