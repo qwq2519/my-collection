@@ -422,6 +422,9 @@ func (m *MediaService) processFile(folderID, folderPath, thumbDir, ffmpeg, relPa
 				file.Duration = &dur
 			}
 		}
+
+	default:
+		file.Thumbnail = ""
 	}
 
 	return file, nil
