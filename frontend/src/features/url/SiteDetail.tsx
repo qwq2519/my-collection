@@ -9,7 +9,6 @@ import { TagList } from "@/components/TagList"
 import { ExternalUrl } from "@/components/ExternalUrl"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
 import {
-  Globe,
   LayoutGrid,
   List,
   Loader2,
@@ -56,9 +55,7 @@ export function SiteDetail() {
   }, [siteId])
 
   if (!site) {
-    return detailView.type !== "none"
-      ? <LoadingState />
-      : <EmptyState icon={Globe} message="站点加载失败" className="h-full" />
+    return <LoadingState />
   }
 
   const siteMatchesView = site.id === siteId

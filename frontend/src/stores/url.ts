@@ -36,6 +36,7 @@ import { URLService } from "../../bindings/collections/internal/service"
 import type { Site, Bookmark, SiteWithBookmarks } from "../../bindings/collections/internal/model"
 import { callService } from "../lib/async"
 import { unpackList, str } from "../lib/safe"
+import { toast } from "sonner"
 
 // ─── 类型定义 ────────────────────────────────────────────────
 
@@ -201,7 +202,7 @@ export const useURLStore = create<URLState>((set, get) => ({
       currentBookmark: null,
       bookmarksLoading: true,
     })
-    const [result] = await callService(() =>
+    const [result, err] = await callService(() =>
       Promise.all([
         URLService.GetSite(siteId),
         URLService.ListBookmarks({ site_id: siteId, page: 1, page_size: PAGE_SIZE }),
@@ -209,6 +210,11 @@ export const useURLStore = create<URLState>((set, get) => ({
     )
     if (getActiveSiteId(get().detailView) !== siteId) {
       set({ bookmarksLoading: false })
+      return
+    }
+    if (err) {
+      toast.error("加载站点失败：" + err)
+      set({ detailView: { type: "none" }, bookmarksLoading: false })
       return
     }
     if (result) {
@@ -250,11 +256,15 @@ export const useURLStore = create<URLState>((set, get) => ({
     const { detailView } = get()
     const siteId = str(getActiveSiteId(detailView))
     set({ detailView: { type: "bookmark", bookmarkId, siteId }, currentBookmark: null })
-    const [bm] = await callService(() => URLService.GetBookmark(bookmarkId))
+    const [bm, err] = await callService(() => URLService.GetBookmark(bookmarkId))
     const current = get().detailView
-    if (current.type === "bookmark" && current.bookmarkId === bookmarkId) {
-      set({ currentBookmark: bm ?? null })
+    if (current.type !== "bookmark" || current.bookmarkId !== bookmarkId) return
+    if (err) {
+      toast.error("加载书签失败：" + err)
+      set({ detailView: { type: "site", siteId }, currentBookmark: null })
+      return
     }
+    set({ currentBookmark: bm ?? null })
   },
 
   backToSite: () => {

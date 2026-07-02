@@ -3,13 +3,11 @@ import { useURLStore } from "@/stores/url"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
-import { EmptyState } from "@/components/EmptyState"
 import { LoadingState } from "@/components/LoadingState"
 import { TagList } from "@/components/TagList"
 import { ExternalUrl } from "@/components/ExternalUrl"
 import {
   ArrowLeft,
-  Bookmark as BookmarkIcon,
   FileText,
   ImageIcon,
   Video,
@@ -51,8 +49,7 @@ export function BookmarkDetail() {
   }, [bookmarkId])
 
   if (!bm) {
-    if (detailView.type === "bookmark") return <LoadingState />
-    return <EmptyState icon={BookmarkIcon} message="书签加载失败" className="h-full" />
+    return <LoadingState />
   }
 
   if (editing) {
