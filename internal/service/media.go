@@ -233,10 +233,14 @@ func (m *MediaService) ScanAllFolders() (err error) {
 }
 
 // scanFolderInternal 执行单个文件夹的实际扫描逻辑（由 worker goroutine 调用）。
-func (m *MediaService) scanFolderInternal(id string) (*model.ScanComplete, error) {
-	folder, err := m.Store.GetFolder(id)
-	if err != nil {
-		return nil, err
+// folder 为 nil 时自动从 Store 加载（兼容测试直接调用）。
+func (m *MediaService) scanFolderInternal(id string, folder *model.MediaFolder) (*model.ScanComplete, error) {
+	if folder == nil {
+		var err error
+		folder, err = m.Store.GetFolder(id)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	var cachedRoot *model.TreeNode

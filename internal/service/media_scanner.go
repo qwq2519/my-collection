@@ -87,7 +87,7 @@ func (m *MediaService) executeScan(folderID string) {
 
 	m.emitProgress(folderID, folder.Name, 0, 0)
 
-	result, err := m.scanFolderInternal(folderID)
+	result, err := m.scanFolderInternal(folderID, folder)
 	if err != nil {
 		slog.Warn("scan worker: scan failed", "folder_id", folderID, "err", err)
 		result = &model.ScanComplete{FolderID: folderID}
