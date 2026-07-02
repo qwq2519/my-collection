@@ -133,6 +133,7 @@ func (u *UploadService) DeleteAttachment(entityID, filename string) (err error) 
 
 // --- 缩略图生成 ---
 
+// generateThumbnail 为图片附件生成 JPEG 缩略图（{srcPath}.thumb.jpg）
 func generateThumbnail(srcPath string) {
 	thumbPath := srcPath + ".thumb.jpg"
 
@@ -174,6 +175,7 @@ func generateThumbnail(srcPath string) {
 	slog.Info("thumbnail generated", "path", thumbPath, "size", fmt.Sprintf("%dx%d", tw, th))
 }
 
+// fitDimensions 按最大边等比缩放，保证宽高不超过 maxDim
 func fitDimensions(w, h, maxDim int) (int, int) {
 	if w <= maxDim && h <= maxDim {
 		return w, h
@@ -196,8 +198,10 @@ var videoExts = map[string]bool{
 	".webm": true, ".wmv": true, ".flv": true,
 }
 
+// isImageExt 判断扩展名是否为支持的图片格式
 func isImageExt(ext string) bool { return imageExts[ext] }
 
+// isAllowedUploadExt 按 scene 校验文件扩展名是否在允许范围内
 func isAllowedUploadExt(scene, ext string) bool {
 	switch scene {
 	case "site-icon":

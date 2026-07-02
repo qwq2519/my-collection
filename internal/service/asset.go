@@ -30,6 +30,7 @@ type assetHandler struct {
 	persistDir string
 }
 
+// ServeHTTP 路由请求：/persist/* 走本地文件，其余走前端打包产物
 func (h *assetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(r.URL.Path, "/persist/") {
 		h.servePersist(w, r)
@@ -44,6 +45,7 @@ var allowedPersistPrefixes = []string{
 	"media-folders/",
 }
 
+// servePersist 处理 /persist/ 路径请求：白名单校验 + 目录遍历防护 + 文件响应
 func (h *assetHandler) servePersist(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -90,6 +92,7 @@ func (cw *cacheWriter) WriteHeader(code int) {
 	cw.ResponseWriter.WriteHeader(code)
 }
 
+// Write 首次调用时隐式触发 WriteHeader(200) 以设置缓存头
 func (cw *cacheWriter) Write(b []byte) (int, error) {
 	if !cw.wroteHeader {
 		cw.WriteHeader(http.StatusOK)

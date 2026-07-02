@@ -112,11 +112,13 @@ func buildNode(rootPath, relDir string, cached *model.TreeNode) (*model.TreeNode
 	return node, nil
 }
 
+// computeFileHash 基于相对路径+mtime+size 计算文件指纹（xxHash）
 func computeFileHash(relPath string, mtime time.Time, size int64) string {
 	input := relPath + "|" + strconv.FormatInt(mtime.UnixNano(), 10) + "|" + strconv.FormatInt(size, 10)
 	return strconv.FormatUint(xxhash.Sum64String(input), 16)
 }
 
+// computeDirHash 将子节点 hash 排序拼接后计算目录级 hash
 func computeDirHash(children map[string]*model.TreeNode) string {
 	if len(children) == 0 {
 		return "0"

@@ -68,6 +68,7 @@ type pageMeta struct {
 	ogImage     string
 }
 
+// fetchPageMeta 抓取页面 HTML 并解析 title/description/og:image 和 icon href 列表
 func fetchPageMeta(ctx context.Context, rawURL string) (pageMeta, []string) {
 	pm := pageMeta{}
 
@@ -146,6 +147,7 @@ func fetchPageMeta(ctx context.Context, rawURL string) (pageMeta, []string) {
 	return pm, iconHrefs
 }
 
+// metaAttrs 从 <meta> 节点提取 name/property 和 content 属性值
 func metaAttrs(n *html.Node) (name, content string) {
 	for _, a := range n.Attr {
 		switch strings.ToLower(a.Key) {
@@ -158,6 +160,7 @@ func metaAttrs(n *html.Node) (name, content string) {
 	return
 }
 
+// linkAttrs 从 <link> 节点提取 rel 和 href 属性值
 func linkAttrs(n *html.Node) (rel, href string) {
 	for _, a := range n.Attr {
 		switch strings.ToLower(a.Key) {
@@ -172,6 +175,7 @@ func linkAttrs(n *html.Node) (rel, href string) {
 
 // --- Icon ---
 
+// fetchAndSaveIcon 尝试从 Google S2 获取站点图标并保存到 persist/url-assets/icons/
 func (u *URLService) fetchAndSaveIcon(ctx context.Context, domain, pageURL string, iconHrefs []string) string {
 	iconsDir := filepath.Join(u.Store.PersistDir(), "url-assets", "icons")
 
@@ -219,6 +223,7 @@ func (u *URLService) fetchAndSaveIcon(ctx context.Context, domain, pageURL strin
 	return ""
 }
 
+// fetchIconData 下载图标数据，失败或非 200 时返回 nil
 func fetchIconData(ctx context.Context, iconURL string) []byte {
 	resp, err := doGet(ctx, iconURL)
 	if err != nil {
@@ -235,12 +240,14 @@ func fetchIconData(ctx context.Context, iconURL string) []byte {
 	return data
 }
 
+// saveIcon 将图标数据原子写入到指定目录
 func saveIcon(dir, filename string, data []byte) error {
 	return util.AtomicWrite(filepath.Join(dir, filename), data, 0644)
 }
 
 // --- 工具函数 ---
 
+// doGet 发起带 context 和 User-Agent 的 HTTP GET 请求
 func doGet(ctx context.Context, rawURL string) (*http.Response, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", rawURL, nil)
 	if err != nil {
@@ -250,6 +257,7 @@ func doGet(ctx context.Context, rawURL string) (*http.Response, error) {
 	return fetchClient.Do(req)
 }
 
+// resolveHref 将相对 href 解析为绝对 URL，解析失败返回空串
 func resolveHref(base, href string) string {
 	baseURL, err := url.Parse(base)
 	if err != nil {
@@ -262,6 +270,7 @@ func resolveHref(base, href string) string {
 	return baseURL.ResolveReference(ref).String()
 }
 
+// guessExt 从 URL 路径猜测图片扩展名，无法识别时返回 fallback
 func guessExt(rawURL, fallback string) string {
 	u, err := url.Parse(rawURL)
 	if err != nil {

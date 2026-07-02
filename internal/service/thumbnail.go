@@ -178,6 +178,7 @@ func removeThumbFiles(thumbDir, thumbName, previewName string) {
 	}
 }
 
+// limitOutput 截断 ffmpeg 输出到 200 字符，用于错误信息上下文
 func limitOutput(out []byte) string {
 	s := strings.TrimSpace(string(out))
 	if len(s) > 200 {
