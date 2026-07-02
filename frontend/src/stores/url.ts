@@ -168,7 +168,7 @@ export const useURLStore = create<URLState>((set, get) => ({
 
   /** 加载下一页站点（无限滚动触发，由 useInfiniteScroll hook 调用） */
   loadMoreSites: async () => {
-    const { sitesHasMore, sitesLoading, sitesPage, sites } = get()
+    const { sitesHasMore, sitesLoading, sitesPage } = get()
     if (!sitesHasMore || sitesLoading) return
     const nextPage = sitesPage + 1
     set({ sitesLoading: true })
@@ -177,7 +177,7 @@ export const useURLStore = create<URLState>((set, get) => ({
     )
     const { items, total, hasMore } = unpackList(result)
     set({
-      sites: [...sites, ...items],
+      sites: [...get().sites, ...items],
       sitesTotal: total,
       sitesPage: nextPage,
       sitesHasMore: hasMore,
@@ -225,7 +225,7 @@ export const useURLStore = create<URLState>((set, get) => ({
   },
 
   loadMoreBookmarks: async () => {
-    const { detailView, bookmarksHasMore, bookmarksLoading, bookmarksPage, bookmarks } = get()
+    const { detailView, bookmarksHasMore, bookmarksLoading, bookmarksPage } = get()
     if (detailView.type !== "site" || !bookmarksHasMore || bookmarksLoading) return
     const nextPage = bookmarksPage + 1
     set({ bookmarksLoading: true })
@@ -238,7 +238,7 @@ export const useURLStore = create<URLState>((set, get) => ({
     )
     const { items, total, hasMore } = unpackList(result)
     set({
-      bookmarks: [...bookmarks, ...items],
+      bookmarks: [...get().bookmarks, ...items],
       bookmarksTotal: total,
       bookmarksPage: nextPage,
       bookmarksHasMore: hasMore,

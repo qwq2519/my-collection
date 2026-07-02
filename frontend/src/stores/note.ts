@@ -65,7 +65,7 @@ export const useNoteStore = create<NoteState>((set, get) => ({
   },
 
   loadMoreNotes: async () => {
-    const { notesHasMore, notesLoading, notesPage, notes, searchQuery, searchMode } = get()
+    const { notesHasMore, notesLoading, notesPage, searchQuery, searchMode } = get()
     if (!notesHasMore || notesLoading) return
     const nextPage = notesPage + 1
     set({ notesLoading: true })
@@ -78,7 +78,7 @@ export const useNoteStore = create<NoteState>((set, get) => ({
     )
     const { items, total, hasMore } = unpackList(result)
     set({
-      notes: [...notes, ...items],
+      notes: [...get().notes, ...items],
       notesTotal: total,
       notesPage: nextPage,
       notesHasMore: hasMore,
