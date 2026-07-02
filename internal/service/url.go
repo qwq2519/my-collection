@@ -328,16 +328,9 @@ func (u *URLService) LookupSiteByURL(req model.LookupSiteByURLReq) (_ *model.Loo
 
 // ────────────────────── helpers ──────────────────────
 
-// adjustURLTagCounts 计算新旧标签的差值，批量更新 url_tag 注册表 count。
-// newTags 为新标签列表（创建/更新后），oldTags 为旧标签列表（更新/删除前）。
+// adjustURLTagCounts 计算新旧标签的差值，批量更新 url_tag 注册表 count
 func (u *URLService) adjustURLTagCounts(newTags, oldTags []string) {
-	deltas := util.ComputeTagDeltas(newTags, oldTags)
-	if len(deltas) == 0 {
-		return
-	}
-	if err := u.Store.BatchAdjustTagCounts("url_tag", deltas); err != nil {
-		slog.Warn("failed to adjust url tag counts", "err", err)
-	}
+	adjustTagCounts(u.Store, "url_tag", newTags, oldTags)
 }
 
 // cleanSiteAssets 删除站点关联的文件资源：icon、附件目录
