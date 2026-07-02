@@ -70,7 +70,6 @@ func (s *Store) CreateSite(req model.CreateSiteReq) (*model.Site, error) {
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	}
-	site.EnsureSlices()
 
 	err := s.db.Update(func(tx *buntdb.Tx) error {
 		pivot, _ := json.Marshal(map[string]string{"domain": req.Domain})

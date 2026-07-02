@@ -59,14 +59,8 @@ func (s *Store) CreateNote(req model.CreateNoteReq) (*model.Note, error) {
 		UpdatedAt: now,
 	}
 
-	val, err := json.Marshal(note)
-	if err != nil {
-		return nil, fmt.Errorf("marshal note: %w", err)
-	}
-
-	err = s.db.Update(func(tx *buntdb.Tx) error {
-		_, _, err := tx.Set("note:"+note.ID, string(val), nil)
-		return err
+	err := s.db.Update(func(tx *buntdb.Tx) error {
+		return setNoteTx(tx, note)
 	})
 	if err != nil {
 		return nil, err

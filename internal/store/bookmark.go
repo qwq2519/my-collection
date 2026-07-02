@@ -107,7 +107,6 @@ func (s *Store) CreateBookmark(req model.CreateBookmarkReq) (*model.Bookmark, er
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
-	bm.EnsureSlices()
 
 	var site model.Site
 	err = s.db.Update(func(tx *buntdb.Tx) error {
