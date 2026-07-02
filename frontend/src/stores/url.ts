@@ -317,7 +317,7 @@ export const useURLStore = create<URLState>((set, get) => ({
       return
     }
     const version = ++searchVersion
-    set({ searchMode: true, searchQuery: query, searchLoading: true, detailView: { type: "none" } })
+    set({ searchMode: true, searchQuery: query, searchLoading: true })
     const [result] = await callService(() =>
       URLService.SearchURL({
         search: query.trim() || undefined,
@@ -337,6 +337,7 @@ export const useURLStore = create<URLState>((set, get) => ({
       searchPage: 1,
       searchHasMore: hasMore,
       searchLoading: false,
+      detailView: { type: "none" },
     })
   },
 
