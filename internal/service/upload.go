@@ -1,33 +1,20 @@
 package service
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"image"
-	"image/jpeg"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
 
-	_ "image/gif"
-	_ "image/png"
-
 	"collections/internal/model"
 	"collections/internal/store"
 	"collections/internal/util"
-
-	"golang.org/x/image/draw"
-	_ "golang.org/x/image/bmp"
-	_ "golang.org/x/image/webp"
 )
 
-const (
-	thumbMaxDim   = 300
-	maxUploadSize = 10 << 20 // 10 MB
-)
+const maxUploadSize = 10 << 20 // 10 MB
 
 // UploadService 统一文件上传，按 scene 路由到 persist 子目录。
 type UploadService struct {
@@ -133,46 +120,13 @@ func (u *UploadService) DeleteAttachment(entityID, filename string) (err error) 
 
 // --- 缩略图生成 ---
 
-// generateThumbnail 为图片附件生成 JPEG 缩略图（{srcPath}.thumb.jpg）
+// generateThumbnail 为图片附件生成 JPEG 缩略图（{srcPath}.thumb.jpg），
+// 复用 generateImageThumbnail 的实现。
 func generateThumbnail(srcPath string) {
 	thumbPath := srcPath + ".thumb.jpg"
-
-	f, err := os.Open(srcPath)
-	if err != nil {
-		slog.Warn("open for thumbnail failed", "path", srcPath, "err", err)
-		return
+	if _, _, err := generateImageThumbnail(srcPath, thumbPath); err != nil {
+		slog.Warn("thumbnail generation failed", "path", srcPath, "err", err)
 	}
-	defer f.Close()
-
-	src, _, err := image.Decode(f)
-	if err != nil {
-		// AVIF、SVG 等格式暂无纯 Go 解码器，跳过
-		slog.Warn("decode image for thumbnail failed", "path", srcPath, "err", err)
-		return
-	}
-
-	bounds := src.Bounds()
-	w, h := bounds.Dx(), bounds.Dy()
-	if w == 0 || h == 0 {
-		return
-	}
-
-	tw, th := fitDimensions(w, h, thumbMaxDim)
-	dst := image.NewRGBA(image.Rect(0, 0, tw, th))
-	draw.BiLinear.Scale(dst, dst.Rect, src, bounds, draw.Over, nil)
-
-	var buf bytes.Buffer
-	if err := jpeg.Encode(&buf, dst, &jpeg.Options{Quality: 85}); err != nil {
-		slog.Warn("encode thumbnail failed", "path", srcPath, "err", err)
-		return
-	}
-
-	if err := util.AtomicWrite(thumbPath, buf.Bytes(), 0644); err != nil {
-		slog.Warn("save thumbnail failed", "path", thumbPath, "err", err)
-		return
-	}
-
-	slog.Info("thumbnail generated", "path", thumbPath, "size", fmt.Sprintf("%dx%d", tw, th))
 }
 
 // fitDimensions 按最大边等比缩放，保证宽高不超过 maxDim
