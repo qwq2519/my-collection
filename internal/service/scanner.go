@@ -113,7 +113,7 @@ func buildNode(rootPath, relDir string, cached *model.TreeNode) (*model.TreeNode
 }
 
 func computeFileHash(relPath string, mtime time.Time, size int64) string {
-	input := relPath + strconv.FormatInt(mtime.UnixNano(), 10) + strconv.FormatInt(size, 10)
+	input := relPath + "|" + strconv.FormatInt(mtime.UnixNano(), 10) + "|" + strconv.FormatInt(size, 10)
 	return strconv.FormatUint(xxhash.Sum64String(input), 16)
 }
 
@@ -126,7 +126,7 @@ func computeDirHash(children map[string]*model.TreeNode) string {
 		hashes = append(hashes, child.Hash)
 	}
 	sort.Strings(hashes)
-	return strconv.FormatUint(xxhash.Sum64String(strings.Join(hashes, "")), 16)
+	return strconv.FormatUint(xxhash.Sum64String(strings.Join(hashes, "|")), 16)
 }
 
 // diffTrees 对比新旧 Merkle Tree，返回文件级变更列表。
