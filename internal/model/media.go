@@ -80,9 +80,32 @@ type MediaListResult struct {
 	HasMore bool            `json:"has_more"`
 }
 
-// MediaFileItem 媒体文件列表项（内嵌 MediaFile，附加文件夹定位信息）
+// MediaFileItem 媒体文件列表项（内嵌 MediaFile，附加文件夹定位信息和可访问路径）
 type MediaFileItem struct {
 	MediaFile
-	FolderID string `json:"folder_id"`
-	RelPath  string `json:"rel_path"`
+	FolderID     string `json:"folder_id"`
+	RelPath      string `json:"rel_path"`
+	ThumbnailURL string `json:"thumbnail_url"`
+	PreviewURL   string `json:"preview_url"`
+}
+
+// UpdateMediaTagsReq 更新单个媒体文件标签
+type UpdateMediaTagsReq struct {
+	FolderID string   `json:"folder_id"`
+	RelPath  string   `json:"rel_path"`
+	Tags     []string `json:"tags"`
+}
+
+// BatchUpdateMediaTagsReq 批量为媒体文件追加标签
+type BatchUpdateMediaTagsReq struct {
+	FolderID string   `json:"folder_id"`
+	RelPaths []string `json:"rel_paths"`
+	Tags     []string `json:"tags"`
+}
+
+// UpdateMediaDescReq 更新媒体文件描述
+type UpdateMediaDescReq struct {
+	FolderID    string `json:"folder_id"`
+	RelPath     string `json:"rel_path"`
+	Description string `json:"description"`
 }
