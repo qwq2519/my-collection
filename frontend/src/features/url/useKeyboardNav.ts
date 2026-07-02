@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react"
 import { useURLStore, getActiveSiteId } from "@/stores/url"
+import { useAppStore } from "@/stores/app"
 
 
 /**
@@ -31,6 +32,9 @@ export function useKeyboardNav() {
   // 触发：组件挂载时注册全局 keydown 监听，卸载时清理
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
+      if (useAppStore.getState().currentPage !== "url") return
+      if (document.querySelector("[role=dialog]")) return
+
       if (e.target instanceof HTMLElement) {
         const tag = e.target.tagName
         if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return
