@@ -43,8 +43,22 @@ export function NoteEditor({ note }: NoteEditorProps) {
   const titleRef = useRef(title)
   titleRef.current = title
 
-  // 触发：note 数据变化时（切换笔记或外部更新），同步本地编辑状态
+  // 触发：note 数据变化时同步本地状态；若有未保存草稿则优先恢复
   useEffect(() => {
+    const draftKey = `note-draft:${note.id}`
+    const draft = localStorage.getItem(draftKey)
+    if (draft) {
+      const parsed = JSON.parse(draft) as { title: string; body: string }
+      setTitle(parsed.title)
+      setBody(parsed.body)
+      bodyRef.current = parsed.body
+      titleRef.current = parsed.title
+      setDirty(true)
+      dirtyRef.current = true
+      localStorage.removeItem(draftKey)
+      toast.info("已恢复上次未保存的修改")
+      return
+    }
     setTitle(note.title)
     setBody(note.body)
     bodyRef.current = note.body
@@ -128,11 +142,23 @@ export function NoteEditor({ note }: NoteEditorProps) {
       if (dirtyRef.current) {
         const trimmedTitle = titleRef.current.trim()
         if (trimmedTitle) {
-          NoteService.UpdateNote({ id: note.id, title: trimmedTitle, body: bodyRef.current })
+          const draft = { id: note.id, title: trimmedTitle, body: bodyRef.current }
+          NoteService.UpdateNote(draft).catch(() => {
+            localStorage.setItem(`note-draft:${note.id}`, JSON.stringify(draft))
+          })
         }
       }
     }
   }, [note.id])
+
+  // 触发：窗口关闭/刷新时提醒用户有未保存修改
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (dirtyRef.current) e.preventDefault()
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload)
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload)
+  }, [])
 
   // ── Editor Height (ResizeObserver) ──
 
