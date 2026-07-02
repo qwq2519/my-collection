@@ -168,23 +168,25 @@ function AttachmentGallery({
   return (
     <div className="px-6 py-4">
       <h3 className="text-sm font-medium mb-3">附件 ({attachments.length})</h3>
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
-        {attachments.map((att) => {
-          const ext = getFileExt(att.filename)
-          return (
-            <div key={att.filename} className="rounded-md border overflow-hidden">
-              {isPreviewableExt(ext) && (
-                <div className="aspect-[16/10] bg-muted overflow-hidden">
-                  <ThumbnailImage bookmarkId={bookmarkId} filename={att.filename} />
+      <div className="@container">
+        <div className="grid grid-cols-2 @[480px]:grid-cols-3 gap-2">
+          {attachments.map((att) => {
+            const ext = getFileExt(att.filename)
+            return (
+              <div key={att.filename} className="rounded-md border overflow-hidden">
+                {isPreviewableExt(ext) && (
+                  <div className="aspect-[16/10] bg-muted overflow-hidden">
+                    <ThumbnailImage bookmarkId={bookmarkId} filename={att.filename} />
+                  </div>
+                )}
+                <div className="px-2 py-1.5 flex items-center gap-1.5">
+                  <AttachmentIcon ext={ext} />
+                  <span className="text-xs truncate flex-1">{att.label || att.filename}</span>
                 </div>
-              )}
-              <div className="px-2 py-1.5 flex items-center gap-1.5">
-                <AttachmentIcon ext={ext} />
-                <span className="text-xs truncate flex-1">{att.label || att.filename}</span>
               </div>
-            </div>
-          )
-        })}
+            )
+          })}
+        </div>
       </div>
     </div>
   )

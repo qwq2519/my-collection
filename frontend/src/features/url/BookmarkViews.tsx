@@ -31,7 +31,8 @@ export function BookmarkGrid({
   selectedIds?: Set<string>
 }) {
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
+    <div className="@container">
+    <div className="grid grid-cols-2 @[480px]:grid-cols-3 gap-2">
       {bookmarks.map((bm) => {
         const cover = getCoverAttachment(bm)
         const isSelected = selectedIds.has(bm.id)
@@ -62,6 +63,7 @@ export function BookmarkGrid({
           </button>
         )
       })}
+    </div>
     </div>
   )
 }
