@@ -24,20 +24,59 @@ func (s *Store) reindexURLEntities(sites []model.Site, bms []model.Bookmark) {
 
 // --- URL 标签编排事务（跨实体联动：遍历 site + bookmark） ---
 
+// tagMutator 接收当前 tags 列表，返回修改后的 tags 和是否有变化。
+type tagMutator func(tags []string) (newTags []string, changed bool)
+
 type entityKV struct {
 	key, value string
 }
 
-// collectURLEntities 在事务内收集所有 site:* 和 bm:* 条目，供批量标签操作使用
-func (s *Store) collectURLEntities(tx *buntdb.Tx) (sites, bms []entityKV) {
+// mutateURLEntityTags 遍历所有站点和书签，对每个实体的 tags 应用 mutator。
+// 先收集所有 KV 快照，再逐条修改写回（避免在 AscendKeys 遍历中修改导致不一致）。
+// 变化的实体在事务内写回 BuntDB，并收集到返回值供事务后重建 Bleve 索引。
+func mutateURLEntityTags(tx *buntdb.Tx, mutate tagMutator) (sites []model.Site, bms []model.Bookmark) {
+	var siteKVs, bmKVs []entityKV
 	tx.AscendKeys("site:*", func(key, value string) bool {
-		sites = append(sites, entityKV{key, value})
+		siteKVs = append(siteKVs, entityKV{key, value})
 		return true
 	})
 	tx.AscendKeys("bm:*", func(key, value string) bool {
-		bms = append(bms, entityKV{key, value})
+		bmKVs = append(bmKVs, entityKV{key, value})
 		return true
 	})
+
+	for _, kv := range siteKVs {
+		var site model.Site
+		if json.Unmarshal([]byte(kv.value), &site) != nil {
+			continue
+		}
+		newTags, changed := mutate(site.Tags)
+		if !changed {
+			continue
+		}
+		site.Tags = newTags
+		site.EnsureSlices()
+		v, _ := json.Marshal(&site)
+		tx.Set(kv.key, string(v), nil)
+		sites = append(sites, site)
+	}
+
+	for _, kv := range bmKVs {
+		var bm model.Bookmark
+		if json.Unmarshal([]byte(kv.value), &bm) != nil {
+			continue
+		}
+		newTags, changed := mutate(bm.Tags)
+		if !changed {
+			continue
+		}
+		bm.Tags = newTags
+		bm.EnsureSlices()
+		v, _ := json.Marshal(&bm)
+		tx.Set(kv.key, string(v), nil)
+		bms = append(bms, bm)
+	}
+
 	return
 }
 
@@ -60,35 +99,14 @@ func (s *Store) RenameURLTag(req model.RenameTagReq) (int, error) {
 			return err
 		}
 
-		siteKVs, bmKVs := s.collectURLEntities(tx)
-
-		for _, kv := range siteKVs {
-			var site model.Site
-			if json.Unmarshal([]byte(kv.value), &site) != nil {
-				continue
+		sitesReindex, bmsReindex = mutateURLEntityTags(tx, func(tags []string) ([]string, bool) {
+			idx := slices.Index(tags, req.OldName)
+			if idx < 0 {
+				return tags, false
 			}
-			if idx := slices.Index(site.Tags, req.OldName); idx >= 0 {
-				site.Tags[idx] = req.NewName
-				site.EnsureSlices()
-				v, _ := json.Marshal(&site)
-				tx.Set(kv.key, string(v), nil)
-				sitesReindex = append(sitesReindex, site)
-			}
-		}
-
-		for _, kv := range bmKVs {
-			var bm model.Bookmark
-			if json.Unmarshal([]byte(kv.value), &bm) != nil {
-				continue
-			}
-			if idx := slices.Index(bm.Tags, req.OldName); idx >= 0 {
-				bm.Tags[idx] = req.NewName
-				bm.EnsureSlices()
-				v, _ := json.Marshal(&bm)
-				tx.Set(kv.key, string(v), nil)
-				bmsReindex = append(bmsReindex, bm)
-			}
-		}
+			tags[idx] = req.NewName
+			return tags, true
+		})
 
 		var tag model.Tag
 		json.Unmarshal([]byte(oldVal), &tag)
@@ -115,60 +133,32 @@ func (s *Store) RenameURLTag(req model.RenameTagReq) (int, error) {
 func (s *Store) MergeURLTag(req model.MergeTagReq) (int, error) {
 	var sitesReindex []model.Site
 	var bmsReindex []model.Bookmark
+	targetCount := 0
 
 	err := s.db.Update(func(tx *buntdb.Tx) error {
 		if _, err := tx.Get("url_tag:" + req.Source); err == buntdb.ErrNotFound {
 			return fmt.Errorf("source tag %q not found", req.Source)
 		}
 
-		siteKVs, bmKVs := s.collectURLEntities(tx)
-		targetCount := 0
+		sitesReindex, bmsReindex = mutateURLEntityTags(tx, func(tags []string) ([]string, bool) {
+			hasSource := slices.Contains(tags, req.Source)
+			hasTarget := slices.Contains(tags, req.Target)
 
-		for _, kv := range siteKVs {
-			var site model.Site
-			if json.Unmarshal([]byte(kv.value), &site) != nil {
-				continue
-			}
-			if !slices.Contains(site.Tags, req.Source) {
-				if slices.Contains(site.Tags, req.Target) {
+			if !hasSource {
+				if hasTarget {
 					targetCount++
 				}
-				continue
+				return tags, false
 			}
-			if slices.Contains(site.Tags, req.Target) {
-				site.Tags = slices.DeleteFunc(site.Tags, func(s string) bool { return s == req.Source })
-			} else {
-				site.Tags[slices.Index(site.Tags, req.Source)] = req.Target
-			}
-			targetCount++
-			site.EnsureSlices()
-			v, _ := json.Marshal(&site)
-			tx.Set(kv.key, string(v), nil)
-			sitesReindex = append(sitesReindex, site)
-		}
 
-		for _, kv := range bmKVs {
-			var bm model.Bookmark
-			if json.Unmarshal([]byte(kv.value), &bm) != nil {
-				continue
-			}
-			if !slices.Contains(bm.Tags, req.Source) {
-				if slices.Contains(bm.Tags, req.Target) {
-					targetCount++
-				}
-				continue
-			}
-			if slices.Contains(bm.Tags, req.Target) {
-				bm.Tags = slices.DeleteFunc(bm.Tags, func(s string) bool { return s == req.Source })
+			if hasTarget {
+				tags = slices.DeleteFunc(tags, func(s string) bool { return s == req.Source })
 			} else {
-				bm.Tags[slices.Index(bm.Tags, req.Source)] = req.Target
+				tags[slices.Index(tags, req.Source)] = req.Target
 			}
 			targetCount++
-			bm.EnsureSlices()
-			v, _ := json.Marshal(&bm)
-			tx.Set(kv.key, string(v), nil)
-			bmsReindex = append(bmsReindex, bm)
-		}
+			return tags, true
+		})
 
 		tx.Delete("url_tag:" + req.Source)
 
@@ -202,37 +192,12 @@ func (s *Store) DeleteURLTagFromEntities(name string) (int, error) {
 	var bmsReindex []model.Bookmark
 
 	err := s.db.Update(func(tx *buntdb.Tx) error {
-		siteKVs, bmKVs := s.collectURLEntities(tx)
-
-		for _, kv := range siteKVs {
-			var site model.Site
-			if json.Unmarshal([]byte(kv.value), &site) != nil {
-				continue
+		sitesReindex, bmsReindex = mutateURLEntityTags(tx, func(tags []string) ([]string, bool) {
+			if !slices.Contains(tags, name) {
+				return tags, false
 			}
-			if !slices.Contains(site.Tags, name) {
-				continue
-			}
-			site.Tags = slices.DeleteFunc(site.Tags, func(s string) bool { return s == name })
-			site.EnsureSlices()
-			v, _ := json.Marshal(&site)
-			tx.Set(kv.key, string(v), nil)
-			sitesReindex = append(sitesReindex, site)
-		}
-
-		for _, kv := range bmKVs {
-			var bm model.Bookmark
-			if json.Unmarshal([]byte(kv.value), &bm) != nil {
-				continue
-			}
-			if !slices.Contains(bm.Tags, name) {
-				continue
-			}
-			bm.Tags = slices.DeleteFunc(bm.Tags, func(s string) bool { return s == name })
-			bm.EnsureSlices()
-			v, _ := json.Marshal(&bm)
-			tx.Set(kv.key, string(v), nil)
-			bmsReindex = append(bmsReindex, bm)
-		}
+			return slices.DeleteFunc(tags, func(s string) bool { return s == name }), true
+		})
 
 		tx.Delete("url_tag:" + name)
 		return nil
