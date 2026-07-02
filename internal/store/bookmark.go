@@ -14,6 +14,14 @@ import (
 )
 
 // bmBleveFields 构建书签的 Bleve 索引字段映射
+// clampBookmarkCount 确保 BookmarkCount 非负，负值钳位到 0 并记录告警
+func clampBookmarkCount(site *model.Site) {
+	if site.BookmarkCount < 0 {
+		slog.Warn("bookmark_count went negative, clamped to 0", "site_id", site.ID, "raw", site.BookmarkCount)
+		site.BookmarkCount = 0
+	}
+}
+
 func bmBleveFields(bm *model.Bookmark) map[string]interface{} {
 	return map[string]interface{}{
 		"_type":       "bookmark",
@@ -214,10 +222,7 @@ func (s *Store) DeleteBookmark(id string) error {
 			return err
 		}
 		siteObj.BookmarkCount--
-		if siteObj.BookmarkCount < 0 {
-			slog.Warn("bookmark_count went negative, clamped to 0", "site_id", bm.SiteID, "raw", siteObj.BookmarkCount)
-			siteObj.BookmarkCount = 0
-		}
+		clampBookmarkCount(siteObj)
 		siteObj.UpdatedAt = time.Now()
 		site = *siteObj
 		return setSiteTx(tx, siteObj)
@@ -262,10 +267,7 @@ func (s *Store) BatchDeleteBookmarks(siteID string, ids []string) error {
 			return fmt.Errorf("get site %s: %w", siteID, err)
 		}
 		siteObj.BookmarkCount -= deleted
-		if siteObj.BookmarkCount < 0 {
-			slog.Warn("bookmark_count went negative, clamped to 0", "site_id", siteID, "raw", siteObj.BookmarkCount)
-			siteObj.BookmarkCount = 0
-		}
+		clampBookmarkCount(siteObj)
 		siteObj.UpdatedAt = time.Now()
 		site = *siteObj
 		return setSiteTx(tx, siteObj)
