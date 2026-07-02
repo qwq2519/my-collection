@@ -15,7 +15,7 @@ import {
   Trash2,
 } from "lucide-react"
 import { IMAGE_EXTS, VIDEO_EXTS, isPreviewableExt, formatDate } from "@/lib/utils"
-import { getFileExt } from "@/lib/safe"
+import { getFileExt, str } from "@/lib/safe"
 import { toast } from "sonner"
 import { BookmarkForm } from "./BookmarkForm"
 import { ThumbnailImage } from "./BookmarkViews"
@@ -86,7 +86,7 @@ export function BookmarkDetail() {
 
 function BookmarkNav({ bm, onEdit }: { bm: Bookmark; onEdit: () => void }) {
   const backToSite = useURLStore((s) => s.backToSite)
-  const currentSite = useURLStore((s) => s.currentSite)
+  const siteTitle = useURLStore((s) => str(s.currentSite?.title))
   const refreshCurrentSite = useURLStore((s) => s.refreshCurrentSite)
   const [showDelete, setShowDelete] = useState(false)
 
@@ -108,7 +108,7 @@ function BookmarkNav({ bm, onEdit }: { bm: Bookmark; onEdit: () => void }) {
       </Button>
       <div className="flex items-center gap-1 flex-1 min-w-0 text-xs text-muted-foreground">
         <span className="hover:text-foreground cursor-pointer shrink-0" onClick={backToSite}>
-          {currentSite?.title || "站点"}
+          {siteTitle || "站点"}
         </span>
         <span className="shrink-0">&gt;</span>
         <span className="truncate">{bm.title}</span>
