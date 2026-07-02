@@ -90,6 +90,7 @@ func (m *MediaService) executeScan(folderID string) {
 	result, err := m.scanFolderInternal(folderID)
 	if err != nil {
 		slog.Warn("scan worker: scan failed", "folder_id", folderID, "err", err)
+		result = &model.ScanComplete{FolderID: folderID}
 	}
 
 	m.state.mu.Lock()
@@ -98,9 +99,7 @@ func (m *MediaService) executeScan(folderID string) {
 	m.state.folderName = ""
 	m.state.mu.Unlock()
 
-	if result != nil {
-		m.emitComplete(result)
-	}
+	m.emitComplete(result)
 }
 
 // emitProgress 推送 media:scan-progress 事件
