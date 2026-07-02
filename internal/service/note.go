@@ -37,7 +37,8 @@ func (n *NoteService) GetNote(id string) (_ *model.Note, err error) {
 	return n.Store.GetNote(id)
 }
 
-// UpdateNote 部分更新笔记。Title 若提供则不允许为空
+// UpdateNote 部分更新笔记。指针字段为 nil 表示不更新。
+// Title 若提供则不允许为空。
 func (n *NoteService) UpdateNote(req model.UpdateNoteReq) (_ *model.Note, err error) {
 	defer logError(&err)
 	if req.ID == "" {
@@ -76,7 +77,8 @@ func (n *NoteService) ListNotes(req model.NoteListReq) (_ *model.NoteListResult,
 // 格式：note-images/{note_id}/{filename}
 var noteImageRefRe = regexp.MustCompile(`note-images/[^/]+/([^\s)]+)`)
 
-// DetectOrphanImages 对比 body 中的图片引用与磁盘文件，返回孤儿文件列表
+// DetectOrphanImages 对比 body 中的图片引用与磁盘文件，返回孤儿文件列表。
+// NoteID 必填。图片目录不存在时返回空列表（不报错）。
 func (n *NoteService) DetectOrphanImages(req model.DetectOrphanImagesReq) (_ *model.DetectOrphanImagesResult, err error) {
 	defer logError(&err)
 	if req.NoteID == "" {
@@ -110,7 +112,9 @@ func (n *NoteService) DetectOrphanImages(req model.DetectOrphanImagesReq) (_ *mo
 	return &model.DetectOrphanImagesResult{OrphanFiles: orphans}, nil
 }
 
-// DeleteOrphanImages 删除指定的孤儿图片文件
+// DeleteOrphanImages 删除指定的孤儿图片文件。
+// NoteID 必填；Files 为空时静默返回 nil。
+// 路径不安全的文件跳过并记录日志；单文件删除失败不影响后续文件处理。
 func (n *NoteService) DeleteOrphanImages(req model.DeleteOrphanImagesReq) (err error) {
 	defer logError(&err)
 	if req.NoteID == "" {

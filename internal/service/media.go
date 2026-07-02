@@ -300,7 +300,8 @@ func (m *MediaService) ScanFolder(id string) (_ *model.ScanComplete, err error) 
 	return result, nil
 }
 
-// ScanAllFolders 依次扫描所有已注册媒体文件夹
+// ScanAllFolders 依次扫描所有已注册媒体文件夹。
+// 单个文件夹扫描失败时记录日志并跳过，不中止整批操作。
 func (m *MediaService) ScanAllFolders() (_ []model.ScanComplete, err error) {
 	defer logError(&err)
 	folders, err := m.Store.ListFolders()
@@ -433,6 +434,7 @@ func (m *MediaService) processFiles(folderID, folderPath, thumbDir, ffmpeg strin
 	return docs
 }
 
+// processRemoved 处理删除的文件：递减标签 count、删除缩略图/预览、移除 meta 条目、收集 Bleve 待删 ID
 func (m *MediaService) processRemoved(folderID, thumbDir string, relPaths []string, meta *model.MediaMeta) (tagDeltas map[string]int, deleteIDs []string) {
 	tagDeltas = make(map[string]int)
 	for _, relPath := range relPaths {
@@ -465,7 +467,8 @@ func mediaBleveFields(folderID, relPath string, file model.MediaFile) map[string
 
 // ────────────────────── Query ──────────────────────
 
-// ListMediaFiles 分页查询媒体文件，支持搜索、标签筛选、文件夹筛选、类型筛选
+// ListMediaFiles 分页查询媒体文件，支持搜索、标签筛选、文件夹筛选、类型筛选。
+// 返回结果中 ThumbnailURL/PreviewURL 已填充为完整可访问路径。
 func (m *MediaService) ListMediaFiles(req model.MediaListReq) (_ *model.MediaListResult, err error) {
 	defer logError(&err)
 	result, err := m.Store.ListMediaFiles(req)
@@ -478,7 +481,8 @@ func (m *MediaService) ListMediaFiles(req model.MediaListReq) (_ *model.MediaLis
 	return result, nil
 }
 
-// GetMediaFile 获取单个媒体文件详情
+// GetMediaFile 获取单个媒体文件详情（folderID 和 relPath 必填）。
+// 返回结果中 ThumbnailURL/PreviewURL 已填充为完整可访问路径。
 func (m *MediaService) GetMediaFile(folderID, relPath string) (_ *model.MediaFileItem, err error) {
 	defer logError(&err)
 	if folderID == "" {
@@ -584,7 +588,10 @@ func (m *MediaService) UpdateMediaFile(req model.UpdateMediaFileReq) (_ *model.M
 	return item, nil
 }
 
-// BatchUpdateMediaTags 批量为媒体文件追加标签（不覆盖已有标签）
+// BatchUpdateMediaTags 批量为媒体文件追加标签（不覆盖已有标签）。
+// folderID 必填；RelPaths 或 Tags 为空时静默返回 nil。
+// 逐文件追加后批量维护 media_tag count 和 Bleve 索引。
+// 文件夹内不存在的 relPath 跳过并记录日志。
 func (m *MediaService) BatchUpdateMediaTags(req model.BatchUpdateMediaTagsReq) (err error) {
 	defer logError(&err)
 	if req.FolderID == "" {
@@ -677,7 +684,8 @@ func (m *MediaService) adjustMediaTagCounts(newTags, oldTags []string) {
 
 // ────────────────────── System Integration ──────────────────────
 
-// OpenInExplorer 在系统文件管理器中打开媒体文件所在目录并选中该文件
+// OpenInExplorer 在系统文件管理器中打开媒体文件所在目录并选中该文件。
+// folderID 和 relPath 必填；文件夹或文件不存在时返回 error。
 func (m *MediaService) OpenInExplorer(folderID, relPath string) (err error) {
 	defer logError(&err)
 	if folderID == "" {

@@ -36,7 +36,8 @@ type UploadService struct {
 
 // UploadFile 上传文件。按 scene 路由到对应 persist 子目录，
 // 图片附件自动生成缩略图（{filename}.thumb.jpg）。
-// 文件大小上限 10MB。
+// scene、filename、data 必填，EntityID 用于构建存储路径。
+// 文件大小上限 10MB。note-image 场景使用内容 hash 命名实现去重。
 func (u *UploadService) UploadFile(req model.UploadFileReq) (_ *model.UploadFileResult, err error) {
 	defer logError(&err)
 	if req.Scene == "" {
@@ -107,7 +108,8 @@ func (u *UploadService) UploadFile(req model.UploadFileReq) (_ *model.UploadFile
 	}
 }
 
-// DeleteAttachment 删除单个附件及其缩略图
+// DeleteAttachment 删除单个附件及其缩略图（仅 url-assets/attachments/{entityID}/ 范围）。
+// entityID 和 filename 必填。缩略图删除失败时静默忽略。
 func (u *UploadService) DeleteAttachment(entityID, filename string) (err error) {
 	defer logError(&err)
 	if entityID == "" {

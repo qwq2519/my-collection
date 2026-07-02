@@ -62,6 +62,7 @@ func (u *URLService) GetSite(id string) (_ *model.Site, err error) {
 }
 
 // UpdateSite 更新站点（URL/Domain 不可修改）。
+// 指针字段为 nil 表示不更新；Tags 传空切片表示清空所有标签。
 // 当 Tags 字段变化时维护 url_tag 注册表 count。
 func (u *URLService) UpdateSite(req model.UpdateSiteReq) (_ *model.Site, err error) {
 	defer logError(&err)
@@ -184,7 +185,9 @@ func (u *URLService) GetBookmark(id string) (_ *model.Bookmark, err error) {
 	return u.Store.GetBookmark(id)
 }
 
-// UpdateBookmark 更新书签。当 Tags 字段变化时维护 url_tag 注册表 count。
+// UpdateBookmark 更新书签（URL/Domain/SiteID 不可修改）。
+// 指针字段为 nil 表示不更新；Tags 传空切片表示清空所有标签。
+// 当 Tags 字段变化时维护 url_tag 注册表 count。
 func (u *URLService) UpdateBookmark(req model.UpdateBookmarkReq) (_ *model.Bookmark, err error) {
 	defer logError(&err)
 	if req.ID == "" {
@@ -242,8 +245,9 @@ func (u *URLService) DeleteBookmark(id string) (err error) {
 	return nil
 }
 
-// BatchDeleteBookmarks 批量删除同一站点下的书签。汇总所有被删除书签的标签后
-// 一次性更新 url_tag 注册表 count，并逐个清理文件资源。
+// BatchDeleteBookmarks 批量删除同一站点下的书签。
+// ids 为空时静默返回 nil。汇总所有被删除书签的标签后一次性更新
+// url_tag 注册表 count，并逐个清理文件资源。不存在的 ID 跳过并记录日志。
 func (u *URLService) BatchDeleteBookmarks(siteID string, ids []string) (err error) {
 	defer logError(&err)
 	if len(ids) == 0 {
@@ -273,8 +277,9 @@ func (u *URLService) BatchDeleteBookmarks(siteID string, ids []string) (err erro
 	return nil
 }
 
-// BatchTagBookmarks 批量为书签追加标签（不覆盖已有标签），
-// 同步维护 url_tag 注册表 count。
+// BatchTagBookmarks 批量为书签追加标签（不覆盖已有标签）。
+// ids 或 tagsToAdd 为空时静默返回 nil。同步维护 url_tag 注册表 count。
+// 单条书签更新失败时记录日志并继续处理下一条。
 func (u *URLService) BatchTagBookmarks(ids []string, tagsToAdd []string) (err error) {
 	defer logError(&err)
 	if len(ids) == 0 || len(tagsToAdd) == 0 {
@@ -353,7 +358,7 @@ func mergeTags(existing, toAdd []string) (merged, added []string) {
 // ────────────────────── Normalize ──────────────────────
 
 // NormalizeURL 归一化 URL（去协议、去 www、去尾部斜杠等），
-// 供前端输入时实时预览标准化后的地址。
+// 供前端输入时实时预览标准化后的地址。空串输入返回 ("", nil)。
 func (u *URLService) NormalizeURL(rawURL string) (string, error) {
 	if strings.TrimSpace(rawURL) == "" {
 		return "", nil
@@ -363,9 +368,8 @@ func (u *URLService) NormalizeURL(rawURL string) (string, error) {
 
 // ────────────────────── Lookup ──────────────────────
 
-// LookupSiteByURL 根据 URL 查询对应站点。
-// 提取 URL 中的域名，查找是否有对应站点。
-// 在新增url前判断用户是否需要先创建site
+// LookupSiteByURL 根据 URL 提取域名并查找对应站点，供前端在新增书签前判断是否需要先创建站点。
+// URL 必填且需通过 ValidateURL 校验。未找到站点时返回 Found=false（不报错）。
 func (u *URLService) LookupSiteByURL(req model.LookupSiteByURLReq) (_ *model.LookupSiteResult, err error) {
 	defer logError(&err)
 	if strings.TrimSpace(req.URL) == "" {
