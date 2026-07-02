@@ -15,6 +15,7 @@ import {
   Trash2,
 } from "lucide-react"
 import { IMAGE_EXTS, VIDEO_EXTS, isPreviewableExt, formatDate } from "@/lib/utils"
+import { getFileExt } from "@/lib/safe"
 import { toast } from "sonner"
 import { BookmarkForm } from "./BookmarkForm"
 import { ThumbnailImage } from "./BookmarkViews"
@@ -169,7 +170,7 @@ function AttachmentGallery({
       <h3 className="text-sm font-medium mb-3">附件 ({attachments.length})</h3>
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
         {attachments.map((att) => {
-          const ext = att.filename.split(".").pop()?.toLowerCase() ?? ""
+          const ext = getFileExt(att.filename)
           return (
             <div key={att.filename} className="rounded-md border overflow-hidden">
               {isPreviewableExt(ext) && (

@@ -24,6 +24,7 @@ import {
 import { UploadService } from "../../bindings/collections/internal/service"
 import { cn, IMAGE_EXTS, VIDEO_EXTS } from "@/lib/utils"
 import { callService, runAsync } from "@/lib/async"
+import { getFileExt } from "@/lib/safe"
 
 const TEXT_EXTS = new Set(["txt"])
 const ALL_EXTS = new Set([...IMAGE_EXTS, ...VIDEO_EXTS, ...TEXT_EXTS])
@@ -98,8 +99,7 @@ function useFileUpload(
     setError("")
     const validFiles: File[] = []
     for (const file of fileList) {
-      const ext = file.name.split(".").pop()?.toLowerCase() ?? ""
-      if (!ALL_EXTS.has(ext)) {
+      if (!ALL_EXTS.has(getFileExt(file.name))) {
         setError(`不支持的文件格式：${file.name}`)
         continue
       }
@@ -149,12 +149,11 @@ function useFileUpload(
 
       let name = file.name
       if (!name || name === "image.png" || name === "image.jpeg") {
-        const ext = MIME_TO_EXT[file.type] ?? "png"
-        name = `paste-${Date.now()}.${ext}`
+        const guessed = MIME_TO_EXT[file.type] ?? "png"
+        name = `paste-${Date.now()}.${guessed}`
       }
 
-      const ext = name.split(".").pop()?.toLowerCase() ?? ""
-      if (!ALL_EXTS.has(ext)) {
+      if (!ALL_EXTS.has(getFileExt(name))) {
         const guessedExt = MIME_TO_EXT[file.type]
         if (guessedExt && ALL_EXTS.has(guessedExt)) {
           name = `paste-${Date.now()}.${guessedExt}`
@@ -357,7 +356,7 @@ function FileListItem({
   onDrop: () => void
   onDelete: (filename: string) => void
 }) {
-  const ext = file.filename.split(".").pop()?.toLowerCase() ?? ""
+  const ext = getFileExt(file.filename)
 
   const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault()

@@ -12,6 +12,7 @@
 
 import { useState } from "react"
 import { cn, isPreviewableExt, VIDEO_EXTS } from "@/lib/utils"
+import { getFileExt } from "@/lib/safe"
 import { Video } from "lucide-react"
 import type { Bookmark } from "../../../bindings/collections/internal/model"
 
@@ -109,7 +110,7 @@ export function BookmarkListView({
 // - 视频文件：显示通用视频图标（视频无法在 img 标签中渲染）
 
 export function ThumbnailImage({ bookmarkId, filename }: { bookmarkId: string; filename: string }) {
-  const ext = filename.split(".").pop()?.toLowerCase() ?? ""
+  const ext = getFileExt(filename)
   const isVideo = VIDEO_EXTS.has(ext)
   const [fallback, setFallback] = useState<"none" | "original" | "icon">("none")
 
@@ -144,10 +145,5 @@ export function ThumbnailImage({ bookmarkId, filename }: { bookmarkId: string; f
 /** 从书签的附件列表中找到第一个可预览的图片/视频作为封面 */
 function getCoverAttachment(bm: Bookmark) {
   if (!bm.attachments || bm.attachments.length === 0) return null
-  return (
-    bm.attachments.find((a) => {
-      const ext = a.filename.split(".").pop()?.toLowerCase() ?? ""
-      return isPreviewableExt(ext)
-    }) ?? null
-  )
+  return bm.attachments.find((a) => isPreviewableExt(getFileExt(a.filename))) ?? null
 }

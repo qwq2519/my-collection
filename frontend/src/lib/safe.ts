@@ -33,6 +33,11 @@ export function unpackList<T>(
   }
 }
 
+/** 提取文件扩展名（小写，不含点），无扩展名时返回空字符串 */
+export function getFileExt(filename: string): string {
+  return filename.split(".").pop()?.toLowerCase() ?? ""
+}
+
 /**
  * 检查字符串是否为合法 URL。
  * 封装 new URL() 的 try-catch，业务代码无需 eslint-disable。
