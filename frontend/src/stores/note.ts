@@ -27,6 +27,8 @@ interface NoteState {
   search: (query: string) => Promise<void>
   clearSearch: () => void
   refreshList: () => Promise<void>
+  createNote: () => Promise<string | null>
+  deleteNote: (id: string) => Promise<string | null>
 }
 
 let searchVersion = 0
@@ -126,5 +128,28 @@ export const useNoteStore = create<NoteState>((set, get) => ({
     } else {
       get().loadNotes()
     }
+  },
+
+  createNote: async () => {
+    const [note, err] = await callService(() =>
+      NoteService.CreateNote({ title: "无标题笔记" }),
+    )
+    if (err) return err
+    if (note) {
+      await get().refreshList()
+      set({ selectedId: note.id, currentNote: note, currentLoading: false })
+    }
+    return null
+  },
+
+  deleteNote: async (id) => {
+    const [, err] = await callService(() => NoteService.DeleteNote(id))
+    if (err) return err
+    const { selectedId } = get()
+    if (selectedId === id) {
+      set({ selectedId: null, currentNote: null, currentLoading: false })
+    }
+    await get().refreshList()
+    return null
   },
 }))

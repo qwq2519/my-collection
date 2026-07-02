@@ -4,9 +4,10 @@ import { useNoteStore } from "@/stores/note"
 import { NoteService } from "../../../bindings/collections/internal/service"
 import type { Note } from "../../../bindings/collections/internal/model"
 import { callService } from "@/lib/async"
+import { ConfirmDialog } from "@/components/ConfirmDialog"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Save, Loader2 } from "lucide-react"
+import { Save, Trash2, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 
 interface NoteEditorProps {
@@ -20,8 +21,11 @@ export function NoteEditor({ note }: NoteEditorProps) {
   const [dirty, setDirty] = useState(false)
   const dirtyRef = useRef(false)
 
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+
   const refreshList = useNoteStore((s) => s.refreshList)
   const selectNote = useNoteStore((s) => s.selectNote)
+  const deleteNote = useNoteStore((s) => s.deleteNote)
 
   useEffect(() => {
     setTitle(note.title)
@@ -101,7 +105,7 @@ export function NoteEditor({ note }: NoteEditorProps) {
 
   return (
     <div className="flex flex-col h-full">
-      {/* 顶部：标题 + 保存按钮 */}
+      {/* 顶部：标题 + 操作按钮 */}
       <div className="flex items-center gap-3 px-6 py-4 border-b border-border">
         <Input
           value={title}
@@ -119,7 +123,27 @@ export function NoteEditor({ note }: NoteEditorProps) {
           {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
           <span className="ml-1.5">保存</span>
         </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setShowDeleteConfirm(true)}
+          className="shrink-0 text-destructive hover:text-destructive"
+        >
+          <Trash2 size={16} />
+        </Button>
       </div>
+
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        title="删除笔记"
+        description={`确定删除「${note.title}」？此操作不可撤销。`}
+        onConfirm={async () => {
+          dirtyRef.current = false
+          const err = await deleteNote(note.id)
+          if (err) toast.error(err)
+        }}
+      />
 
       {/* Markdown 编辑器 */}
       <div className="flex-1 overflow-hidden" data-color-mode="light">
