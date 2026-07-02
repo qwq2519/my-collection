@@ -1,6 +1,8 @@
 package service
 
 import (
+	"sync"
+
 	"collections/internal/model"
 	"collections/internal/store"
 	"collections/internal/util"
@@ -8,11 +10,12 @@ import (
 
 // SettingService 应用设置业务逻辑层。
 // 公开方法即前端可调用接口（通过 Wails 绑定）。
+// FFmpegBinPath 由 scan worker goroutine 调用，与前端调用存在并发，
+// 因此 cachedFFmpeg 通过 ffmpegMu 保护。
 type SettingService struct {
 	Store *store.Store
 
-	// cachedFFmpeg 缓存 ffmpeg 检测结果，避免每次都执行子进程。
-	// RecheckFFmpeg 清除缓存后重新检测。
+	ffmpegMu     sync.RWMutex
 	cachedFFmpeg *model.FFmpegStatus
 }
 
@@ -28,6 +31,15 @@ func (s *SettingService) GetSettings() (_ *model.AppSettings, err error) {
 
 // GetFFmpegStatus 返回 ffmpeg 可用状态，首次调用后缓存结果
 func (s *SettingService) GetFFmpegStatus() model.FFmpegStatus {
+	s.ffmpegMu.RLock()
+	cached := s.cachedFFmpeg
+	s.ffmpegMu.RUnlock()
+	if cached != nil {
+		return *cached
+	}
+
+	s.ffmpegMu.Lock()
+	defer s.ffmpegMu.Unlock()
 	if s.cachedFFmpeg != nil {
 		return *s.cachedFFmpeg
 	}
@@ -38,7 +50,9 @@ func (s *SettingService) GetFFmpegStatus() model.FFmpegStatus {
 
 // RecheckFFmpeg 清除缓存并重新检测 ffmpeg（用户安装后点击"重新检测"）
 func (s *SettingService) RecheckFFmpeg() model.FFmpegStatus {
+	s.ffmpegMu.Lock()
 	s.cachedFFmpeg = nil
+	s.ffmpegMu.Unlock()
 	return s.GetFFmpegStatus()
 }
 
