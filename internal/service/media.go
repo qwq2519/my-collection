@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -457,7 +456,7 @@ func mediaBleveFields(folderID, relPath string, file model.MediaFile) map[string
 		"_type":      "media",
 		"folder_id":  folderID,
 		"media_type": file.MediaType,
-		"filename":   path.Base(relPath),
+		"filename":   filepath.Base(filepath.FromSlash(relPath)),
 		"tags":       file.Tags,
 		"description": file.Description,
 		"updated_at": file.UpdatedAt,
