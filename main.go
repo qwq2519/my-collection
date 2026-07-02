@@ -58,7 +58,11 @@ func main() {
 	go mediaService.ScanAllFolders()
 
 	app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title: "资料收藏夹",
+		Title:    "资料收藏夹",
+		Width:    1100,
+		Height:   720,
+		MinWidth: 780,
+		MinHeight: 500,
 		Mac: application.MacWindow{
 			InvisibleTitleBarHeight: 50,
 			Backdrop:                application.MacBackdropTranslucent,
