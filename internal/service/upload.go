@@ -69,7 +69,7 @@ func (u *UploadService) UploadFile(req model.UploadFileReq) (_ *model.UploadFile
 		if err := util.AtomicWrite(savePath, req.Data, 0644); err != nil {
 			return nil, fmt.Errorf("save file failed: %w", err)
 		}
-		if isImageExt(ext) {
+		if model.IsImageExt(ext) {
 			generateThumbnail(savePath)
 		}
 		// TODO: GIF 动画预览（当前仅取首帧生成静态缩略图，后续生成 .preview.webp 动画）
@@ -142,28 +142,15 @@ func fitDimensions(w, h, maxDim int) (int, int) {
 
 // --- 扩展名校验 ---
 
-var imageExts = map[string]bool{
-	".jpg": true, ".jpeg": true, ".png": true, ".gif": true,
-	".webp": true, ".bmp": true, ".avif": true, ".svg": true,
-}
-
-var videoExts = map[string]bool{
-	".mp4": true, ".mkv": true, ".avi": true, ".mov": true,
-	".webm": true, ".wmv": true, ".flv": true,
-}
-
-// isImageExt 判断扩展名是否为支持的图片格式
-func isImageExt(ext string) bool { return imageExts[ext] }
-
 // isAllowedUploadExt 按 scene 校验文件扩展名是否在允许范围内
 func isAllowedUploadExt(scene, ext string) bool {
 	switch scene {
 	case "site-icon":
-		return isImageExt(ext)
+		return model.IsImageExt(ext)
 	case "site-attachment", "bm-attachment":
-		return isImageExt(ext) || videoExts[ext] || ext == ".txt"
+		return model.IsImageExt(ext) || model.IsVideoExt(ext) || ext == ".txt"
 	case "note-image":
-		return isImageExt(ext)
+		return model.IsImageExt(ext)
 	default:
 		return false
 	}

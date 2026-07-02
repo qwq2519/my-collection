@@ -54,3 +54,15 @@ func IsSupportedMediaExt(ext string) bool {
 	_, ok := fileExtToMediaType[ext]
 	return ok
 }
+
+// IsImageExt 判断扩展名是否为支持的图片格式
+func IsImageExt(ext string) bool {
+	mt, ok := fileExtToMediaType[ext]
+	return ok && mt == MediaTypeImage
+}
+
+// IsVideoExt 判断扩展名是否为支持的视频格式
+func IsVideoExt(ext string) bool {
+	mt, ok := fileExtToMediaType[ext]
+	return ok && mt == MediaTypeVideo
+}
