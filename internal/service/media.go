@@ -499,9 +499,6 @@ func (m *MediaService) GetMediaFile(folderID, relPath string) (_ *model.MediaFil
 		return nil, fmt.Errorf("file not found: %s", relPath)
 	}
 
-	if file.Tags == nil {
-		file.Tags = []string{}
-	}
 	item := &model.MediaFileItem{
 		MediaFile: file,
 		FolderID:  folderID,
