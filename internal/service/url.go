@@ -129,9 +129,6 @@ func (u *URLService) SearchURL(req model.SearchURLReq) (_ *model.SearchURLResult
 // 归一化标签并维护 url_tag 注册表 count。
 func (u *URLService) CreateBookmark(req model.CreateBookmarkReq) (_ *model.Bookmark, err error) {
 	defer logError(&err)
-	if err := util.ValidateURL(req.URL); err != nil {
-		return nil, err
-	}
 	if strings.TrimSpace(req.Title) == "" {
 		return nil, fmt.Errorf("bookmark title required")
 	}
@@ -324,9 +321,6 @@ func (u *URLService) LookupSiteByURL(req model.LookupSiteByURLReq) (_ *model.Loo
 	defer logError(&err)
 	if strings.TrimSpace(req.URL) == "" {
 		return nil, fmt.Errorf("URL required")
-	}
-	if err := util.ValidateURL(req.URL); err != nil {
-		return nil, err
 	}
 
 	domain, err := util.ExtractDomain(req.URL)

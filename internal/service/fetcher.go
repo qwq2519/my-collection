@@ -36,9 +36,6 @@ func (u *URLService) FetchMetadata(req model.FetchMetaReq) (_ *model.FetchMetaRe
 	if strings.TrimSpace(req.URL) == "" {
 		return nil, fmt.Errorf("URL required")
 	}
-	if err := util.ValidateURL(req.URL); err != nil {
-		return nil, err
-	}
 
 	domain, err := util.ExtractDomain(req.URL)
 	if err != nil {
