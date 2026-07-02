@@ -116,6 +116,7 @@ export function SiteForm({ site, onSave, onCancel }: SiteFormProps) {
               description: values.description || null,
               tags,
               icon: fetchedIcon || site.icon || undefined,
+              attachments: buildAttachmentsForSubmit(site, attachments),
             })
         : () =>
             URLService.CreateSite({
@@ -225,6 +226,22 @@ export function SiteForm({ site, onSave, onCancel }: SiteFormProps) {
 }
 
 // ─── Internal ───────────────────────────────────────────────
+
+/**
+ * 根据前端 attachments 的当前顺序，从原始 site.attachments 重建完整 Attachment 列表。
+ * 新上传的文件（原始列表中不存在）用 filename 生成最小 Attachment 对象。
+ */
+function buildAttachmentsForSubmit(
+  site: Site,
+  currentFiles: { filename: string; path: string }[],
+) {
+  const origMap = new Map(arr(site.attachments).map((a) => [a.filename, a]))
+  return currentFiles.map((f) => {
+    const orig = origMap.get(f.filename)
+    if (orig) return orig
+    return { filename: f.filename, label: "", size: 0, uploaded_at: "" }
+  })
+}
 
 /** URL 输入字段：输入框 + 抓取按钮 + 错误提示 + 标准化预览 */
 function URLField({
