@@ -128,13 +128,17 @@ func (m *MediaService) RemoveFolder(id string) (err error) {
 		return fmt.Errorf("folder not found: %w", err)
 	}
 
-	m.cleanFolderTags(folder.ID)
+	meta, err := m.Store.ReadMediaMeta(folder.ID)
+	if err != nil {
+		slog.Warn("skip tag/index cleanup: cannot read media meta", "folder_id", folder.ID, "err", err)
+	} else {
+		m.cleanFolderTags(folder.ID, meta)
+		m.deleteFolderIndex(folder.ID, meta)
+	}
 
 	if err := m.Store.DeleteFolder(id); err != nil {
 		return fmt.Errorf("delete folder registry: %w", err)
 	}
-
-	m.deleteFolderIndex(folder.ID)
 
 	if err := m.Store.RemoveMediaFolderDir(id); err != nil {
 		slog.Warn("failed to remove media folder dir", "id", id, "err", err)
@@ -145,13 +149,7 @@ func (m *MediaService) RemoveFolder(id string) (err error) {
 }
 
 // cleanFolderTags 汇总文件夹下所有文件的标签，批量递减 media_tag count
-func (m *MediaService) cleanFolderTags(folderID string) {
-	meta, err := m.Store.ReadMediaMeta(folderID)
-	if err != nil {
-		slog.Warn("skip tag cleanup: cannot read media meta", "folder_id", folderID, "err", err)
-		return
-	}
-
+func (m *MediaService) cleanFolderTags(folderID string, meta *model.MediaMeta) {
 	deltas := make(map[string]int)
 	for _, file := range meta.Files {
 		for _, tag := range file.Tags {
@@ -167,12 +165,7 @@ func (m *MediaService) cleanFolderTags(folderID string) {
 }
 
 // deleteFolderIndex 从 Bleve 中删除该文件夹下所有媒体文档
-func (m *MediaService) deleteFolderIndex(folderID string) {
-	meta, err := m.Store.ReadMediaMeta(folderID)
-	if err != nil {
-		return
-	}
-
+func (m *MediaService) deleteFolderIndex(folderID string, meta *model.MediaMeta) {
 	for relPath := range meta.Files {
 		docID := folderID + "/" + relPath
 		if err := m.Store.DeleteDoc(docID, "media"); err != nil {
