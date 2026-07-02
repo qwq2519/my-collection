@@ -33,20 +33,17 @@ func (m *MediaService) initScanner() {
 	go m.scanWorker()
 }
 
-// enqueue 向扫描队列提交请求（非阻塞）。
-// scanCh 为 nil 时静默跳过（测试模式）。队列满时丢弃请求并记录日志。
+// enqueue 向扫描队列提交请求。scanCh 为 nil 时静默跳过（测试模式）。
+// 使用阻塞发送保证请求不丢失：buffer=64 对桌面应用足够，
+// 阻塞仅在用户极端高频提交且 worker 未消化时发生。
 func (m *MediaService) enqueue(req scanRequest) {
 	if m.scanCh == nil {
 		return
 	}
-	select {
-	case m.scanCh <- req:
-		m.state.mu.Lock()
-		m.state.queued++
-		m.state.mu.Unlock()
-	default:
-		slog.Warn("scan queue full, request dropped", "folder_ids", req.FolderIDs)
-	}
+	m.state.mu.Lock()
+	m.state.queued++
+	m.state.mu.Unlock()
+	m.scanCh <- req
 }
 
 // scanWorker 唯一扫描 goroutine，串行处理所有扫描请求
