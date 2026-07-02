@@ -23,7 +23,10 @@ type MediaService struct {
 	ffmpegPath string // 懒检测，首次扫描时缓存
 }
 
-// detectFFmpeg 返回 ffmpeg 可执行文件路径，不可用时返回空串
+// detectFFmpeg 返回 ffmpeg 可执行文件路径，不可用时返回空串。
+// NOTE: 当前实现对 m.ffmpegPath 的读写非并发安全。目前所有调用方
+// （ScanFolder / ScanAllFolders）均为串行执行，无竞争风险；若未来
+// 改为并发扫描，需用 sync.Once 替代手写懒初始化。
 func (m *MediaService) detectFFmpeg() string {
 	if m.ffmpegPath != "" {
 		return m.ffmpegPath
