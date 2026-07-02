@@ -116,7 +116,7 @@ interface URLState {
   search: (query: string) => Promise<void>
   loadMoreSearch: () => Promise<void>
   clearSearch: () => void
-  selectSearchResult: (item: SiteWithBookmarks) => void
+  selectSearchResult: (item: SiteWithBookmarks) => Promise<void>
   setSelectedTags: (tags: string[]) => void
 }
 
@@ -386,19 +386,32 @@ export const useURLStore = create<URLState>((set, get) => ({
   },
 
   /**
-   * 选中搜索结果中的一条：直接用搜索返回的数据填充右栏，
-   * 不再额外请求后端（因为搜索结果中已包含站点+命中书签）。
+   * 选中搜索结果中的一条：先用搜索数据填充站点信息（避免白屏），
+   * 再异步加载完整书签列表以确保数据完整可翻页。
    */
-  selectSearchResult: (item) => {
+  selectSearchResult: async (item) => {
+    const siteId = item.site.id
     set({
-      detailView: { type: "site", siteId: item.site.id },
+      detailView: { type: "site", siteId },
       currentSite: item.site,
       bookmarks: item.bookmarks,
       bookmarksTotal: item.bookmarks.length,
       bookmarksPage: 1,
       bookmarksHasMore: false,
-      bookmarksLoading: false,
+      bookmarksLoading: true,
       currentBookmark: null,
+    })
+    const [result] = await callService(() =>
+      URLService.ListBookmarks({ site_id: siteId, page: 1, page_size: PAGE_SIZE }),
+    )
+    if (getActiveSiteId(get().detailView) !== siteId) return
+    const { items, total, hasMore } = unpackList(result)
+    set({
+      bookmarks: items,
+      bookmarksTotal: total,
+      bookmarksPage: 1,
+      bookmarksHasMore: hasMore,
+      bookmarksLoading: false,
     })
   },
 
