@@ -1,9 +1,14 @@
 package service
 
 import (
+	"bytes"
+	"image"
+	"image/jpeg"
+	"image/png"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"collections/internal/model"
 )
@@ -349,6 +354,338 @@ func TestMediaService_UpdateFolderPathSameLocation(t *testing.T) {
 	if err != nil {
 		t.Errorf("update to same path should succeed: %v", err)
 	}
+}
+
+// ────────────────────── ScanFolder ──────────────────────
+
+func setupFolderWithFiles(t *testing.T, svc *MediaService, files map[string][]byte) *model.MediaFolder {
+	t.Helper()
+	dir := t.TempDir()
+	for relPath, content := range files {
+		absPath := filepath.Join(dir, filepath.FromSlash(relPath))
+		os.MkdirAll(filepath.Dir(absPath), 0755)
+		if err := os.WriteFile(absPath, content, 0644); err != nil {
+			t.Fatalf("write %s: %v", relPath, err)
+		}
+	}
+	folder, err := svc.AddFolder(model.AddFolderReq{Path: dir, Name: "test"})
+	if err != nil {
+		t.Fatalf("AddFolder: %v", err)
+	}
+	return folder
+}
+
+func TestMediaService_ScanFolderValidation(t *testing.T) {
+	svc := newMediaService(t)
+	_, err := svc.ScanFolder("")
+	if err == nil {
+		t.Error("ScanFolder should reject empty ID")
+	}
+}
+
+func TestMediaService_ScanFolderFirstScan(t *testing.T) {
+	svc := newMediaService(t)
+	folder := setupFolderWithFiles(t, svc, map[string][]byte{
+		"photo.jpg": createJPEGBytes(t, 100, 80),
+		"image.png": createPNGBytes(t, 50, 50),
+	})
+
+	result, err := svc.ScanFolder(folder.ID)
+	if err != nil {
+		t.Fatalf("ScanFolder: %v", err)
+	}
+	if result.Added != 2 {
+		t.Errorf("Added = %d, want 2", result.Added)
+	}
+	if result.Removed != 0 {
+		t.Errorf("Removed = %d, want 0", result.Removed)
+	}
+
+	meta, err := svc.Store.ReadMediaMeta(folder.ID)
+	if err != nil {
+		t.Fatalf("ReadMediaMeta: %v", err)
+	}
+	if len(meta.Files) != 2 {
+		t.Errorf("meta files = %d, want 2", len(meta.Files))
+	}
+
+	f := meta.Files["photo.jpg"]
+	if f.MediaType != "image" {
+		t.Errorf("media_type = %q, want image", f.MediaType)
+	}
+	if f.Width == nil || *f.Width != 100 {
+		t.Errorf("width = %v, want 100", f.Width)
+	}
+	if f.Height == nil || *f.Height != 80 {
+		t.Errorf("height = %v, want 80", f.Height)
+	}
+
+	updated, _ := svc.Store.GetFolder(folder.ID)
+	if updated.FileCount != 2 {
+		t.Errorf("FileCount = %d, want 2", updated.FileCount)
+	}
+	if updated.LastScanAt.IsZero() {
+		t.Error("LastScanAt should be set")
+	}
+}
+
+func TestMediaService_ScanFolderNoChange(t *testing.T) {
+	svc := newMediaService(t)
+	folder := setupFolderWithFiles(t, svc, map[string][]byte{
+		"a.jpg": createJPEGBytes(t, 10, 10),
+	})
+
+	svc.ScanFolder(folder.ID)
+
+	result, err := svc.ScanFolder(folder.ID)
+	if err != nil {
+		t.Fatalf("second ScanFolder: %v", err)
+	}
+	if result.Added+result.Removed+result.Modified != 0 {
+		t.Errorf("no-change scan: added=%d removed=%d modified=%d, want all 0",
+			result.Added, result.Removed, result.Modified)
+	}
+}
+
+func TestMediaService_ScanFolderFileAdded(t *testing.T) {
+	svc := newMediaService(t)
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "old.jpg"), createJPEGBytes(t, 10, 10), 0644)
+
+	folder, _ := svc.AddFolder(model.AddFolderReq{Path: dir})
+	svc.ScanFolder(folder.ID)
+
+	os.WriteFile(filepath.Join(dir, "new.png"), createPNGBytes(t, 20, 20), 0644)
+	result, err := svc.ScanFolder(folder.ID)
+	if err != nil {
+		t.Fatalf("ScanFolder: %v", err)
+	}
+	if result.Added != 1 {
+		t.Errorf("Added = %d, want 1", result.Added)
+	}
+
+	meta, _ := svc.Store.ReadMediaMeta(folder.ID)
+	if len(meta.Files) != 2 {
+		t.Errorf("meta files = %d, want 2", len(meta.Files))
+	}
+}
+
+func TestMediaService_ScanFolderFileRemoved(t *testing.T) {
+	svc := newMediaService(t)
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "keep.jpg"), createJPEGBytes(t, 10, 10), 0644)
+	os.WriteFile(filepath.Join(dir, "delete.png"), createPNGBytes(t, 10, 10), 0644)
+
+	folder, _ := svc.AddFolder(model.AddFolderReq{Path: dir})
+	svc.ScanFolder(folder.ID)
+
+	os.Remove(filepath.Join(dir, "delete.png"))
+	result, err := svc.ScanFolder(folder.ID)
+	if err != nil {
+		t.Fatalf("ScanFolder: %v", err)
+	}
+	if result.Removed != 1 {
+		t.Errorf("Removed = %d, want 1", result.Removed)
+	}
+
+	meta, _ := svc.Store.ReadMediaMeta(folder.ID)
+	if len(meta.Files) != 1 {
+		t.Errorf("meta files = %d, want 1", len(meta.Files))
+	}
+	if _, exists := meta.Files["delete.png"]; exists {
+		t.Error("deleted file should not be in meta")
+	}
+
+	updated, _ := svc.Store.GetFolder(folder.ID)
+	if updated.FileCount != 1 {
+		t.Errorf("FileCount = %d, want 1", updated.FileCount)
+	}
+}
+
+func TestMediaService_ScanFolderTagCleanupOnRemove(t *testing.T) {
+	svc := newMediaService(t)
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "tagged.jpg"), createJPEGBytes(t, 10, 10), 0644)
+
+	folder, _ := svc.AddFolder(model.AddFolderReq{Path: dir})
+	svc.ScanFolder(folder.ID)
+
+	meta, _ := svc.Store.ReadMediaMeta(folder.ID)
+	f := meta.Files["tagged.jpg"]
+	f.Tags = []string{"landscape", "nature"}
+	meta.Files["tagged.jpg"] = f
+	svc.Store.WriteMediaMeta(folder.ID, meta)
+	svc.Store.AdjustTagCount("media_tag", "landscape", 1)
+	svc.Store.AdjustTagCount("media_tag", "nature", 1)
+
+	os.Remove(filepath.Join(dir, "tagged.jpg"))
+	result, err := svc.ScanFolder(folder.ID)
+	if err != nil {
+		t.Fatalf("ScanFolder: %v", err)
+	}
+	if result.Removed != 1 {
+		t.Errorf("Removed = %d, want 1", result.Removed)
+	}
+
+	tag, _ := svc.Store.GetTag("media_tag", "landscape")
+	if tag != nil && tag.Count > 0 {
+		t.Errorf("landscape count = %d, want 0", tag.Count)
+	}
+	tag, _ = svc.Store.GetTag("media_tag", "nature")
+	if tag != nil && tag.Count > 0 {
+		t.Errorf("nature count = %d, want 0", tag.Count)
+	}
+}
+
+func TestMediaService_ScanFolderPreservesUserData(t *testing.T) {
+	svc := newMediaService(t)
+	dir := t.TempDir()
+	f := filepath.Join(dir, "photo.jpg")
+	os.WriteFile(f, createJPEGBytes(t, 10, 10), 0644)
+
+	folder, _ := svc.AddFolder(model.AddFolderReq{Path: dir})
+	svc.ScanFolder(folder.ID)
+
+	meta, _ := svc.Store.ReadMediaMeta(folder.ID)
+	file := meta.Files["photo.jpg"]
+	file.Tags = []string{"vacation"}
+	file.Description = "Beach photo"
+	meta.Files["photo.jpg"] = file
+	svc.Store.WriteMediaMeta(folder.ID, meta)
+
+	time.Sleep(10 * time.Millisecond)
+	os.WriteFile(f, createJPEGBytes(t, 20, 20), 0644)
+
+	result, err := svc.ScanFolder(folder.ID)
+	if err != nil {
+		t.Fatalf("ScanFolder: %v", err)
+	}
+	if result.Modified != 1 {
+		t.Errorf("Modified = %d, want 1", result.Modified)
+	}
+
+	meta, _ = svc.Store.ReadMediaMeta(folder.ID)
+	updated := meta.Files["photo.jpg"]
+	if len(updated.Tags) != 1 || updated.Tags[0] != "vacation" {
+		t.Errorf("tags = %v, want [vacation]", updated.Tags)
+	}
+	if updated.Description != "Beach photo" {
+		t.Errorf("description = %q, want %q", updated.Description, "Beach photo")
+	}
+}
+
+func TestMediaService_ScanFolderSubDir(t *testing.T) {
+	svc := newMediaService(t)
+	dir := t.TempDir()
+	sub := filepath.Join(dir, "sub")
+	os.Mkdir(sub, 0755)
+	os.WriteFile(filepath.Join(sub, "deep.jpg"), createJPEGBytes(t, 10, 10), 0644)
+
+	folder, _ := svc.AddFolder(model.AddFolderReq{Path: dir})
+	result, err := svc.ScanFolder(folder.ID)
+	if err != nil {
+		t.Fatalf("ScanFolder: %v", err)
+	}
+	if result.Added != 1 {
+		t.Errorf("Added = %d, want 1", result.Added)
+	}
+
+	meta, _ := svc.Store.ReadMediaMeta(folder.ID)
+	if _, ok := meta.Files["sub/deep.jpg"]; !ok {
+		t.Error("sub/deep.jpg should be in meta")
+	}
+}
+
+func TestMediaService_ScanFolderGeneratesThumbnail(t *testing.T) {
+	svc := newMediaService(t)
+	folder := setupFolderWithFiles(t, svc, map[string][]byte{
+		"photo.jpg": createJPEGBytes(t, 200, 150),
+	})
+
+	svc.ScanFolder(folder.ID)
+
+	meta, _ := svc.Store.ReadMediaMeta(folder.ID)
+	f := meta.Files["photo.jpg"]
+	if f.Thumbnail == "" {
+		t.Error("thumbnail should be set")
+	}
+
+	thumbPath := filepath.Join(svc.Store.PersistDir(), "media-folders", folder.ID, "thumbnails", f.Thumbnail)
+	if _, err := os.Stat(thumbPath); os.IsNotExist(err) {
+		t.Error("thumbnail file should exist on disk")
+	}
+}
+
+func TestMediaService_ScanAllFolders(t *testing.T) {
+	svc := newMediaService(t)
+	dir1 := t.TempDir()
+	dir2 := t.TempDir()
+	os.WriteFile(filepath.Join(dir1, "a.jpg"), createJPEGBytes(t, 10, 10), 0644)
+	os.WriteFile(filepath.Join(dir2, "b.png"), createPNGBytes(t, 10, 10), 0644)
+
+	svc.AddFolder(model.AddFolderReq{Path: dir1, Name: "one"})
+	svc.AddFolder(model.AddFolderReq{Path: dir2, Name: "two"})
+
+	results, err := svc.ScanAllFolders()
+	if err != nil {
+		t.Fatalf("ScanAllFolders: %v", err)
+	}
+	if len(results) != 2 {
+		t.Errorf("results len = %d, want 2", len(results))
+	}
+
+	totalAdded := 0
+	for _, r := range results {
+		totalAdded += r.Added
+	}
+	if totalAdded != 2 {
+		t.Errorf("total added = %d, want 2", totalAdded)
+	}
+}
+
+// ────────────────────── mediaBleveFields ──────────────────────
+
+func TestMediaBleveFields(t *testing.T) {
+	file := model.MediaFile{
+		MediaType:   "image",
+		Tags:        []string{"landscape"},
+		Description: "test",
+	}
+	fields := mediaBleveFields("folder-id", "sub/photo.jpg", file)
+	if fields["_type"] != "media" {
+		t.Errorf("_type = %v, want media", fields["_type"])
+	}
+	if fields["folder_id"] != "folder-id" {
+		t.Errorf("folder_id = %v", fields["folder_id"])
+	}
+	if fields["filename"] != "photo.jpg" {
+		t.Errorf("filename = %v, want photo.jpg", fields["filename"])
+	}
+	if fields["media_type"] != "image" {
+		t.Errorf("media_type = %v", fields["media_type"])
+	}
+}
+
+// ────────────────────── Test Image Helpers ──────────────────────
+
+func createJPEGBytes(t *testing.T, w, h int) []byte {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, w, h))
+	var buf bytes.Buffer
+	if err := jpeg.Encode(&buf, img, nil); err != nil {
+		t.Fatalf("encode jpeg: %v", err)
+	}
+	return buf.Bytes()
+}
+
+func createPNGBytes(t *testing.T, w, h int) []byte {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, w, h))
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		t.Fatalf("encode png: %v", err)
+	}
+	return buf.Bytes()
 }
 
 // ────────────────────── isSubPath ──────────────────────
