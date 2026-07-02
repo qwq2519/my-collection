@@ -780,22 +780,23 @@ func TestMediaService_GetMediaFileNotFound(t *testing.T) {
 	}
 }
 
-// ────────────────────── UpdateMediaTags ──────────────────────
+// ────────────────────── UpdateMediaFile ──────────────────────
 
-func TestMediaService_UpdateMediaTags(t *testing.T) {
+func TestMediaService_UpdateMediaFileTags(t *testing.T) {
 	svc := newMediaService(t)
 	folder := setupFolderWithFiles(t, svc, map[string][]byte{
 		"photo.jpg": createJPEGBytes(t, 10, 10),
 	})
 	svc.ScanFolder(folder.ID)
 
-	item, err := svc.UpdateMediaTags(model.UpdateMediaTagsReq{
+	tags := []string{"landscape", "Nature"}
+	item, err := svc.UpdateMediaFile(model.UpdateMediaFileReq{
 		FolderID: folder.ID,
 		RelPath:  "photo.jpg",
-		Tags:     []string{"landscape", "Nature"},
+		Tags:     &tags,
 	})
 	if err != nil {
-		t.Fatalf("UpdateMediaTags: %v", err)
+		t.Fatalf("UpdateMediaFile: %v", err)
 	}
 	if len(item.Tags) != 2 {
 		t.Errorf("tags = %v, want 2 items", item.Tags)
@@ -810,21 +811,23 @@ func TestMediaService_UpdateMediaTags(t *testing.T) {
 	}
 }
 
-func TestMediaService_UpdateMediaTagsReplacesOld(t *testing.T) {
+func TestMediaService_UpdateMediaFileTagsReplacesOld(t *testing.T) {
 	svc := newMediaService(t)
 	folder := setupFolderWithFiles(t, svc, map[string][]byte{
 		"photo.jpg": createJPEGBytes(t, 10, 10),
 	})
 	svc.ScanFolder(folder.ID)
 
-	svc.UpdateMediaTags(model.UpdateMediaTagsReq{
+	oldTags := []string{"old-tag"}
+	svc.UpdateMediaFile(model.UpdateMediaFileReq{
 		FolderID: folder.ID, RelPath: "photo.jpg",
-		Tags: []string{"old-tag"},
+		Tags: &oldTags,
 	})
 
-	svc.UpdateMediaTags(model.UpdateMediaTagsReq{
+	newTags := []string{"new-tag"}
+	svc.UpdateMediaFile(model.UpdateMediaFileReq{
 		FolderID: folder.ID, RelPath: "photo.jpg",
-		Tags: []string{"new-tag"},
+		Tags: &newTags,
 	})
 
 	item, _ := svc.GetMediaFile(folder.ID, "photo.jpg")
@@ -842,13 +845,83 @@ func TestMediaService_UpdateMediaTagsReplacesOld(t *testing.T) {
 	}
 }
 
-func TestMediaService_UpdateMediaTagsValidation(t *testing.T) {
+func TestMediaService_UpdateMediaFileDescription(t *testing.T) {
+	svc := newMediaService(t)
+	folder := setupFolderWithFiles(t, svc, map[string][]byte{
+		"photo.jpg": createJPEGBytes(t, 10, 10),
+	})
+	svc.ScanFolder(folder.ID)
+
+	desc := "Beautiful sunset"
+	item, err := svc.UpdateMediaFile(model.UpdateMediaFileReq{
+		FolderID:    folder.ID,
+		RelPath:     "photo.jpg",
+		Description: &desc,
+	})
+	if err != nil {
+		t.Fatalf("UpdateMediaFile: %v", err)
+	}
+	if item.Description != "Beautiful sunset" {
+		t.Errorf("description = %q, want %q", item.Description, "Beautiful sunset")
+	}
+
+	got, _ := svc.GetMediaFile(folder.ID, "photo.jpg")
+	if got.Description != "Beautiful sunset" {
+		t.Errorf("persisted description = %q", got.Description)
+	}
+}
+
+func TestMediaService_UpdateMediaFileTagsAndDesc(t *testing.T) {
+	svc := newMediaService(t)
+	folder := setupFolderWithFiles(t, svc, map[string][]byte{
+		"photo.jpg": createJPEGBytes(t, 10, 10),
+	})
+	svc.ScanFolder(folder.ID)
+
+	tags := []string{"travel"}
+	desc := "Tokyo tower"
+	item, err := svc.UpdateMediaFile(model.UpdateMediaFileReq{
+		FolderID:    folder.ID,
+		RelPath:     "photo.jpg",
+		Tags:        &tags,
+		Description: &desc,
+	})
+	if err != nil {
+		t.Fatalf("UpdateMediaFile: %v", err)
+	}
+	if len(item.Tags) != 1 || item.Tags[0] != "travel" {
+		t.Errorf("tags = %v, want [travel]", item.Tags)
+	}
+	if item.Description != "Tokyo tower" {
+		t.Errorf("description = %q", item.Description)
+	}
+}
+
+func TestMediaService_UpdateMediaFileNoop(t *testing.T) {
+	svc := newMediaService(t)
+	folder := setupFolderWithFiles(t, svc, map[string][]byte{
+		"photo.jpg": createJPEGBytes(t, 10, 10),
+	})
+	svc.ScanFolder(folder.ID)
+
+	item, err := svc.UpdateMediaFile(model.UpdateMediaFileReq{
+		FolderID: folder.ID, RelPath: "photo.jpg",
+	})
+	if err != nil {
+		t.Fatalf("noop UpdateMediaFile: %v", err)
+	}
+	if item == nil {
+		t.Error("should return current item on noop")
+	}
+}
+
+func TestMediaService_UpdateMediaFileValidation(t *testing.T) {
 	svc := newMediaService(t)
 
-	if _, err := svc.UpdateMediaTags(model.UpdateMediaTagsReq{FolderID: ""}); err == nil {
+	if _, err := svc.UpdateMediaFile(model.UpdateMediaFileReq{FolderID: ""}); err == nil {
 		t.Error("should reject empty folder ID")
 	}
-	if _, err := svc.UpdateMediaTags(model.UpdateMediaTagsReq{FolderID: "x", RelPath: ""}); err == nil {
+	if _, err := svc.UpdateMediaFile(model.UpdateMediaFileReq{FolderID: "x", RelPath: ""}); err == nil {
 		t.Error("should reject empty relPath")
 	}
 }
@@ -894,9 +967,10 @@ func TestMediaService_BatchUpdateMediaTagsDedup(t *testing.T) {
 	})
 	svc.ScanFolder(folder.ID)
 
-	svc.UpdateMediaTags(model.UpdateMediaTagsReq{
+	existingTags := []string{"existing"}
+	svc.UpdateMediaFile(model.UpdateMediaFileReq{
 		FolderID: folder.ID, RelPath: "a.jpg",
-		Tags: []string{"existing"},
+		Tags: &existingTags,
 	})
 
 	err := svc.BatchUpdateMediaTags(model.BatchUpdateMediaTagsReq{
@@ -921,44 +995,6 @@ func TestMediaService_BatchUpdateMediaTagsEmpty(t *testing.T) {
 	})
 	if err != nil {
 		t.Errorf("empty batch should return nil: %v", err)
-	}
-}
-
-// ────────────────────── UpdateMediaDescription ──────────────────────
-
-func TestMediaService_UpdateMediaDescription(t *testing.T) {
-	svc := newMediaService(t)
-	folder := setupFolderWithFiles(t, svc, map[string][]byte{
-		"photo.jpg": createJPEGBytes(t, 10, 10),
-	})
-	svc.ScanFolder(folder.ID)
-
-	item, err := svc.UpdateMediaDescription(model.UpdateMediaDescReq{
-		FolderID:    folder.ID,
-		RelPath:     "photo.jpg",
-		Description: "Beautiful sunset",
-	})
-	if err != nil {
-		t.Fatalf("UpdateMediaDescription: %v", err)
-	}
-	if item.Description != "Beautiful sunset" {
-		t.Errorf("description = %q, want %q", item.Description, "Beautiful sunset")
-	}
-
-	got, _ := svc.GetMediaFile(folder.ID, "photo.jpg")
-	if got.Description != "Beautiful sunset" {
-		t.Errorf("persisted description = %q", got.Description)
-	}
-}
-
-func TestMediaService_UpdateMediaDescriptionValidation(t *testing.T) {
-	svc := newMediaService(t)
-
-	if _, err := svc.UpdateMediaDescription(model.UpdateMediaDescReq{FolderID: ""}); err == nil {
-		t.Error("should reject empty folder ID")
-	}
-	if _, err := svc.UpdateMediaDescription(model.UpdateMediaDescReq{FolderID: "x", RelPath: ""}); err == nil {
-		t.Error("should reject empty relPath")
 	}
 }
 

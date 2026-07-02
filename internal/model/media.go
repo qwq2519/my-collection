@@ -89,23 +89,18 @@ type MediaFileItem struct {
 	PreviewURL   string `json:"preview_url"`
 }
 
-// UpdateMediaTagsReq 更新单个媒体文件标签
-type UpdateMediaTagsReq struct {
-	FolderID string   `json:"folder_id"`
-	RelPath  string   `json:"rel_path"`
-	Tags     []string `json:"tags"`
+// UpdateMediaFileReq 更新单个媒体文件的标签和/或描述。
+// Tags/Description 为 nil 表示不更新该字段。
+type UpdateMediaFileReq struct {
+	FolderID    string    `json:"folder_id"`
+	RelPath     string    `json:"rel_path"`
+	Tags        *[]string `json:"tags,omitempty"`
+	Description *string   `json:"description,omitempty"`
 }
 
-// BatchUpdateMediaTagsReq 批量为媒体文件追加标签
+// BatchUpdateMediaTagsReq 批量为媒体文件追加标签（不覆盖已有）
 type BatchUpdateMediaTagsReq struct {
 	FolderID string   `json:"folder_id"`
 	RelPaths []string `json:"rel_paths"`
 	Tags     []string `json:"tags"`
-}
-
-// UpdateMediaDescReq 更新媒体文件描述
-type UpdateMediaDescReq struct {
-	FolderID    string `json:"folder_id"`
-	RelPath     string `json:"rel_path"`
-	Description string `json:"description"`
 }

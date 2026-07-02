@@ -562,8 +562,10 @@ func (m *MediaService) fillItemURLs(item *model.MediaFileItem) {
 
 // ────────────────────── Tags & Description ──────────────────────
 
-// UpdateMediaTags 替换单个媒体文件的标签，同步维护 media_tag 注册表 count 并更新 updated_at。
-func (m *MediaService) UpdateMediaTags(req model.UpdateMediaTagsReq) (_ *model.MediaFileItem, err error) {
+// UpdateMediaFile 更新单个媒体文件的标签和/或描述。
+// Tags 非 nil 时替换标签并同步维护 media_tag 注册表 count；Description 非 nil 时更新描述。
+// 任一字段有更新则更新 updated_at。
+func (m *MediaService) UpdateMediaFile(req model.UpdateMediaFileReq) (_ *model.MediaFileItem, err error) {
 	defer logError(&err)
 	if req.FolderID == "" {
 		return nil, fmt.Errorf("folder ID required")
@@ -571,10 +573,16 @@ func (m *MediaService) UpdateMediaTags(req model.UpdateMediaTagsReq) (_ *model.M
 	if req.RelPath == "" {
 		return nil, fmt.Errorf("file path required")
 	}
+	if req.Tags == nil && req.Description == nil {
+		return m.GetMediaFile(req.FolderID, req.RelPath)
+	}
 
-	tags, err := normalizeTags(req.Tags)
-	if err != nil {
-		return nil, err
+	if req.Tags != nil {
+		tags, err := normalizeTags(*req.Tags)
+		if err != nil {
+			return nil, err
+		}
+		req.Tags = &tags
 	}
 
 	meta, err := m.Store.ReadMediaMeta(req.FolderID)
@@ -587,8 +595,14 @@ func (m *MediaService) UpdateMediaTags(req model.UpdateMediaTagsReq) (_ *model.M
 		return nil, fmt.Errorf("file not found: %s", req.RelPath)
 	}
 
-	oldTags := file.Tags
-	file.Tags = tags
+	var oldTags []string
+	if req.Tags != nil {
+		oldTags = file.Tags
+		file.Tags = *req.Tags
+	}
+	if req.Description != nil {
+		file.Description = *req.Description
+	}
 	file.UpdatedAt = time.Now()
 	meta.Files[req.RelPath] = file
 
@@ -596,7 +610,9 @@ func (m *MediaService) UpdateMediaTags(req model.UpdateMediaTagsReq) (_ *model.M
 		return nil, fmt.Errorf("write media meta: %w", err)
 	}
 
-	m.adjustMediaTagCounts(tags, oldTags)
+	if req.Tags != nil {
+		m.adjustMediaTagCounts(file.Tags, oldTags)
+	}
 
 	docID := req.FolderID + "/" + req.RelPath
 	m.Store.IndexDoc(docID, mediaBleveFields(req.FolderID, req.RelPath, file))
@@ -676,46 +692,6 @@ func (m *MediaService) BatchUpdateMediaTags(req model.BatchUpdateMediaTagsReq) (
 	}
 
 	return nil
-}
-
-// UpdateMediaDescription 更新单个媒体文件描述，同步更新 updated_at
-func (m *MediaService) UpdateMediaDescription(req model.UpdateMediaDescReq) (_ *model.MediaFileItem, err error) {
-	defer logError(&err)
-	if req.FolderID == "" {
-		return nil, fmt.Errorf("folder ID required")
-	}
-	if req.RelPath == "" {
-		return nil, fmt.Errorf("file path required")
-	}
-
-	meta, err := m.Store.ReadMediaMeta(req.FolderID)
-	if err != nil {
-		return nil, fmt.Errorf("read media meta: %w", err)
-	}
-
-	file, exists := meta.Files[req.RelPath]
-	if !exists {
-		return nil, fmt.Errorf("file not found: %s", req.RelPath)
-	}
-
-	file.Description = req.Description
-	file.UpdatedAt = time.Now()
-	meta.Files[req.RelPath] = file
-
-	if err := m.Store.WriteMediaMeta(req.FolderID, meta); err != nil {
-		return nil, fmt.Errorf("write media meta: %w", err)
-	}
-
-	docID := req.FolderID + "/" + req.RelPath
-	m.Store.IndexDoc(docID, mediaBleveFields(req.FolderID, req.RelPath, file))
-
-	item := &model.MediaFileItem{
-		MediaFile: file,
-		FolderID:  req.FolderID,
-		RelPath:   req.RelPath,
-	}
-	m.fillItemURLs(item)
-	return item, nil
 }
 
 // adjustMediaTagCounts 计算新旧标签的差值，批量更新 media_tag 注册表 count
