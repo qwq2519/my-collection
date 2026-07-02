@@ -4,6 +4,7 @@
 # Wails / Task
 .task/
 bin/
+collections
 *.syso
 
 # Runtime data (database, search index, uploads)
