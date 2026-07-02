@@ -1050,6 +1050,134 @@ func TestMediaService_OpenInExplorerBuildPath(t *testing.T) {
 	}
 }
 
+// ────────────────────── Integration ──────────────────────
+
+func TestMediaService_FullWorkflow(t *testing.T) {
+	svc := newMediaService(t)
+
+	// 1. Add folder
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "sunset.jpg"), createJPEGBytes(t, 800, 600), 0644)
+	os.WriteFile(filepath.Join(dir, "morning.png"), createPNGBytes(t, 400, 300), 0644)
+	sub := filepath.Join(dir, "trip")
+	os.Mkdir(sub, 0755)
+	os.WriteFile(filepath.Join(sub, "tokyo.jpg"), createJPEGBytes(t, 1920, 1080), 0644)
+
+	folder, err := svc.AddFolder(model.AddFolderReq{Path: dir, Name: "Photos"})
+	if err != nil {
+		t.Fatalf("AddFolder: %v", err)
+	}
+
+	// 2. First scan
+	scanResult, err := svc.ScanFolder(folder.ID)
+	if err != nil {
+		t.Fatalf("ScanFolder: %v", err)
+	}
+	if scanResult.Added != 3 {
+		t.Fatalf("scan added = %d, want 3", scanResult.Added)
+	}
+
+	// 3. List all
+	list, err := svc.ListMediaFiles(model.MediaListReq{Page: 1, PageSize: 10})
+	if err != nil {
+		t.Fatalf("ListMediaFiles: %v", err)
+	}
+	if list.Total != 3 {
+		t.Fatalf("total = %d, want 3", list.Total)
+	}
+	for _, item := range list.Items {
+		if item.ThumbnailURL == "" && item.Thumbnail != "" {
+			t.Errorf("missing ThumbnailURL for %s", item.RelPath)
+		}
+	}
+
+	// 4. Get detail
+	detail, err := svc.GetMediaFile(folder.ID, "trip/tokyo.jpg")
+	if err != nil {
+		t.Fatalf("GetMediaFile: %v", err)
+	}
+	if detail.MediaType != "image" {
+		t.Errorf("media_type = %q", detail.MediaType)
+	}
+	if detail.Width == nil || *detail.Width != 1920 {
+		t.Errorf("width = %v, want 1920", detail.Width)
+	}
+
+	// 5. Update tags + description together
+	tags := []string{"travel", "japan"}
+	desc := "Tokyo skyline"
+	updated, err := svc.UpdateMediaFile(model.UpdateMediaFileReq{
+		FolderID:    folder.ID,
+		RelPath:     "trip/tokyo.jpg",
+		Tags:        &tags,
+		Description: &desc,
+	})
+	if err != nil {
+		t.Fatalf("UpdateMediaFile: %v", err)
+	}
+	if len(updated.Tags) != 2 {
+		t.Errorf("tags = %v", updated.Tags)
+	}
+	if updated.Description != "Tokyo skyline" {
+		t.Errorf("description = %q", updated.Description)
+	}
+
+	// 6. Batch tag
+	err = svc.BatchUpdateMediaTags(model.BatchUpdateMediaTagsReq{
+		FolderID: folder.ID,
+		RelPaths: []string{"sunset.jpg", "morning.png"},
+		Tags:     []string{"landscape"},
+	})
+	if err != nil {
+		t.Fatalf("BatchUpdateMediaTags: %v", err)
+	}
+	sunset, _ := svc.GetMediaFile(folder.ID, "sunset.jpg")
+	if len(sunset.Tags) != 1 || sunset.Tags[0] != "landscape" {
+		t.Errorf("sunset tags = %v", sunset.Tags)
+	}
+
+	// 7. File change: add + remove
+	os.WriteFile(filepath.Join(dir, "new.jpg"), createJPEGBytes(t, 10, 10), 0644)
+	os.Remove(filepath.Join(dir, "morning.png"))
+
+	rescan, err := svc.ScanFolder(folder.ID)
+	if err != nil {
+		t.Fatalf("rescan: %v", err)
+	}
+	if rescan.Added != 1 {
+		t.Errorf("rescan added = %d, want 1", rescan.Added)
+	}
+	if rescan.Removed != 1 {
+		t.Errorf("rescan removed = %d, want 1", rescan.Removed)
+	}
+
+	// 8. Verify final state
+	finalList, _ := svc.ListMediaFiles(model.MediaListReq{Page: 1, PageSize: 10})
+	if finalList.Total != 3 {
+		t.Errorf("final total = %d, want 3 (sunset + tokyo + new)", finalList.Total)
+	}
+
+	// 9. User data preserved after rescan
+	tokyoAfter, _ := svc.GetMediaFile(folder.ID, "trip/tokyo.jpg")
+	if tokyoAfter.Description != "Tokyo skyline" {
+		t.Errorf("tokyo description lost after rescan: %q", tokyoAfter.Description)
+	}
+
+	// 10. Remove folder
+	if err := svc.RemoveFolder(folder.ID); err != nil {
+		t.Fatalf("RemoveFolder: %v", err)
+	}
+	folders, _ := svc.ListFolders()
+	if len(folders) != 0 {
+		t.Errorf("folders after remove = %d", len(folders))
+	}
+
+	persistDir := filepath.Join(svc.Store.PersistDir(), "media-folders", folder.ID)
+	if _, err := os.Stat(persistDir); !os.IsNotExist(err) {
+		t.Error("persist dir should be removed")
+	}
+}
+
 // ────────────────────── fillItemURLs ──────────────────────
 
 func TestFillItemURLs(t *testing.T) {
