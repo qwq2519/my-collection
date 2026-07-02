@@ -167,10 +167,7 @@ export function NoteEditor({ note }: NoteEditorProps) {
         }
         if (result?.path) {
           const imageMarkdown = `![image](/persist/${result.path})`
-          insertAtCursor(container, imageMarkdown)
-          const newBody = bodyRef.current
-            ? bodyRef.current + "\n" + imageMarkdown
-            : imageMarkdown
+          const newBody = insertAtCursor(container, imageMarkdown, bodyRef.current)
           setBody(newBody)
           bodyRef.current = newBody
           markDirty()
@@ -269,9 +266,11 @@ function readFileAsBase64(file: File): Promise<string> {
   })
 }
 
-function insertAtCursor(container: HTMLElement, text: string) {
+function insertAtCursor(container: HTMLElement, text: string, currentBody: string): string {
   const textarea = container.querySelector("textarea")
-  if (!textarea) return
+  if (!textarea) {
+    return currentBody ? currentBody + "\n" + text : text
+  }
 
   const { selectionStart, selectionEnd } = textarea
   const before = textarea.value.substring(0, selectionStart)
@@ -286,4 +285,6 @@ function insertAtCursor(container: HTMLElement, text: string) {
     nativeInputValueSetter.call(textarea, newValue)
     textarea.dispatchEvent(new Event("input", { bubbles: true }))
   }
+
+  return newValue
 }
