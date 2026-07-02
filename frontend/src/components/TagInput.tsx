@@ -1,4 +1,4 @@
-import { useState, useRef, KeyboardEvent } from "react"
+import { useState, useRef, type KeyboardEvent } from "react"
 import { Badge } from "@/components/ui/badge"
 import { X } from "lucide-react"
 
@@ -57,6 +57,7 @@ export function TagInput({ value, onChange, placeholder = "输入标签后按回
           {tag}
           <button
             type="button"
+            onMouseDown={(e) => e.preventDefault()}
             onClick={(e) => {
               e.stopPropagation()
               removeTag(tag)
@@ -72,7 +73,9 @@ export function TagInput({ value, onChange, placeholder = "输入标签后按回
         value={input}
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={handleKeyDown}
-        onBlur={() => addTag(input)}
+        onBlur={() => {
+          if (input.trim()) addTag(input)
+        }}
         placeholder={value.length === 0 ? placeholder : ""}
         className="flex-1 min-w-[80px] bg-transparent outline-none text-sm placeholder:text-muted-foreground"
       />

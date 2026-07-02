@@ -58,7 +58,10 @@ export function ConfirmDialog({
 
   const handleOpenChange = (next: boolean) => {
     if (loading) return
-    if (!next) setError("")
+    if (!next) {
+      setError("")
+      setLoading(false)
+    }
     onOpenChange(next)
   }
 

@@ -60,7 +60,9 @@ export function SiteDetail() {
       : <EmptyState icon={Globe} message="站点加载失败" className="h-full" />
   }
 
-  if (mode === "edit-site") {
+  const siteMatchesView = site.id === siteId
+
+  if (mode === "edit-site" && siteMatchesView) {
     return (
       <div className="h-full overflow-y-auto">
         <SiteForm
@@ -75,7 +77,7 @@ export function SiteDetail() {
     )
   }
 
-  if (mode === "add-bookmark") {
+  if (mode === "add-bookmark" && siteMatchesView) {
     return (
       <div className="h-full overflow-y-auto">
         <BookmarkForm
