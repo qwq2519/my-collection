@@ -30,6 +30,7 @@ export function NoteEditor({ note }: NoteEditorProps) {
   const [dirty, setDirty] = useState(false)
   const dirtyRef = useRef(false)
   const bodyRef = useRef(body)
+  const [editorHeight, setEditorHeight] = useState<number>(400)
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [orphanFiles, setOrphanFiles] = useState<string[]>([])
@@ -133,9 +134,22 @@ export function NoteEditor({ note }: NoteEditorProps) {
     }
   }, [note.id])
 
-  // ── Paste Image Upload ──
+  // ── Editor Height (ResizeObserver) ──
 
   const editorRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const container = editorRef.current
+    if (!container) return
+    const ro = new ResizeObserver((entries) => {
+      const h = entries[0]?.contentRect.height
+      if (h && h > 0) setEditorHeight(h)
+    })
+    ro.observe(container)
+    return () => ro.disconnect()
+  }, [])
+
+  // ── Paste Image Upload ──
 
   // 触发：note.id 变化时重新绑定 paste 监听（确保上传到正确的 note）
   useEffect(() => {
@@ -247,7 +261,7 @@ export function NoteEditor({ note }: NoteEditorProps) {
         <MDEditor
           value={body}
           onChange={handleBodyChange}
-          height="100%"
+          height={editorHeight}
           visibleDragbar={false}
           preview="live"
         />
