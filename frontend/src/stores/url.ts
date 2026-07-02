@@ -207,7 +207,10 @@ export const useURLStore = create<URLState>((set, get) => ({
         URLService.ListBookmarks({ site_id: siteId, page: 1, page_size: PAGE_SIZE }),
       ]),
     )
-    if (getActiveSiteId(get().detailView) !== siteId) return
+    if (getActiveSiteId(get().detailView) !== siteId) {
+      set({ bookmarksLoading: false })
+      return
+    }
     if (result) {
       const [site, bmResult] = result
       const { items, total, hasMore } = unpackList(bmResult)

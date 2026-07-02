@@ -87,7 +87,10 @@ export const useNoteStore = create<NoteState>((set, get) => ({
   selectNote: async (id) => {
     set({ selectedId: id, currentNote: null, currentLoading: true })
     const [note] = await callService(() => NoteService.GetNote(id))
-    if (get().selectedId !== id) return
+    if (get().selectedId !== id) {
+      set({ currentLoading: false })
+      return
+    }
     set({ currentNote: note ?? null, currentLoading: false })
   },
 
