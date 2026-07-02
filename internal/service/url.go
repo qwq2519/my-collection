@@ -118,8 +118,12 @@ func (u *URLService) ListSites(req model.SiteListReq) (_ *model.SiteListResult, 
 
 // SearchURL 统一搜索站点和书签，按站点分组返回。
 // 同时匹配站点和书签的 title/description/domain，命中的书签归入所属站点。
+// 至少需要 Search 或 Tags 之一非空。
 func (u *URLService) SearchURL(req model.SearchURLReq) (_ *model.SearchURLResult, err error) {
 	defer logError(&err)
+	if req.Search == "" && len(req.Tags) == 0 {
+		return nil, fmt.Errorf("search keyword or tags required")
+	}
 	return u.Store.SearchURL(req)
 }
 

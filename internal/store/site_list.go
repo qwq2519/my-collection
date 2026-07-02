@@ -42,9 +42,6 @@ func (s *Store) ListSites(req model.SiteListReq) (*model.SiteListResult, error) 
 // 站点自身命中或其下书签命中均会出现在结果中。
 func (s *Store) SearchURL(req model.SearchURLReq) (*model.SearchURLResult, error) {
 	req.Page, req.PageSize = util.NormalizePageParams(req.Page, req.PageSize, 20)
-	if req.Search == "" && len(req.Tags) == 0 {
-		return nil, fmt.Errorf("search keyword or tags required")
-	}
 
 	siteTypeQ := bleve.NewTermQuery("site")
 	siteTypeQ.SetField("_type")
@@ -86,7 +83,7 @@ func (s *Store) SearchURL(req model.SearchURLReq) (*model.SearchURLResult, error
 	var items []model.SiteWithBookmarks
 	err = s.db.View(func(tx *buntdb.Tx) error {
 		siteHitSet := make(map[string]bool)
-		bmBySite := make(map[string][]string)
+		bmBySite := make(map[string][]*model.Bookmark)
 
 		for _, hit := range result.Hits {
 			if strings.HasPrefix(hit.ID, "site:") {
@@ -98,7 +95,7 @@ func (s *Store) SearchURL(req model.SearchURLReq) (*model.SearchURLResult, error
 				if err != nil {
 					continue
 				}
-				bmBySite[bm.SiteID] = append(bmBySite[bm.SiteID], bmID)
+				bmBySite[bm.SiteID] = append(bmBySite[bm.SiteID], bm)
 			}
 		}
 
@@ -120,14 +117,8 @@ func (s *Store) SearchURL(req model.SearchURLReq) (*model.SearchURLResult, error
 				Site:      *site,
 				Bookmarks: make([]model.Bookmark, 0),
 			}
-			if bmIDs, ok := bmBySite[siteID]; ok {
-				for _, bmID := range bmIDs {
-					bm, err := getBookmarkTx(tx, bmID)
-					if err != nil {
-						continue
-					}
-					item.Bookmarks = append(item.Bookmarks, *bm)
-				}
+			for _, bm := range bmBySite[siteID] {
+				item.Bookmarks = append(item.Bookmarks, *bm)
 			}
 			items = append(items, item)
 		}
