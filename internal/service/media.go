@@ -48,25 +48,9 @@ func (m *MediaService) ListFolders() (_ []model.MediaFolder, err error) {
 func (m *MediaService) AddFolder(req model.AddFolderReq) (_ *model.MediaFolder, err error) {
 	defer logError(&err)
 
-	path := strings.TrimSpace(req.Path)
-	if path == "" {
-		return nil, fmt.Errorf("folder path required")
-	}
-
-	absPath, err := filepath.Abs(path)
+	absPath, err := validateDirPath(req.Path)
 	if err != nil {
-		return nil, fmt.Errorf("invalid path: %w", err)
-	}
-
-	info, err := os.Stat(absPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("path does not exist")
-		}
-		return nil, fmt.Errorf("cannot access path: %w", err)
-	}
-	if !info.IsDir() {
-		return nil, fmt.Errorf("path is not a directory")
+		return nil, err
 	}
 
 	if err := m.checkFolderNesting(absPath, ""); err != nil {
@@ -182,25 +166,9 @@ func (m *MediaService) UpdateFolderPath(req model.UpdateFolderPathReq) (_ *model
 		return nil, fmt.Errorf("folder ID required")
 	}
 
-	newPath := strings.TrimSpace(req.Path)
-	if newPath == "" {
-		return nil, fmt.Errorf("folder path required")
-	}
-
-	absPath, err := filepath.Abs(newPath)
+	absPath, err := validateDirPath(req.Path)
 	if err != nil {
-		return nil, fmt.Errorf("invalid path: %w", err)
-	}
-
-	info, err := os.Stat(absPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("path does not exist")
-		}
-		return nil, fmt.Errorf("cannot access path: %w", err)
-	}
-	if !info.IsDir() {
-		return nil, fmt.Errorf("path is not a directory")
+		return nil, err
 	}
 
 	if err := m.checkFolderNesting(absPath, req.ID); err != nil {
@@ -744,6 +712,29 @@ var goOS = func() string {
 
 var execCommand = func(name string, args ...string) error {
 	return exec.Command(name, args...).Start()
+}
+
+// validateDirPath 校验原始路径非空、转绝对路径、存在且为目录
+func validateDirPath(raw string) (string, error) {
+	p := strings.TrimSpace(raw)
+	if p == "" {
+		return "", fmt.Errorf("folder path required")
+	}
+	absPath, err := filepath.Abs(p)
+	if err != nil {
+		return "", fmt.Errorf("invalid path: %w", err)
+	}
+	info, err := os.Stat(absPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", fmt.Errorf("path does not exist")
+		}
+		return "", fmt.Errorf("cannot access path: %w", err)
+	}
+	if !info.IsDir() {
+		return "", fmt.Errorf("path is not a directory")
+	}
+	return absPath, nil
 }
 
 // isSubPath 判断 child 是否是 parent 的子路径
