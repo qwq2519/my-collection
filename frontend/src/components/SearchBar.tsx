@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils"
 interface SearchBarProps {
   value: string
   onChange: (value: string) => void
+  /** 清除时的回调（可选），不传则默认调用 onChange("") */
+  onClear?: () => void
   placeholder?: string
   /** 防抖延迟（ms），默认 300 */
   debounceMs?: number
@@ -20,6 +22,7 @@ interface SearchBarProps {
 export function SearchBar({
   value,
   onChange,
+  onClear,
   placeholder = "搜索...",
   debounceMs = 300,
   className,
@@ -41,7 +44,11 @@ export function SearchBar({
   const handleClear = () => {
     setLocalValue("")
     clearTimeout(timerRef.current)
-    onChange("")
+    if (onClear) {
+      onClear()
+    } else {
+      onChange("")
+    }
   }
 
   // 触发：组件卸载时清除防抖定时器
