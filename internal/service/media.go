@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -498,6 +500,302 @@ func mediaBleveFields(folderID, relPath string, file model.MediaFile) map[string
 		"description": file.Description,
 		"updated_at": file.UpdatedAt,
 	}
+}
+
+// ────────────────────── Query ──────────────────────
+
+// ListMediaFiles 分页查询媒体文件，支持搜索、标签筛选、文件夹筛选、类型筛选
+func (m *MediaService) ListMediaFiles(req model.MediaListReq) (_ *model.MediaListResult, err error) {
+	defer logError(&err)
+	result, err := m.Store.ListMediaFiles(req)
+	if err != nil {
+		return nil, err
+	}
+	for i := range result.Items {
+		m.fillItemURLs(&result.Items[i])
+	}
+	return result, nil
+}
+
+// GetMediaFile 获取单个媒体文件详情
+func (m *MediaService) GetMediaFile(folderID, relPath string) (_ *model.MediaFileItem, err error) {
+	defer logError(&err)
+	if folderID == "" {
+		return nil, fmt.Errorf("folder ID required")
+	}
+	if relPath == "" {
+		return nil, fmt.Errorf("file path required")
+	}
+
+	meta, err := m.Store.ReadMediaMeta(folderID)
+	if err != nil {
+		return nil, fmt.Errorf("read media meta: %w", err)
+	}
+
+	file, exists := meta.Files[relPath]
+	if !exists {
+		return nil, fmt.Errorf("file not found: %s", relPath)
+	}
+
+	if file.Tags == nil {
+		file.Tags = []string{}
+	}
+	item := &model.MediaFileItem{
+		MediaFile: file,
+		FolderID:  folderID,
+		RelPath:   relPath,
+	}
+	m.fillItemURLs(item)
+	return item, nil
+}
+
+// fillItemURLs 为 MediaFileItem 填充完整的前端可访问路径
+func (m *MediaService) fillItemURLs(item *model.MediaFileItem) {
+	base := "/persist/media-folders/" + item.FolderID + "/thumbnails/"
+	if item.Thumbnail != "" {
+		item.ThumbnailURL = base + item.Thumbnail
+	}
+	if item.Preview != "" {
+		item.PreviewURL = base + item.Preview
+	}
+}
+
+// ────────────────────── Tags & Description ──────────────────────
+
+// UpdateMediaTags 替换单个媒体文件的标签，同步维护 media_tag 注册表 count 并更新 updated_at。
+func (m *MediaService) UpdateMediaTags(req model.UpdateMediaTagsReq) (_ *model.MediaFileItem, err error) {
+	defer logError(&err)
+	if req.FolderID == "" {
+		return nil, fmt.Errorf("folder ID required")
+	}
+	if req.RelPath == "" {
+		return nil, fmt.Errorf("file path required")
+	}
+
+	tags, err := normalizeTags(req.Tags)
+	if err != nil {
+		return nil, err
+	}
+
+	meta, err := m.Store.ReadMediaMeta(req.FolderID)
+	if err != nil {
+		return nil, fmt.Errorf("read media meta: %w", err)
+	}
+
+	file, exists := meta.Files[req.RelPath]
+	if !exists {
+		return nil, fmt.Errorf("file not found: %s", req.RelPath)
+	}
+
+	oldTags := file.Tags
+	file.Tags = tags
+	file.UpdatedAt = time.Now()
+	meta.Files[req.RelPath] = file
+
+	if err := m.Store.WriteMediaMeta(req.FolderID, meta); err != nil {
+		return nil, fmt.Errorf("write media meta: %w", err)
+	}
+
+	m.adjustMediaTagCounts(tags, oldTags)
+
+	docID := req.FolderID + "/" + req.RelPath
+	m.Store.IndexDoc(docID, mediaBleveFields(req.FolderID, req.RelPath, file))
+
+	item := &model.MediaFileItem{
+		MediaFile: file,
+		FolderID:  req.FolderID,
+		RelPath:   req.RelPath,
+	}
+	m.fillItemURLs(item)
+	return item, nil
+}
+
+// BatchUpdateMediaTags 批量为媒体文件追加标签（不覆盖已有标签）
+func (m *MediaService) BatchUpdateMediaTags(req model.BatchUpdateMediaTagsReq) (err error) {
+	defer logError(&err)
+	if req.FolderID == "" {
+		return fmt.Errorf("folder ID required")
+	}
+	if len(req.RelPaths) == 0 || len(req.Tags) == 0 {
+		return nil
+	}
+
+	tags, err := normalizeTags(req.Tags)
+	if err != nil {
+		return err
+	}
+
+	meta, err := m.Store.ReadMediaMeta(req.FolderID)
+	if err != nil {
+		return fmt.Errorf("read media meta: %w", err)
+	}
+
+	deltas := make(map[string]int)
+	var docs []store.BleveDoc
+
+	for _, relPath := range req.RelPaths {
+		file, exists := meta.Files[relPath]
+		if !exists {
+			slog.Warn("skip missing file in batch tag", "path", relPath)
+			continue
+		}
+
+		merged, added := mergeTags(file.Tags, tags)
+		if len(added) == 0 {
+			continue
+		}
+
+		for _, t := range added {
+			deltas[t]++
+		}
+
+		file.Tags = merged
+		file.UpdatedAt = time.Now()
+		meta.Files[relPath] = file
+
+		docs = append(docs, store.BleveDoc{
+			ID:     req.FolderID + "/" + relPath,
+			Fields: mediaBleveFields(req.FolderID, relPath, file),
+		})
+	}
+
+	if err := m.Store.WriteMediaMeta(req.FolderID, meta); err != nil {
+		return fmt.Errorf("write media meta: %w", err)
+	}
+
+	if len(deltas) > 0 {
+		if err := m.Store.BatchAdjustTagCounts("media_tag", deltas); err != nil {
+			slog.Warn("failed to adjust media tag counts after batch tag", "err", err)
+		}
+	}
+
+	if len(docs) > 0 {
+		if err := m.Store.RebuildDocs(nil, docs); err != nil {
+			slog.Warn("bleve batch update failed after batch tag", "err", err)
+		}
+	}
+
+	return nil
+}
+
+// UpdateMediaDescription 更新单个媒体文件描述，同步更新 updated_at
+func (m *MediaService) UpdateMediaDescription(req model.UpdateMediaDescReq) (_ *model.MediaFileItem, err error) {
+	defer logError(&err)
+	if req.FolderID == "" {
+		return nil, fmt.Errorf("folder ID required")
+	}
+	if req.RelPath == "" {
+		return nil, fmt.Errorf("file path required")
+	}
+
+	meta, err := m.Store.ReadMediaMeta(req.FolderID)
+	if err != nil {
+		return nil, fmt.Errorf("read media meta: %w", err)
+	}
+
+	file, exists := meta.Files[req.RelPath]
+	if !exists {
+		return nil, fmt.Errorf("file not found: %s", req.RelPath)
+	}
+
+	file.Description = req.Description
+	file.UpdatedAt = time.Now()
+	meta.Files[req.RelPath] = file
+
+	if err := m.Store.WriteMediaMeta(req.FolderID, meta); err != nil {
+		return nil, fmt.Errorf("write media meta: %w", err)
+	}
+
+	docID := req.FolderID + "/" + req.RelPath
+	m.Store.IndexDoc(docID, mediaBleveFields(req.FolderID, req.RelPath, file))
+
+	item := &model.MediaFileItem{
+		MediaFile: file,
+		FolderID:  req.FolderID,
+		RelPath:   req.RelPath,
+	}
+	m.fillItemURLs(item)
+	return item, nil
+}
+
+// adjustMediaTagCounts 计算新旧标签的差值，批量更新 media_tag 注册表 count
+func (m *MediaService) adjustMediaTagCounts(newTags, oldTags []string) {
+	deltas := make(map[string]int)
+	for _, t := range newTags {
+		deltas[t]++
+	}
+	for _, t := range oldTags {
+		deltas[t]--
+	}
+
+	nonZero := make(map[string]int)
+	for k, v := range deltas {
+		if v != 0 {
+			nonZero[k] = v
+		}
+	}
+	if len(nonZero) == 0 {
+		return
+	}
+
+	if err := m.Store.BatchAdjustTagCounts("media_tag", nonZero); err != nil {
+		slog.Warn("failed to adjust media tag counts", "err", err)
+	}
+}
+
+// ────────────────────── System Integration ──────────────────────
+
+// OpenInExplorer 在系统文件管理器中打开媒体文件所在目录并选中该文件
+func (m *MediaService) OpenInExplorer(folderID, relPath string) (err error) {
+	defer logError(&err)
+	if folderID == "" {
+		return fmt.Errorf("folder ID required")
+	}
+	if relPath == "" {
+		return fmt.Errorf("file path required")
+	}
+
+	folder, err := m.Store.GetFolder(folderID)
+	if err != nil {
+		return fmt.Errorf("folder not found: %w", err)
+	}
+
+	absPath := filepath.Join(folder.Path, filepath.FromSlash(relPath))
+	return openFileInExplorer(absPath)
+}
+
+// openFileInExplorer 调用系统文件管理器定位文件（跨平台）
+func openFileInExplorer(absPath string) error {
+	var cmd string
+	var args []string
+
+	switch goos := goOS(); goos {
+	case "windows":
+		cmd = "explorer.exe"
+		args = []string{"/select,", absPath}
+	case "darwin":
+		cmd = "open"
+		args = []string{"-R", absPath}
+	default:
+		cmd = "xdg-open"
+		args = []string{filepath.Dir(absPath)}
+	}
+
+	return execCommand(cmd, args...)
+}
+
+// 以下两个函数方便测试时 mock
+
+var goOS = func() string {
+	return goOSReal()
+}
+
+func goOSReal() string {
+	return runtime.GOOS
+}
+
+var execCommand = func(name string, args ...string) error {
+	return exec.Command(name, args...).Start()
 }
 
 // isSubPath 判断 child 是否是 parent 的子路径
