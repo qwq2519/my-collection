@@ -661,22 +661,10 @@ func (m *MediaService) BatchUpdateMediaTags(req model.BatchUpdateMediaTagsReq) (
 
 // adjustMediaTagCounts 计算新旧标签的差值，批量更新 media_tag 注册表 count
 func (m *MediaService) adjustMediaTagCounts(newTags, oldTags []string) {
-	deltas := make(map[string]int)
-	for _, t := range newTags {
-		deltas[t]++
-	}
-	for _, t := range oldTags {
-		deltas[t]--
-	}
-	for k, v := range deltas {
-		if v == 0 {
-			delete(deltas, k)
-		}
-	}
+	deltas := util.ComputeTagDeltas(newTags, oldTags)
 	if len(deltas) == 0 {
 		return
 	}
-
 	if err := m.Store.BatchAdjustTagCounts("media_tag", deltas); err != nil {
 		slog.Warn("failed to adjust media tag counts", "err", err)
 	}

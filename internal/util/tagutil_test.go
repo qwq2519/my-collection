@@ -34,6 +34,36 @@ func TestValidateTagName(t *testing.T) {
 	}
 }
 
+func TestComputeTagDeltas(t *testing.T) {
+	tests := []struct {
+		name    string
+		newTags []string
+		oldTags []string
+		want    map[string]int
+	}{
+		{"both nil", nil, nil, map[string]int{}},
+		{"add only", []string{"a", "b"}, nil, map[string]int{"a": 1, "b": 1}},
+		{"remove only", nil, []string{"a", "b"}, map[string]int{"a": -1, "b": -1}},
+		{"no change", []string{"a", "b"}, []string{"a", "b"}, map[string]int{}},
+		{"mixed", []string{"a", "c"}, []string{"a", "b"}, map[string]int{"c": 1, "b": -1}},
+		{"duplicate in new", []string{"a", "a"}, nil, map[string]int{"a": 2}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ComputeTagDeltas(tt.newTags, tt.oldTags)
+			if len(got) != len(tt.want) {
+				t.Fatalf("ComputeTagDeltas() = %v, want %v", got, tt.want)
+			}
+			for k, v := range tt.want {
+				if got[k] != v {
+					t.Errorf("ComputeTagDeltas()[%q] = %d, want %d", k, got[k], v)
+				}
+			}
+		})
+	}
+}
+
 func TestNormalizeTagName(t *testing.T) {
 	tests := []struct {
 		input string

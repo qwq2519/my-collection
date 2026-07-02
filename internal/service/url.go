@@ -424,25 +424,11 @@ func normalizeTags(tags []string) ([]string, error) {
 // adjustURLTagCounts 计算新旧标签的差值，批量更新 url_tag 注册表 count。
 // newTags 为新标签列表（创建/更新后），oldTags 为旧标签列表（更新/删除前）。
 func (u *URLService) adjustURLTagCounts(newTags, oldTags []string) {
-	deltas := make(map[string]int)
-	for _, t := range newTags {
-		deltas[t]++
-	}
-	for _, t := range oldTags {
-		deltas[t]--
-	}
-
-	nonZero := make(map[string]int)
-	for k, v := range deltas {
-		if v != 0 {
-			nonZero[k] = v
-		}
-	}
-	if len(nonZero) == 0 {
+	deltas := util.ComputeTagDeltas(newTags, oldTags)
+	if len(deltas) == 0 {
 		return
 	}
-
-	if err := u.Store.BatchAdjustTagCounts("url_tag", nonZero); err != nil {
+	if err := u.Store.BatchAdjustTagCounts("url_tag", deltas); err != nil {
 		slog.Warn("failed to adjust url tag counts", "err", err)
 	}
 }

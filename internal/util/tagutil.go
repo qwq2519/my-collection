@@ -48,3 +48,21 @@ func NormalizeTagName(name string) string {
 	name = strings.ToLower(name)
 	return strings.Join(strings.Fields(name), " ")
 }
+
+// ComputeTagDeltas 计算新旧标签列表之间的差值。
+// 正值表示新增引用，负值表示减少引用，零差值已排除。
+func ComputeTagDeltas(newTags, oldTags []string) map[string]int {
+	deltas := make(map[string]int)
+	for _, t := range newTags {
+		deltas[t]++
+	}
+	for _, t := range oldTags {
+		deltas[t]--
+	}
+	for k, v := range deltas {
+		if v == 0 {
+			delete(deltas, k)
+		}
+	}
+	return deltas
+}
