@@ -683,18 +683,16 @@ func (m *MediaService) adjustMediaTagCounts(newTags, oldTags []string) {
 	for _, t := range oldTags {
 		deltas[t]--
 	}
-
-	nonZero := make(map[string]int)
 	for k, v := range deltas {
-		if v != 0 {
-			nonZero[k] = v
+		if v == 0 {
+			delete(deltas, k)
 		}
 	}
-	if len(nonZero) == 0 {
+	if len(deltas) == 0 {
 		return
 	}
 
-	if err := m.Store.BatchAdjustTagCounts("media_tag", nonZero); err != nil {
+	if err := m.Store.BatchAdjustTagCounts("media_tag", deltas); err != nil {
 		slog.Warn("failed to adjust media tag counts", "err", err)
 	}
 }
