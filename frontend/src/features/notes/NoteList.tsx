@@ -16,6 +16,7 @@ export function NoteList() {
 
   const sentinelRef = useInfiniteScroll(loadMore, hasMore)
 
+  // 触发：组件首次挂载，加载笔记列表
   useEffect(() => {
     loadNotes()
   }, [loadNotes])
