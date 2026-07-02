@@ -171,25 +171,28 @@ func (s *Store) UpdateSite(req model.UpdateSiteReq) (*model.Site, error) {
 	return &site, nil
 }
 
-// DeleteSite 删除站点。站点下仍有书签时拒绝删除。
-// BuntDB 删除后从 Bleve 移除对应文档。
-func (s *Store) DeleteSite(id string) error {
+// DeleteSite 删除站点并返回被删实体（供调用方做标签/资源清理）。
+// 站点下仍有书签时拒绝删除。BuntDB 删除后从 Bleve 移除对应文档。
+func (s *Store) DeleteSite(id string) (*model.Site, error) {
+	var site model.Site
+
 	err := s.db.Update(func(tx *buntdb.Tx) error {
-		site, err := getSiteTx(tx, id)
+		existing, err := getSiteTx(tx, id)
 		if err != nil {
 			return err
 		}
-		if site.BookmarkCount > 0 {
-			return fmt.Errorf("site still has %d bookmarks, delete them first", site.BookmarkCount)
+		if existing.BookmarkCount > 0 {
+			return fmt.Errorf("site still has %d bookmarks, delete them first", existing.BookmarkCount)
 		}
+		site = *existing
 		_, err = tx.Delete("site:" + id)
 		return err
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	s.DeleteDoc("site:"+id, "site")
 	slog.Info("site deleted", "id", id)
-	return nil
+	return &site, nil
 }

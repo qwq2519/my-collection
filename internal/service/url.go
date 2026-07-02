@@ -107,12 +107,8 @@ func (u *URLService) DeleteSite(id string) (err error) {
 		return fmt.Errorf("site ID required")
 	}
 
-	site, err := u.Store.GetSite(id)
+	site, err := u.Store.DeleteSite(id)
 	if err != nil {
-		return err
-	}
-
-	if err := u.Store.DeleteSite(id); err != nil {
 		return err
 	}
 
@@ -231,12 +227,8 @@ func (u *URLService) DeleteBookmark(id string) (err error) {
 		return fmt.Errorf("bookmark ID required")
 	}
 
-	bm, err := u.Store.GetBookmark(id)
+	bm, err := u.Store.DeleteBookmark(id)
 	if err != nil {
-		return err
-	}
-
-	if err := u.Store.DeleteBookmark(id); err != nil {
 		return err
 	}
 
@@ -254,22 +246,13 @@ func (u *URLService) BatchDeleteBookmarks(siteID string, ids []string) (err erro
 		return nil
 	}
 
-	bookmarks := make([]*model.Bookmark, 0, len(ids))
-	for _, id := range ids {
-		bm, err := u.Store.GetBookmark(id)
-		if err != nil {
-			slog.Warn("skip missing bookmark in batch delete", "id", id)
-			continue
-		}
-		bookmarks = append(bookmarks, bm)
-	}
-
-	if err := u.Store.BatchDeleteBookmarks(siteID, ids); err != nil {
+	deleted, err := u.Store.BatchDeleteBookmarks(siteID, ids)
+	if err != nil {
 		return err
 	}
 
 	var allOldTags []string
-	for _, bm := range bookmarks {
+	for _, bm := range deleted {
 		allOldTags = append(allOldTags, bm.Tags...)
 		u.cleanBookmarkAssets(bm)
 	}

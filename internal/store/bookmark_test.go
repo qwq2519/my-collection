@@ -112,7 +112,7 @@ func TestBookmarkDelete(t *testing.T) {
 		t.Fatalf("BookmarkCount after create = %d, want 1", siteAfterCreate.BookmarkCount)
 	}
 
-	if err := s.DeleteBookmark(bm.ID); err != nil {
+	if _, err := s.DeleteBookmark(bm.ID); err != nil {
 		t.Fatalf("DeleteBookmark: %v", err)
 	}
 
@@ -134,7 +134,7 @@ func TestBookmarkBatchDelete(t *testing.T) {
 	bm2 := createTestBookmark(t, s, site.ID, "https://example.com/2", "Two")
 	createTestBookmark(t, s, site.ID, "https://example.com/3", "Three")
 
-	if err := s.BatchDeleteBookmarks(site.ID, []string{bm1.ID, bm2.ID}); err != nil {
+	if _, err := s.BatchDeleteBookmarks(site.ID, []string{bm1.ID, bm2.ID}); err != nil {
 		t.Fatalf("BatchDeleteBookmarks: %v", err)
 	}
 

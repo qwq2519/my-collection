@@ -202,16 +202,19 @@ func (s *Store) UpdateBookmark(req model.UpdateBookmarkReq) (*model.Bookmark, er
 	return &bm, nil
 }
 
-// DeleteBookmark 删除书签，同事务内递减站点 bookmark_count 并更新 updated_at。
+// DeleteBookmark 删除书签并返回被删实体（供调用方做标签/资源清理），
+// 同事务内递减站点 bookmark_count 并更新 updated_at。
 // BuntDB 提交后从 Bleve 删除书签文档并重建站点索引。
-func (s *Store) DeleteBookmark(id string) error {
+func (s *Store) DeleteBookmark(id string) (*model.Bookmark, error) {
+	var bm model.Bookmark
 	var site model.Site
 
 	err := s.db.Update(func(tx *buntdb.Tx) error {
-		bm, err := getBookmarkTx(tx, id)
+		existing, err := getBookmarkTx(tx, id)
 		if err != nil {
 			return err
 		}
+		bm = *existing
 
 		if _, err = tx.Delete("bm:" + id); err != nil {
 			return err
@@ -228,61 +231,63 @@ func (s *Store) DeleteBookmark(id string) error {
 		return setSiteTx(tx, siteObj)
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	s.DeleteDoc("bm:"+id, "bookmark")
 	s.IndexDoc("site:"+site.ID, siteBleveFields(&site))
 	slog.Info("bookmark deleted", "id", id)
-	return nil
+	return &bm, nil
 }
 
-// BatchDeleteBookmarks 批量删除同一站点下的书签，更新该站点的 bookmark_count。
+// BatchDeleteBookmarks 批量删除同一站点下的书签并返回被删实体列表
+// （供调用方做标签/资源清理），更新该站点的 bookmark_count。
 // BuntDB 提交后逐条从 Bleve 删除书签文档，并在有实际删除时重建站点索引。
-func (s *Store) BatchDeleteBookmarks(siteID string, ids []string) error {
+func (s *Store) BatchDeleteBookmarks(siteID string, ids []string) ([]*model.Bookmark, error) {
 	if len(ids) == 0 {
-		return nil
+		return nil, nil
 	}
 
-	deleted := 0
+	var deleted []*model.Bookmark
 	var site model.Site
 
 	err := s.db.Update(func(tx *buntdb.Tx) error {
 		for _, id := range ids {
+			bm, err := getBookmarkTx(tx, id)
+			if err != nil {
+				slog.Warn("skip missing bookmark in batch delete", "id", id)
+				continue
+			}
 			if _, err := tx.Delete("bm:" + id); err != nil {
-				if err == buntdb.ErrNotFound {
-					slog.Warn("skip missing bookmark in batch delete", "id", id)
-					continue
-				}
 				return fmt.Errorf("delete bookmark %s: %w", id, err)
 			}
-			deleted++
+			deleted = append(deleted, bm)
 		}
 
-		if deleted == 0 {
+		if len(deleted) == 0 {
 			return nil
 		}
 		siteObj, err := getSiteTx(tx, siteID)
 		if err != nil {
 			return fmt.Errorf("get site %s: %w", siteID, err)
 		}
-		siteObj.BookmarkCount -= deleted
+		siteObj.BookmarkCount -= len(deleted)
 		clampBookmarkCount(siteObj)
 		siteObj.UpdatedAt = time.Now()
 		site = *siteObj
 		return setSiteTx(tx, siteObj)
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	for _, id := range ids {
-		s.DeleteDoc("bm:"+id, "bookmark")
+	for _, bm := range deleted {
+		s.DeleteDoc("bm:"+bm.ID, "bookmark")
 	}
-	if deleted > 0 {
+	if len(deleted) > 0 {
 		s.IndexDoc("site:"+site.ID, siteBleveFields(&site))
 	}
 
-	slog.Info("bookmarks batch deleted", "count", deleted, "site_id", siteID)
-	return nil
+	slog.Info("bookmarks batch deleted", "count", len(deleted), "site_id", siteID)
+	return deleted, nil
 }

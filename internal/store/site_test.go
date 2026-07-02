@@ -103,7 +103,7 @@ func TestSiteDelete(t *testing.T) {
 	s := newTestStore(t)
 	site := createTestSite(t, s, "example.com")
 
-	if err := s.DeleteSite(site.ID); err != nil {
+	if _, err := s.DeleteSite(site.ID); err != nil {
 		t.Fatalf("DeleteSite: %v", err)
 	}
 
@@ -127,7 +127,7 @@ func TestSiteDeleteWithBookmarks(t *testing.T) {
 		t.Fatalf("CreateBookmark: %v", err)
 	}
 
-	err = s.DeleteSite(site.ID)
+	_, err = s.DeleteSite(site.ID)
 	if err == nil {
 		t.Error("DeleteSite should fail when site has bookmarks")
 	}
