@@ -300,10 +300,6 @@ func (m *MediaService) scanFolderInternal(id string) (*model.ScanComplete, error
 		newDocs = append(newDocs, docs...)
 	}
 
-	if err := m.Store.WriteMediaMeta(id, meta); err != nil {
-		return nil, fmt.Errorf("write media meta: %w", err)
-	}
-
 	treeHash := &model.TreeHashFile{
 		SchemaVersion: 1,
 		FolderID:      id,
@@ -311,6 +307,10 @@ func (m *MediaService) scanFolderInternal(id string) (*model.ScanComplete, error
 	}
 	if err := m.Store.WriteTreeHash(id, treeHash); err != nil {
 		return nil, fmt.Errorf("write tree hash: %w", err)
+	}
+
+	if err := m.Store.WriteMediaMeta(id, meta); err != nil {
+		return nil, fmt.Errorf("write media meta: %w", err)
 	}
 
 	if len(deleteIDs) > 0 || len(newDocs) > 0 {
