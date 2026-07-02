@@ -362,14 +362,10 @@ func (m *MediaService) processFile(folderID, folderPath, thumbDir, ffmpeg, relPa
 	}
 
 	now := time.Now()
-	thumbName, previewName := thumbNames(folderID, relPath)
-	thumbPath := filepath.Join(thumbDir, thumbName)
-	previewPath := filepath.Join(thumbDir, previewName)
 
 	file := model.MediaFile{
 		MediaType: mediaType,
 		Tags:      []string{},
-		Thumbnail: thumbName,
 		ScannedAt: now,
 		UpdatedAt: now,
 		FileSize:  fileInfo.Size(),
@@ -383,15 +379,18 @@ func (m *MediaService) processFile(folderID, folderPath, thumbDir, ffmpeg, relPa
 
 	switch mediaType {
 	case model.MediaTypeImage:
+		thumbName, previewName := thumbNames(folderID, relPath)
+		thumbPath := filepath.Join(thumbDir, thumbName)
 		w, h, err := generateImageThumbnail(srcPath, thumbPath)
 		if err != nil {
 			slog.Warn("image thumbnail failed", "path", relPath, "err", err)
-			file.Thumbnail = ""
 		} else {
+			file.Thumbnail = thumbName
 			file.Width = &w
 			file.Height = &h
 		}
 		if ext == ".gif" && ffmpeg != "" {
+			previewPath := filepath.Join(thumbDir, previewName)
 			if err := generateAnimatedPreview(ffmpeg, srcPath, previewPath); err == nil {
 				file.Preview = previewName
 			}
@@ -399,10 +398,14 @@ func (m *MediaService) processFile(folderID, folderPath, thumbDir, ffmpeg, relPa
 
 	case model.MediaTypeVideo:
 		if ffmpeg != "" {
+			thumbName, previewName := thumbNames(folderID, relPath)
+			thumbPath := filepath.Join(thumbDir, thumbName)
 			if err := generateVideoThumbnail(ffmpeg, srcPath, thumbPath); err != nil {
 				slog.Warn("video thumbnail failed", "path", relPath, "err", err)
-				file.Thumbnail = ""
+			} else {
+				file.Thumbnail = thumbName
 			}
+			previewPath := filepath.Join(thumbDir, previewName)
 			if err := generateAnimatedPreview(ffmpeg, srcPath, previewPath); err == nil {
 				file.Preview = previewName
 			}
@@ -416,21 +419,15 @@ func (m *MediaService) processFile(folderID, folderPath, thumbDir, ffmpeg, relPa
 					file.Duration = &dur
 				}
 			}
-		} else {
-			file.Thumbnail = ""
 		}
 
 	case model.MediaTypeAudio:
-		file.Thumbnail = ""
 		if ffmpeg != "" {
 			_, _, dur, err := probeVideoMeta(ffmpeg, srcPath)
 			if err == nil && dur > 0 {
 				file.Duration = &dur
 			}
 		}
-
-	default:
-		file.Thumbnail = ""
 	}
 
 	return file, nil
