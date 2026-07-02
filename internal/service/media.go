@@ -738,13 +738,7 @@ func openFileInExplorer(absPath string) error {
 	return execCommand(cmd, args...)
 }
 
-// 以下两个函数方便测试时 mock
-
 var goOS = func() string {
-	return goOSReal()
-}
-
-func goOSReal() string {
 	return runtime.GOOS
 }
 
