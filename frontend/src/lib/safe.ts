@@ -35,7 +35,9 @@ export function unpackList<T>(
 
 /** 提取文件扩展名（小写，不含点），无扩展名时返回空字符串 */
 export function getFileExt(filename: string): string {
-  return filename.split(".").pop()?.toLowerCase() ?? ""
+  const dotIndex = filename.lastIndexOf(".")
+  if (dotIndex <= 0) return ""
+  return filename.slice(dotIndex + 1).toLowerCase()
 }
 
 /**
