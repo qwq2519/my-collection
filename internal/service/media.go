@@ -432,31 +432,9 @@ func (m *MediaService) processFile(folderID, folderPath, thumbDir, ffmpeg, relPa
 	return file, nil
 }
 
-// processFiles 处理新增或修改的文件：生成缩略图/预览、提取元数据、更新 meta 和 Bleve 索引。
+// processFilesWithProgress 处理新增或修改的文件：生成缩略图/预览、提取元数据、更新 meta 和 Bleve 索引。
 // 新增文件在 meta 中无记录，自动以 nil existing 处理；修改文件则保留已有用户数据。
-func (m *MediaService) processFiles(folderID, folderPath, thumbDir, ffmpeg string, relPaths []string, meta *model.MediaMeta) []store.BleveDoc {
-	var docs []store.BleveDoc
-	for _, relPath := range relPaths {
-		existing, ok := meta.Files[relPath]
-		var existingPtr *model.MediaFile
-		if ok {
-			existingPtr = &existing
-		}
-		file, err := m.processFile(folderID, folderPath, thumbDir, ffmpeg, relPath, existingPtr)
-		if err != nil {
-			slog.Warn("skip file", "path", relPath, "err", err)
-			continue
-		}
-		meta.Files[relPath] = file
-		docs = append(docs, store.BleveDoc{
-			ID:     folderID + "/" + relPath,
-			Fields: mediaBleveFields(folderID, relPath, file),
-		})
-	}
-	return docs
-}
-
-// processFilesWithProgress 同 processFiles，但额外逐个文件推送扫描进度事件
+// 逐个文件推送扫描进度事件。
 func (m *MediaService) processFilesWithProgress(folderID, folderPath, folderName, thumbDir, ffmpeg string, relPaths []string, meta *model.MediaMeta, scanned *int, total int) []store.BleveDoc {
 	var docs []store.BleveDoc
 	for _, relPath := range relPaths {
