@@ -605,7 +605,9 @@ func (m *MediaService) UpdateMediaFile(req model.UpdateMediaFileReq) (_ *model.M
 	}
 
 	docID := req.FolderID + "/" + req.RelPath
-	m.Store.IndexDoc(docID, mediaBleveFields(req.FolderID, req.RelPath, file))
+	if err := m.Store.IndexDoc(docID, mediaBleveFields(req.FolderID, req.RelPath, file)); err != nil {
+		slog.Warn("bleve index failed after media update", "doc_id", docID, "err", err)
+	}
 
 	item := &model.MediaFileItem{
 		MediaFile: file,
