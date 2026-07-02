@@ -195,6 +195,9 @@ func (m *MediaService) StartScanner() {
 
 // GetScanStatus 查询当前扫描状态（是否在扫描、哪个文件夹、进度）。
 func (m *MediaService) GetScanStatus() model.ScanStatus {
+	if m.state == nil {
+		return model.ScanStatus{}
+	}
 	m.state.mu.RLock()
 	defer m.state.mu.RUnlock()
 	return model.ScanStatus{
