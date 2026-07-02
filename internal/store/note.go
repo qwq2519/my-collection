@@ -24,6 +24,30 @@ func noteBleveFields(note *model.Note) map[string]interface{} {
 	}
 }
 
+func getNoteTx(tx *buntdb.Tx, id string) (*model.Note, error) {
+	val, err := tx.Get("note:" + id)
+	if err == buntdb.ErrNotFound {
+		return nil, fmt.Errorf("note not found")
+	}
+	if err != nil {
+		return nil, err
+	}
+	var note model.Note
+	if err := json.Unmarshal([]byte(val), &note); err != nil {
+		return nil, fmt.Errorf("unmarshal note: %w", err)
+	}
+	return &note, nil
+}
+
+func setNoteTx(tx *buntdb.Tx, note *model.Note) error {
+	val, err := json.Marshal(note)
+	if err != nil {
+		return fmt.Errorf("marshal note: %w", err)
+	}
+	_, _, err = tx.Set("note:"+note.ID, string(val), nil)
+	return err
+}
+
 // CreateNote 创建笔记，写入 BuntDB 后同步索引到 Bleve
 func (s *Store) CreateNote(req model.CreateNoteReq) (*model.Note, error) {
 	now := time.Now()
@@ -55,21 +79,16 @@ func (s *Store) CreateNote(req model.CreateNoteReq) (*model.Note, error) {
 
 // GetNote 按 ID 查询笔记
 func (s *Store) GetNote(id string) (*model.Note, error) {
-	var note model.Note
+	var note *model.Note
 	err := s.db.View(func(tx *buntdb.Tx) error {
-		val, err := tx.Get("note:" + id)
-		if err == buntdb.ErrNotFound {
-			return fmt.Errorf("note not found")
-		}
-		if err != nil {
-			return err
-		}
-		return json.Unmarshal([]byte(val), &note)
+		var err error
+		note, err = getNoteTx(tx, id)
+		return err
 	})
 	if err != nil {
 		return nil, err
 	}
-	return &note, nil
+	return note, nil
 }
 
 // UpdateNote 部分更新笔记（仅修改非 nil 字段）。
@@ -78,16 +97,11 @@ func (s *Store) UpdateNote(req model.UpdateNoteReq) (*model.Note, error) {
 	var note model.Note
 
 	err := s.db.Update(func(tx *buntdb.Tx) error {
-		val, err := tx.Get("note:" + req.ID)
-		if err == buntdb.ErrNotFound {
-			return fmt.Errorf("note not found")
-		}
+		existing, err := getNoteTx(tx, req.ID)
 		if err != nil {
 			return err
 		}
-		if err := json.Unmarshal([]byte(val), &note); err != nil {
-			return fmt.Errorf("unmarshal note: %w", err)
-		}
+		note = *existing
 
 		if req.Title != nil {
 			note.Title = *req.Title
@@ -97,13 +111,7 @@ func (s *Store) UpdateNote(req model.UpdateNoteReq) (*model.Note, error) {
 		}
 
 		note.UpdatedAt = time.Now()
-
-		newVal, err := json.Marshal(&note)
-		if err != nil {
-			return fmt.Errorf("marshal note: %w", err)
-		}
-		_, _, err = tx.Set("note:"+note.ID, string(newVal), nil)
-		return err
+		return setNoteTx(tx, &note)
 	})
 	if err != nil {
 		return nil, err

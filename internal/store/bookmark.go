@@ -133,21 +133,16 @@ func (s *Store) CreateBookmark(req model.CreateBookmarkReq) (*model.Bookmark, er
 
 // GetBookmark 按 ID 查询书签
 func (s *Store) GetBookmark(id string) (*model.Bookmark, error) {
-	var bm model.Bookmark
+	var bm *model.Bookmark
 	err := s.db.View(func(tx *buntdb.Tx) error {
-		val, err := tx.Get("bm:" + id)
-		if err == buntdb.ErrNotFound {
-			return fmt.Errorf("bookmark not found")
-		}
-		if err != nil {
-			return err
-		}
-		return json.Unmarshal([]byte(val), &bm)
+		var err error
+		bm, err = getBookmarkTx(tx, id)
+		return err
 	})
 	if err != nil {
 		return nil, err
 	}
-	return &bm, nil
+	return bm, nil
 }
 
 // UpdateBookmark 部分更新书签（URL/domain/site_id 不可修改），
