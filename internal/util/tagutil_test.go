@@ -1,6 +1,9 @@
 package util
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 func TestValidateTagName(t *testing.T) {
 	tests := []struct {
@@ -59,6 +62,32 @@ func TestComputeTagDeltas(t *testing.T) {
 				if got[k] != v {
 					t.Errorf("ComputeTagDeltas()[%q] = %d, want %d", k, got[k], v)
 				}
+			}
+		})
+	}
+}
+
+func TestNormalizeTags(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   []string
+		want    []string
+		wantErr bool
+	}{
+		{"nil input", nil, nil, false},
+		{"empty input", []string{}, []string{}, false},
+		{"normal", []string{"React", "Go"}, []string{"react", "go"}, false},
+		{"dedup", []string{"react", "React", "REACT"}, []string{"react"}, false},
+		{"invalid char", []string{"tag@name"}, nil, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := NormalizeTags(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("NormalizeTags() err=%v, wantErr=%v", err, tt.wantErr)
+			}
+			if !tt.wantErr && fmt.Sprint(got) != fmt.Sprint(tt.want) {
+				t.Errorf("NormalizeTags() = %v, want %v", got, tt.want)
 			}
 		})
 	}

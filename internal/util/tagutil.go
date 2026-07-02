@@ -49,6 +49,27 @@ func NormalizeTagName(name string) string {
 	return strings.Join(strings.Fields(name), " ")
 }
 
+// NormalizeTags 校验并归一化标签列表，去重后返回
+func NormalizeTags(tags []string) ([]string, error) {
+	if len(tags) == 0 {
+		return tags, nil
+	}
+	seen := make(map[string]struct{}, len(tags))
+	result := make([]string, 0, len(tags))
+	for _, t := range tags {
+		if err := ValidateTagName(t); err != nil {
+			return nil, fmt.Errorf("tag %q: %w", t, err)
+		}
+		normalized := NormalizeTagName(t)
+		if _, ok := seen[normalized]; ok {
+			continue
+		}
+		seen[normalized] = struct{}{}
+		result = append(result, normalized)
+	}
+	return result, nil
+}
+
 // ComputeTagDeltas 计算新旧标签列表之间的差值。
 // 正值表示新增引用，负值表示减少引用，零差值已排除。
 func ComputeTagDeltas(newTags, oldTags []string) map[string]int {

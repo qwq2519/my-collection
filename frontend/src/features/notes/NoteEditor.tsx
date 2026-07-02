@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useRef } from "react"
 import MDEditor from "@uiw/react-md-editor"
 import { useNoteStore } from "@/stores/note"
 import { NoteService } from "../../../bindings/collections/internal/service"
@@ -39,42 +39,42 @@ export function NoteEditor({ note }: NoteEditorProps) {
   const selectNote = useNoteStore((s) => s.selectNote)
   const deleteNote = useNoteStore((s) => s.deleteNote)
 
+  const titleRef = useRef(title)
+  titleRef.current = title
+
+  // 触发：note 数据变化时（切换笔记或外部更新），同步本地编辑状态
   useEffect(() => {
     setTitle(note.title)
     setBody(note.body)
     bodyRef.current = note.body
+    titleRef.current = note.title
     setDirty(false)
     dirtyRef.current = false
   }, [note.id, note.title, note.body])
 
-  const markDirty = useCallback(() => {
+  function markDirty() {
     setDirty(true)
     dirtyRef.current = true
-  }, [])
+  }
 
-  const handleTitleChange = useCallback(
-    (value: string) => {
-      setTitle(value)
-      markDirty()
-    },
-    [markDirty],
-  )
+  function handleTitleChange(value: string) {
+    setTitle(value)
+    titleRef.current = value
+    markDirty()
+  }
 
-  const handleBodyChange = useCallback(
-    (value: string | undefined) => {
-      const v = value ?? ""
-      setBody(v)
-      bodyRef.current = v
-      markDirty()
-    },
-    [markDirty],
-  )
+  function handleBodyChange(value: string | undefined) {
+    const v = value ?? ""
+    setBody(v)
+    bodyRef.current = v
+    markDirty()
+  }
 
   // ── Save ──
 
-  const save = useCallback(async () => {
+  async function save() {
     if (!dirtyRef.current) return
-    const trimmedTitle = title.trim()
+    const trimmedTitle = titleRef.current.trim()
     if (!trimmedTitle) {
       toast.error("标题不能为空")
       return
@@ -97,7 +97,6 @@ export function NoteEditor({ note }: NoteEditorProps) {
     refreshList()
     toast.success("已保存")
 
-    // 保存后检测孤儿图片
     const [orphanResult] = await callService(() =>
       NoteService.DetectOrphanImages({ note_id: note.id, body: currentBody }),
     )
@@ -105,18 +104,22 @@ export function NoteEditor({ note }: NoteEditorProps) {
       setOrphanFiles(orphanResult.orphan_files)
       setShowOrphanConfirm(true)
     }
-  }, [title, note.id, refreshList, selectNote])
+  }
 
+  const saveRef = useRef(save)
+  saveRef.current = save
+
+  // 触发：组件挂载时注册 Ctrl+S 快捷键，卸载时清理
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "s") {
         e.preventDefault()
-        save()
+        saveRef.current()
       }
     }
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [save])
+  }, [])
 
   // 组件卸载或切换笔记前自动保存
   useEffect(() => {

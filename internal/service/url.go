@@ -37,7 +37,7 @@ func (u *URLService) CreateSite(req model.CreateSiteReq) (_ *model.Site, err err
 	}
 	req.Domain = domain
 
-	tags, err := normalizeTags(req.Tags)
+	tags, err := util.NormalizeTags(req.Tags)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +75,7 @@ func (u *URLService) UpdateSite(req model.UpdateSiteReq) (_ *model.Site, err err
 
 	var oldTags []string
 	if req.Tags != nil {
-		tags, err := normalizeTags(*req.Tags)
+		tags, err := util.NormalizeTags(*req.Tags)
 		if err != nil {
 			return nil, err
 		}
@@ -161,7 +161,7 @@ func (u *URLService) CreateBookmark(req model.CreateBookmarkReq) (_ *model.Bookm
 	req.SiteID = site.ID
 	req.Domain = domain
 
-	tags, err := normalizeTags(req.Tags)
+	tags, err := util.NormalizeTags(req.Tags)
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +199,7 @@ func (u *URLService) UpdateBookmark(req model.UpdateBookmarkReq) (_ *model.Bookm
 
 	var oldTags []string
 	if req.Tags != nil {
-		tags, err := normalizeTags(*req.Tags)
+		tags, err := util.NormalizeTags(*req.Tags)
 		if err != nil {
 			return nil, err
 		}
@@ -286,7 +286,7 @@ func (u *URLService) BatchTagBookmarks(ids []string, tagsToAdd []string) (err er
 		return nil
 	}
 
-	tags, err := normalizeTags(tagsToAdd)
+	tags, err := util.NormalizeTags(tagsToAdd)
 	if err != nil {
 		return err
 	}
@@ -299,7 +299,7 @@ func (u *URLService) BatchTagBookmarks(ids []string, tagsToAdd []string) (err er
 			continue
 		}
 
-		merged, added := mergeTags(bm.Tags, tags)
+		merged, added := util.MergeUnique(bm.Tags, tags)
 		if len(added) == 0 {
 			continue
 		}
@@ -334,25 +334,6 @@ func (u *URLService) ListBookmarks(req model.BookmarkListReq) (_ *model.Bookmark
 func (u *URLService) cleanBookmarkAssets(bm *model.Bookmark) {
 	assetsDir := filepath.Join(u.Store.PersistDir(), "url-assets")
 	u.cleanEntityAttachments(assetsDir, bm.ID)
-}
-
-// mergeTags 将 toAdd 追加到 existing 中（去重），返回合并后的切片和实际新增的 tag 列表
-func mergeTags(existing, toAdd []string) (merged, added []string) {
-	set := make(map[string]struct{}, len(existing))
-	for _, t := range existing {
-		set[t] = struct{}{}
-	}
-
-	merged = make([]string, len(existing))
-	copy(merged, existing)
-	for _, t := range toAdd {
-		if _, ok := set[t]; !ok {
-			merged = append(merged, t)
-			set[t] = struct{}{}
-			added = append(added, t)
-		}
-	}
-	return merged, added
 }
 
 // ────────────────────── Normalize ──────────────────────
@@ -399,27 +380,6 @@ func (u *URLService) LookupSiteByURL(req model.LookupSiteByURLReq) (_ *model.Loo
 }
 
 // ────────────────────── helpers ──────────────────────
-
-// normalizeTags 校验并归一化标签列表，去重后返回
-func normalizeTags(tags []string) ([]string, error) {
-	if len(tags) == 0 {
-		return tags, nil
-	}
-	seen := make(map[string]struct{}, len(tags))
-	result := make([]string, 0, len(tags))
-	for _, t := range tags {
-		if err := util.ValidateTagName(t); err != nil {
-			return nil, fmt.Errorf("tag %q: %w", t, err)
-		}
-		normalized := util.NormalizeTagName(t)
-		if _, ok := seen[normalized]; ok {
-			continue
-		}
-		seen[normalized] = struct{}{}
-		result = append(result, normalized)
-	}
-	return result, nil
-}
 
 // adjustURLTagCounts 计算新旧标签的差值，批量更新 url_tag 注册表 count。
 // newTags 为新标签列表（创建/更新后），oldTags 为旧标签列表（更新/删除前）。

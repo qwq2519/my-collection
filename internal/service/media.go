@@ -540,7 +540,7 @@ func (m *MediaService) UpdateMediaFile(req model.UpdateMediaFileReq) (_ *model.M
 	}
 
 	if req.Tags != nil {
-		tags, err := normalizeTags(*req.Tags)
+		tags, err := util.NormalizeTags(*req.Tags)
 		if err != nil {
 			return nil, err
 		}
@@ -601,7 +601,7 @@ func (m *MediaService) BatchUpdateMediaTags(req model.BatchUpdateMediaTagsReq) (
 		return nil
 	}
 
-	tags, err := normalizeTags(req.Tags)
+	tags, err := util.NormalizeTags(req.Tags)
 	if err != nil {
 		return err
 	}
@@ -621,7 +621,7 @@ func (m *MediaService) BatchUpdateMediaTags(req model.BatchUpdateMediaTagsReq) (
 			continue
 		}
 
-		merged, added := mergeTags(file.Tags, tags)
+		merged, added := util.MergeUnique(file.Tags, tags)
 		if len(added) == 0 {
 			continue
 		}
