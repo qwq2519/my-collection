@@ -33,7 +33,7 @@ func main() {
 	noteService := &service.NoteService{Store: s}
 	uploadService := &service.UploadService{Store: s}
 	settingService := &service.SettingService{Store: s}
-	mediaService := &service.MediaService{Store: s}
+	mediaService := &service.MediaService{Store: s, FFmpegPathFunc: settingService.FFmpegBinPath}
 
 	// 3. 创建 Wails 应用
 	app := application.New(application.Options{

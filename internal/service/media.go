@@ -17,24 +17,10 @@ import (
 
 // MediaService 媒体文件夹管理、扫描、缩略图、标签的业务逻辑层。
 // 公开方法即前端可调用接口（通过 Wails 绑定）。
+// FFmpegPathFunc 由 main.go 注入，统一从 SettingService 获取 ffmpeg 路径。
 type MediaService struct {
-	Store      *store.Store
-	ffmpegPath string // 懒检测，首次扫描时缓存
-}
-
-// detectFFmpeg 返回 ffmpeg 可执行文件路径，不可用时返回空串。
-// NOTE: 当前实现对 m.ffmpegPath 的读写非并发安全。目前所有调用方
-// （ScanFolder / ScanAllFolders）均为串行执行，无竞争风险；若未来
-// 改为并发扫描，需用 sync.Once 替代手写懒初始化。
-func (m *MediaService) detectFFmpeg() string {
-	if m.ffmpegPath != "" {
-		return m.ffmpegPath
-	}
-	status := util.DetectFFmpeg(m.Store.PersistDir())
-	if status.Available {
-		m.ffmpegPath = status.BinPath
-	}
-	return m.ffmpegPath
+	Store          *store.Store
+	FFmpegPathFunc func() string
 }
 
 // ────────────────────── Folder Management ──────────────────────
@@ -239,7 +225,10 @@ func (m *MediaService) ScanFolder(id string) (_ *model.ScanComplete, err error) 
 	}
 
 	thumbDir := filepath.Join(m.Store.PersistDir(), "media-folders", id, "thumbnails")
-	ffmpeg := m.detectFFmpeg()
+	var ffmpeg string
+	if m.FFmpegPathFunc != nil {
+		ffmpeg = m.FFmpegPathFunc()
+	}
 
 	var newDocs []store.BleveDoc
 	var deleteIDs []string
