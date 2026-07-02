@@ -37,7 +37,7 @@ export function NoteEditor({ note }: NoteEditorProps) {
   const [showOrphanConfirm, setShowOrphanConfirm] = useState(false)
 
   const refreshList = useNoteStore((s) => s.refreshList)
-  const selectNote = useNoteStore((s) => s.selectNote)
+  const updateCurrentNote = useNoteStore((s) => s.updateCurrentNote)
   const deleteNote = useNoteStore((s) => s.deleteNote)
 
   const titleRef = useRef(title)
@@ -93,7 +93,7 @@ export function NoteEditor({ note }: NoteEditorProps) {
     setDirty(false)
     dirtyRef.current = false
     if (result) {
-      selectNote(result.id)
+      updateCurrentNote(result)
     }
     refreshList()
     toast.success("已保存")

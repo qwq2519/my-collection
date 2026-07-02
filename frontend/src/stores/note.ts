@@ -27,6 +27,8 @@ interface NoteState {
   search: (query: string) => Promise<void>
   clearSearch: () => void
   refreshList: () => Promise<void>
+  /** 保存后直接更新 currentNote，避免 selectNote 导致组件卸载重载 */
+  updateCurrentNote: (note: Note) => void
   createNote: () => Promise<string | null>
   deleteNote: (id: string) => Promise<string | null>
 }
@@ -135,6 +137,10 @@ export const useNoteStore = create<NoteState>((set, get) => ({
     } else {
       get().loadNotes()
     }
+  },
+
+  updateCurrentNote: (note) => {
+    set({ currentNote: note })
   },
 
   createNote: async () => {
