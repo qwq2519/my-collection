@@ -739,7 +739,10 @@ func (m *MediaService) OpenInExplorer(folderID, relPath string) (err error) {
 		return err
 	}
 
-	absPath := filepath.Join(folder.Path, filepath.FromSlash(relPath))
+	absPath, err := util.SafePath(folder.Path, filepath.FromSlash(relPath))
+	if err != nil {
+		return fmt.Errorf("invalid file path")
+	}
 	if _, err := os.Stat(absPath); err != nil {
 		if os.IsNotExist(err) {
 			return fmt.Errorf("file not found")

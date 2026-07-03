@@ -1059,6 +1059,22 @@ func TestMediaService_OpenInExplorerFileNotFound(t *testing.T) {
 	}
 }
 
+func TestMediaService_OpenInExplorerRejectsPathTraversal(t *testing.T) {
+	svc := newMediaService(t)
+	dir := t.TempDir()
+	outside := filepath.Join(filepath.Dir(dir), "outside.jpg")
+	if err := os.WriteFile(outside, createJPEGBytes(t, 10, 10), 0644); err != nil {
+		t.Fatalf("write outside file: %v", err)
+	}
+
+	folder, _ := svc.AddFolder(model.AddFolderReq{Path: dir})
+
+	err := svc.OpenInExplorer(folder.ID, "../outside.jpg")
+	if err == nil {
+		t.Fatal("should reject relPath escaping the folder root")
+	}
+}
+
 func TestMediaService_OpenInExplorerBuildPath(t *testing.T) {
 	svc := newMediaService(t)
 	dir := t.TempDir()
