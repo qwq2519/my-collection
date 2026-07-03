@@ -46,11 +46,15 @@ func (u *UploadService) UploadFile(req model.UploadFileReq) (_ *model.UploadFile
 	}
 
 	persistDir := u.Store.PersistDir()
+	entityID := strings.TrimSpace(req.EntityID)
 
 	switch req.Scene {
 	case "site-icon":
+		if entityID == "" {
+			return nil, fmt.Errorf("entity ID required")
+		}
 		dir := filepath.Join(persistDir, "url-assets", "icons")
-		filename := req.EntityID + ext
+		filename := entityID + ext
 		savePath, err := util.SafePath(dir, filename)
 		if err != nil {
 			return nil, fmt.Errorf("invalid filename: %w", err)
@@ -61,8 +65,11 @@ func (u *UploadService) UploadFile(req model.UploadFileReq) (_ *model.UploadFile
 		return &model.UploadFileResult{Path: filename}, nil
 
 	case "site-attachment", "bm-attachment":
+		if entityID == "" {
+			return nil, fmt.Errorf("entity ID required")
+		}
 		baseDir := filepath.Join(persistDir, "url-assets", "attachments")
-		savePath, err := util.SafePath(baseDir, filepath.Join(req.EntityID, req.Filename))
+		savePath, err := util.SafePath(baseDir, filepath.Join(entityID, req.Filename))
 		if err != nil {
 			return nil, fmt.Errorf("invalid path: %w", err)
 		}
@@ -77,18 +84,21 @@ func (u *UploadService) UploadFile(req model.UploadFileReq) (_ *model.UploadFile
 		return &model.UploadFileResult{Path: req.Filename}, nil
 
 	case "note-image":
+		if entityID == "" {
+			return nil, fmt.Errorf("entity ID required")
+		}
 		baseDir := filepath.Join(persistDir, "note-images")
 		hash := sha256.Sum256(req.Data)
 		hashStr := hex.EncodeToString(hash[:])[:32]
 		filename := hashStr + ext
-		savePath, err := util.SafePath(baseDir, filepath.Join(req.EntityID, filename))
+		savePath, err := util.SafePath(baseDir, filepath.Join(entityID, filename))
 		if err != nil {
 			return nil, fmt.Errorf("invalid path: %w", err)
 		}
 		if err := util.AtomicWrite(savePath, req.Data, 0644); err != nil {
 			return nil, fmt.Errorf("save file failed: %w", err)
 		}
-		return &model.UploadFileResult{Path: filepath.ToSlash(filepath.Join("note-images", req.EntityID, filename))}, nil
+		return &model.UploadFileResult{Path: filepath.ToSlash(filepath.Join("note-images", entityID, filename))}, nil
 
 	default:
 		return nil, fmt.Errorf("unknown upload scene: %s", req.Scene)

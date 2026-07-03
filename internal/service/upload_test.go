@@ -1,10 +1,10 @@
 package service
 
 import (
+	"bytes"
 	"image"
 	"image/color"
 	"image/png"
-	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -23,6 +23,9 @@ func TestUploadService_Validation(t *testing.T) {
 		{"empty scene", model.UploadFileReq{Scene: "", Filename: "a.png", Data: []byte("x")}},
 		{"empty filename", model.UploadFileReq{Scene: "site-icon", Filename: "", Data: []byte("x")}},
 		{"empty data", model.UploadFileReq{Scene: "site-icon", Filename: "a.png", Data: nil}},
+		{"empty site icon entity ID", model.UploadFileReq{Scene: "site-icon", Filename: "a.png", Data: []byte("x")}},
+		{"empty attachment entity ID", model.UploadFileReq{Scene: "site-attachment", Filename: "a.txt", Data: []byte("x")}},
+		{"empty note image entity ID", model.UploadFileReq{Scene: "note-image", Filename: "a.png", Data: []byte("x")}},
 	}
 	for _, tt := range tests {
 		_, err := svc.UploadFile(tt.req)
