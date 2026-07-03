@@ -31,7 +31,8 @@
  *   输入搜索关键词     →  search(query)   →  SearchURL      →  searchResults   →  SearchResultList 重渲染
  */
 
-import { create } from "zustand"
+import { create, type StateCreator } from "zustand"
+import { useShallow } from "zustand/react/shallow"
 import { URLService } from "../../bindings/collections/internal/service"
 import type { Site, Bookmark, SiteWithBookmarks } from "../../bindings/collections/internal/model"
 import { callService } from "../lib/async"
@@ -122,16 +123,40 @@ interface URLState {
   setSelectedTags: (tags: string[]) => void
 }
 
-// ─── Store 实现 ──────────────────────────────────────────────
+type URLStoreCreator = StateCreator<URLState>
+type URLSet = Parameters<URLStoreCreator>[0]
+type URLGet = Parameters<URLStoreCreator>[1]
 
-export const useURLStore = create<URLState>((set, get) => ({
-  // --- 初始值 ---
+const initialURLState: Pick<
+  URLState,
+  | "sites"
+  | "sitesTotal"
+  | "sitesPage"
+  | "sitesHasMore"
+  | "sitesLoading"
+  | "detailView"
+  | "currentSite"
+  | "bookmarks"
+  | "bookmarksTotal"
+  | "bookmarksPage"
+  | "bookmarksHasMore"
+  | "bookmarksLoading"
+  | "bookmarkViewMode"
+  | "currentBookmark"
+  | "searchMode"
+  | "searchQuery"
+  | "searchResults"
+  | "searchTotal"
+  | "searchHasMore"
+  | "searchPage"
+  | "searchLoading"
+  | "selectedTags"
+> = {
   sites: [],
   sitesTotal: 0,
   sitesPage: 1,
   sitesHasMore: false,
   sitesLoading: false,
-
   detailView: { type: "none" },
   currentSite: null,
   bookmarks: [],
@@ -141,7 +166,6 @@ export const useURLStore = create<URLState>((set, get) => ({
   bookmarksLoading: false,
   bookmarkViewMode: "grid",
   currentBookmark: null,
-
   searchMode: false,
   searchQuery: "",
   searchResults: [],
@@ -150,11 +174,71 @@ export const useURLStore = create<URLState>((set, get) => ({
   searchPage: 1,
   searchLoading: false,
   selectedTags: [],
+}
 
-  // ═══ 站点列表操作 ═══
+function applySitesPage(
+  set: URLSet,
+  sites: Site[],
+  total: number,
+  hasMore: boolean,
+  page: number,
+) {
+  set({
+    sites,
+    sitesTotal: total,
+    sitesPage: page,
+    sitesHasMore: hasMore,
+    sitesLoading: false,
+  })
+}
 
-  /** 加载第一页站点（页面初始化 或 数据变更后刷新） */
-  loadSites: async () => {
+function applyBookmarksPage(
+  set: URLSet,
+  bookmarks: Bookmark[],
+  total: number,
+  hasMore: boolean,
+  page: number,
+) {
+  set({
+    bookmarks,
+    bookmarksTotal: total,
+    bookmarksPage: page,
+    bookmarksHasMore: hasMore,
+    bookmarksLoading: false,
+  })
+}
+
+function applySearchPage(
+  set: URLSet,
+  results: SiteWithBookmarks[],
+  total: number,
+  hasMore: boolean,
+  page: number,
+) {
+  set({
+    searchResults: results,
+    searchTotal: total,
+    searchPage: page,
+    searchHasMore: hasMore,
+    searchLoading: false,
+  })
+}
+
+function applySearchSiteBookmarks(set: URLSet, item: SiteWithBookmarks) {
+  set({
+    detailView: { type: "site", siteId: item.site.id },
+    currentSite: item.site,
+    bookmarks: item.bookmarks,
+    bookmarksTotal: item.bookmarks.length,
+    bookmarksPage: 1,
+    bookmarksHasMore: false,
+    bookmarksLoading: false,
+    currentBookmark: null,
+  })
+}
+
+function createLoadSites(set: URLSet): URLState["loadSites"] {
+  return async () => {
     const version = ++siteListVersion
     set({ sitesLoading: true })
     const [result, err] = await callService(() =>
@@ -167,22 +251,19 @@ export const useURLStore = create<URLState>((set, get) => ({
       return
     }
     const { items, total, hasMore } = unpackList(result)
-    set({
-      sites: items,
-      sitesTotal: total,
-      sitesPage: 1,
-      sitesHasMore: hasMore,
-      sitesLoading: false,
-    })
-  },
+    applySitesPage(set, items, total, hasMore, 1)
+  }
+}
 
-  /** 加载下一页站点（无限滚动触发，由 useInfiniteScroll hook 调用） */
-  loadMoreSites: async () => {
+function createLoadMoreSites(set: URLSet, get: URLGet): URLState["loadMoreSites"] {
+  return async () => {
     const { sitesHasMore, sitesLoading, sitesPage } = get()
     if (!sitesHasMore || sitesLoading) return
+
     const version = siteListVersion
     const nextPage = sitesPage + 1
     set({ sitesLoading: true })
+
     const [result, err] = await callService(() =>
       URLService.ListSites({ page: nextPage, page_size: PAGE_SIZE }),
     )
@@ -193,22 +274,12 @@ export const useURLStore = create<URLState>((set, get) => ({
       return
     }
     const { items, total, hasMore } = unpackList(result)
-    set({
-      sites: [...get().sites, ...items],
-      sitesTotal: total,
-      sitesPage: nextPage,
-      sitesHasMore: hasMore,
-      sitesLoading: false,
-    })
-  },
+    applySitesPage(set, [...get().sites, ...items], total, hasMore, nextPage)
+  }
+}
 
-  // ═══ 详情面板导航 ═══
-
-  /**
-   * 选中站点：并行加载站点详情和第一页书签。
-   * 先 set 空态让 UI 立即切换到 loading 状态，再异步填充数据。
-   */
-  selectSite: async (siteId) => {
+function createSelectSite(set: URLSet, get: URLGet): URLState["selectSite"] {
+  return async (siteId) => {
     const version = ++bookmarkListVersion
     set({
       detailView: { type: "site", siteId },
@@ -219,6 +290,7 @@ export const useURLStore = create<URLState>((set, get) => ({
       currentBookmark: null,
       bookmarksLoading: true,
     })
+
     const [result, err] = await callService(() =>
       Promise.all([
         URLService.GetSite(siteId),
@@ -234,23 +306,24 @@ export const useURLStore = create<URLState>((set, get) => ({
     if (result) {
       const [site, bmResult] = result
       const { items, total, hasMore } = unpackList(bmResult)
-      set({
-        currentSite: site ?? null,
-        bookmarks: items,
-        bookmarksTotal: total,
-        bookmarksHasMore: hasMore,
-      })
+      set({ currentSite: site ?? null })
+      applyBookmarksPage(set, items, total, hasMore, 1)
+      return
     }
     set({ bookmarksLoading: false })
-  },
+  }
+}
 
-  loadMoreBookmarks: async () => {
+function createLoadMoreBookmarks(set: URLSet, get: URLGet): URLState["loadMoreBookmarks"] {
+  return async () => {
     const { detailView, bookmarksHasMore, bookmarksLoading, bookmarksPage } = get()
     if (detailView.type !== "site" || !bookmarksHasMore || bookmarksLoading) return
+
     const version = bookmarkListVersion
     const siteId = detailView.siteId
     const nextPage = bookmarksPage + 1
     set({ bookmarksLoading: true })
+
     const [result, err] = await callService(() =>
       URLService.ListBookmarks({
         site_id: siteId,
@@ -265,20 +338,15 @@ export const useURLStore = create<URLState>((set, get) => ({
       return
     }
     const { items, total, hasMore } = unpackList(result)
-    set({
-      bookmarks: [...get().bookmarks, ...items],
-      bookmarksTotal: total,
-      bookmarksPage: nextPage,
-      bookmarksHasMore: hasMore,
-      bookmarksLoading: false,
-    })
-  },
+    applyBookmarksPage(set, [...get().bookmarks, ...items], total, hasMore, nextPage)
+  }
+}
 
-  selectBookmark: async (bookmarkId) => {
-    const { detailView } = get()
-    const siteId = str(getActiveSiteId(detailView))
+function createSelectBookmark(set: URLSet, get: URLGet): URLState["selectBookmark"] {
+  return async (bookmarkId) => {
+    const siteId = str(getActiveSiteId(get().detailView))
     set({ detailView: { type: "bookmark", bookmarkId, siteId }, currentBookmark: null })
-    const [bm, err] = await callService(() => URLService.GetBookmark(bookmarkId))
+    const [bookmark, err] = await callService(() => URLService.GetBookmark(bookmarkId))
     const current = get().detailView
     if (current.type !== "bookmark" || current.bookmarkId !== bookmarkId) return
     if (err) {
@@ -286,41 +354,21 @@ export const useURLStore = create<URLState>((set, get) => ({
       set({ detailView: { type: "site", siteId }, currentBookmark: null })
       return
     }
-    set({ currentBookmark: bm ?? null })
-  },
+    set({ currentBookmark: bookmark ?? null })
+  }
+}
 
-  backToSite: () => {
-    const { detailView } = get()
-    if (detailView.type === "bookmark") {
-      set({
-        detailView: { type: "site", siteId: detailView.siteId },
-        currentBookmark: null,
-      })
-    }
-  },
-
-  setBookmarkViewMode: (mode) => set({ bookmarkViewMode: mode }),
-
-  /**
-   * 刷新当前站点的所有数据（创建/编辑/删除书签后调用）。
-   * 副作用链：刷新右栏详情 → 同时刷新左栏站点列表（因为书签数等可能变化）。
-   */
-  refreshCurrentSite: async () => {
+function createRefreshCurrentSite(set: URLSet, get: URLGet): URLState["refreshCurrentSite"] {
+  return async () => {
     const siteId = getActiveSiteId(get().detailView)
     if (!siteId) return
+
     if (get().searchMode) {
       ++bookmarkListVersion
       const match = get().searchResults.find((item) => item.site.id === siteId)
       if (match) {
-        set({
-          currentSite: match.site,
-          bookmarks: match.bookmarks,
-          bookmarksTotal: match.bookmarks.length,
-          bookmarksPage: 1,
-          bookmarksHasMore: false,
-          bookmarksLoading: false,
-        })
-        get().loadSites()
+        applySearchSiteBookmarks(set, match)
+        await get().loadSites()
         return
       }
     }
@@ -340,28 +388,24 @@ export const useURLStore = create<URLState>((set, get) => ({
     if (result) {
       const [site, bmResult] = result
       const { items, total, hasMore } = unpackList(bmResult)
-      set({
-        currentSite: site ?? null,
-        bookmarks: items,
-        bookmarksTotal: total,
-        bookmarksPage: 1,
-        bookmarksHasMore: hasMore,
-      })
+      set({ currentSite: site ?? null })
+      applyBookmarksPage(set, items, total, hasMore, 1)
     }
-    get().loadSites()
-  },
+    await get().loadSites()
+  }
+}
 
-  // ═══ 搜索与筛选 ═══
-
-  /** 执行搜索：关键词 + 标签筛选取交集（AND），均为空时退出搜索模式 */
-  search: async (query) => {
+function createSearch(set: URLSet, get: URLGet): URLState["search"] {
+  return async (query) => {
     const { selectedTags } = get()
     if (!query.trim() && selectedTags.length === 0) {
       get().clearSearch()
       return
     }
+
     const version = ++searchVersion
     set({ searchMode: true, searchQuery: query, searchLoading: true })
+
     const [result, err] = await callService(() =>
       URLService.SearchURL({
         search: query.trim() || undefined,
@@ -380,22 +424,20 @@ export const useURLStore = create<URLState>((set, get) => ({
       return
     }
     const { items, total, hasMore } = unpackList(result)
-    set({
-      searchResults: items,
-      searchTotal: total,
-      searchPage: 1,
-      searchHasMore: hasMore,
-      searchLoading: false,
-      detailView: { type: "none" },
-    })
-  },
+    applySearchPage(set, items, total, hasMore, 1)
+    set({ detailView: { type: "none" } })
+  }
+}
 
-  loadMoreSearch: async () => {
+function createLoadMoreSearch(set: URLSet, get: URLGet): URLState["loadMoreSearch"] {
+  return async () => {
     const { searchHasMore, searchLoading, searchPage, searchQuery, selectedTags } = get()
     if (!searchHasMore || searchLoading) return
+
     const version = searchVersion
     const nextPage = searchPage + 1
     set({ searchLoading: true })
+
     const [result, err] = await callService(() =>
       URLService.SearchURL({
         search: searchQuery.trim() || undefined,
@@ -414,16 +456,52 @@ export const useURLStore = create<URLState>((set, get) => ({
       return
     }
     const { items, total, hasMore } = unpackList(result)
-    const current = get().searchResults
-    set({
-      searchResults: [...current, ...items],
-      searchTotal: total,
-      searchPage: nextPage,
-      searchHasMore: hasMore,
-      searchLoading: false,
-    })
+    applySearchPage(set, [...get().searchResults, ...items], total, hasMore, nextPage)
+  }
+}
+
+function createSelectSearchResult(set: URLSet): URLState["selectSearchResult"] {
+  return async (item) => {
+    ++bookmarkListVersion
+    applySearchSiteBookmarks(set, item)
+  }
+}
+
+function createSetSelectedTags(set: URLSet, get: URLGet): URLState["setSelectedTags"] {
+  return (tags) => {
+    set({ selectedTags: tags })
+    const { searchQuery } = get()
+    if (tags.length > 0 || searchQuery.trim()) {
+      get().search(searchQuery)
+      return
+    }
+    get().clearSearch()
+  }
+}
+
+// ─── Store 实现 ──────────────────────────────────────────────
+
+export const useURLStore = create<URLState>((set, get) => ({
+  ...initialURLState,
+  loadSites: createLoadSites(set),
+  loadMoreSites: createLoadMoreSites(set, get),
+  selectSite: createSelectSite(set, get),
+  loadMoreBookmarks: createLoadMoreBookmarks(set, get),
+  selectBookmark: createSelectBookmark(set, get),
+  backToSite: () => {
+    const { detailView } = get()
+    if (detailView.type === "bookmark") {
+      set({
+        detailView: { type: "site", siteId: detailView.siteId },
+        currentBookmark: null,
+      })
+    }
   },
 
+  setBookmarkViewMode: (mode) => set({ bookmarkViewMode: mode }),
+  refreshCurrentSite: createRefreshCurrentSite(set, get),
+  search: createSearch(set, get),
+  loadMoreSearch: createLoadMoreSearch(set, get),
   /** 退出搜索模式，重置所有搜索状态。递增 searchVersion 使在途请求失效。 */
   clearSearch: () => {
     ++searchVersion
@@ -439,36 +517,8 @@ export const useURLStore = create<URLState>((set, get) => ({
       detailView: { type: "none" },
     })
   },
-
-  /**
-   * 选中搜索结果中的一条：右栏只展示当前搜索命中的书签子集，
-   * 不再额外拉取整站书签，避免搜索态被全量列表覆盖。
-   */
-  selectSearchResult: async (item) => {
-    const siteId = item.site.id
-    ++bookmarkListVersion
-    set({
-      detailView: { type: "site", siteId },
-      currentSite: item.site,
-      bookmarks: item.bookmarks,
-      bookmarksTotal: item.bookmarks.length,
-      bookmarksPage: 1,
-      bookmarksHasMore: false,
-      bookmarksLoading: false,
-      currentBookmark: null,
-    })
-  },
-
-  /** 标签筛选变化时自动触发搜索（或清除搜索） */
-  setSelectedTags: (tags) => {
-    set({ selectedTags: tags })
-    const { searchQuery } = get()
-    if (tags.length > 0 || searchQuery.trim()) {
-      get().search(searchQuery)
-    } else {
-      get().clearSearch()
-    }
-  },
+  selectSearchResult: createSelectSearchResult(set),
+  setSelectedTags: createSetSelectedTags(set, get),
 }))
 
 // ─── 预组合 Selector Hooks ──────────────────────────────────
@@ -476,8 +526,6 @@ export const useURLStore = create<URLState>((set, get) => ({
 // 替代组件内多行 useURLStore((s) => s.xxx) 重复写法。
 // 使用 useShallow 将多字段聚合为一次浅比较订阅，
 // 只在选中的字段实际变化时才触发重渲染。
-
-import { useShallow } from "zustand/react/shallow"
 
 /** 站点列表所需的全部状态（单次订阅替代 7 行 selector） */
 export function useSiteListState() {

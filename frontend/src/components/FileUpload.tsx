@@ -28,6 +28,9 @@ import { getFileExt } from "@/lib/safe"
 
 const TEXT_EXTS = new Set(["txt"])
 const ALL_EXTS = new Set([...IMAGE_EXTS, ...VIDEO_EXTS, ...TEXT_EXTS])
+const ACCEPT_ATTR = Array.from(ALL_EXTS)
+  .map((ext) => `.${ext}`)
+  .join(",")
 
 /** MIME → 扩展名映射，粘贴的截图通常没有文件名，需要靠 MIME 推断 */
 const MIME_TO_EXT: Record<string, string> = {
@@ -54,6 +57,13 @@ interface FileUploadProps {
   files: UploadedFile[]
   onChange: (files: UploadedFile[]) => void
   className?: string
+}
+
+interface UploadRuntimeState {
+  scene: string
+  entityId: string
+  files: UploadedFile[]
+  onChange: (files: UploadedFile[]) => void
 }
 
 // ─── 主组件 ──────────────────────────────────────────────────
@@ -97,41 +107,12 @@ function useFileUpload(
 
   async function uploadFiles(fileList: File[]) {
     setError("")
-    const validFiles: File[] = []
-    for (const file of fileList) {
-      if (!ALL_EXTS.has(getFileExt(file.name))) {
-        setError(`不支持的文件格式：${file.name}`)
-        continue
-      }
-      validFiles.push(file)
-    }
+    const validFiles = collectUploadFiles(fileList, setError)
     if (validFiles.length === 0) return
 
     setUploading(true)
-    const { scene: s, entityId: eid } = stateRef.current
-    const newFiles: UploadedFile[] = []
-    for (const file of validFiles) {
-      const [base64, readErr] = await callService(() => readFileAsBase64(file))
-      if (readErr) {
-        setError(`读取文件失败：${readErr}`)
-        break
-      }
-      const [result, err] = await callService(() =>
-        UploadService.UploadFile({
-          scene: s,
-          entity_id: eid,
-          filename: file.name,
-          data: base64,
-        }),
-      )
-      if (err) {
-        setError(err)
-        break
-      }
-      if (result?.path) {
-        newFiles.push({ filename: file.name, path: result.path })
-      }
-    }
+    const { newFiles, error: uploadError } = await uploadValidatedFiles(stateRef.current, validFiles)
+    if (uploadError) setError(uploadError)
     if (newFiles.length > 0) {
       const { files: latestFiles, onChange: cb } = stateRef.current
       cb([...latestFiles, ...newFiles])
@@ -141,35 +122,10 @@ function useFileUpload(
 
   /** 从剪贴板中提取文件（截图、复制的文件），为无文件名的 blob 生成名称 */
   function handlePaste(e: ClipboardEvent | globalThis.ClipboardEvent) {
-    const items =
+    const pastedFiles = extractPastedFiles(
       (e as ClipboardEvent).clipboardData?.items ??
-      (e as globalThis.ClipboardEvent).clipboardData?.items
-    if (!items || items.length === 0) return
-
-    const pastedFiles: File[] = []
-    for (const item of Array.from(items)) {
-      if (item.kind !== "file") continue
-      const file = item.getAsFile()
-      if (!file) continue
-
-      let name = file.name
-      if (!name || name === "image.png" || name === "image.jpeg") {
-        const guessed = MIME_TO_EXT[file.type] ?? "png"
-        name = `paste-${Date.now()}.${guessed}`
-      }
-
-      if (!ALL_EXTS.has(getFileExt(name))) {
-        const guessedExt = MIME_TO_EXT[file.type]
-        if (guessedExt && ALL_EXTS.has(guessedExt)) {
-          name = `paste-${Date.now()}.${guessedExt}`
-        } else {
-          continue
-        }
-      }
-
-      pastedFiles.push(new File([file], name, { type: file.type }))
-    }
-
+        (e as globalThis.ClipboardEvent).clipboardData?.items,
+    )
     if (pastedFiles.length > 0) {
       e.preventDefault()
       uploadFiles(pastedFiles)
@@ -212,18 +168,12 @@ function DropZone({
     e.target.value = ""
   }
 
-  function getDropZoneClass(): string {
-    if (dragOver) return "border-primary bg-muted/50"
-    if (focused) return "border-primary/60 bg-muted/30"
-    return "border-input hover:border-primary/50"
-  }
-
   return (
     <div
       tabIndex={0}
       className={cn(
         "flex flex-col items-center justify-center gap-1 rounded-md border border-dashed py-4 cursor-pointer transition-colors duration-150 outline-none",
-        getDropZoneClass(),
+        getDropZoneClass(dragOver, focused),
       )}
       onClick={() => inputRef.current?.click()}
       onFocus={() => setFocused(true)}
@@ -241,9 +191,7 @@ function DropZone({
         type="file"
         multiple
         className="hidden"
-        accept={Array.from(ALL_EXTS)
-          .map((e) => `.${e}`)
-          .join(",")}
+        accept={ACCEPT_ATTR}
         onChange={handleFileInput}
       />
     </div>
@@ -408,4 +356,79 @@ function readFileAsBase64(file: File): Promise<string> {
     reader.onerror = reject
     reader.readAsDataURL(file)
   })
+}
+
+function collectUploadFiles(fileList: File[], setError: (msg: string) => void): File[] {
+  const validFiles: File[] = []
+  for (const file of fileList) {
+    if (!ALL_EXTS.has(getFileExt(file.name))) {
+      setError(`不支持的文件格式：${file.name}`)
+      continue
+    }
+    validFiles.push(file)
+  }
+  return validFiles
+}
+
+async function uploadValidatedFiles(
+  state: UploadRuntimeState,
+  files: File[],
+): Promise<{ newFiles: UploadedFile[]; error: string | null }> {
+  const newFiles: UploadedFile[] = []
+  for (const file of files) {
+    const [base64, readErr] = await callService(() => readFileAsBase64(file))
+    if (readErr || base64 === null) {
+      return { newFiles, error: `读取文件失败：${readErr ?? "unknown error"}` }
+    }
+
+    const [result, err] = await callService(() =>
+      UploadService.UploadFile({
+        scene: state.scene,
+        entity_id: state.entityId,
+        filename: file.name,
+        data: base64,
+      }),
+    )
+    if (err) return { newFiles, error: err }
+    if (result?.path) {
+      newFiles.push({ filename: file.name, path: result.path })
+    }
+  }
+  return { newFiles, error: null }
+}
+
+function extractPastedFiles(items: DataTransferItemList | undefined | null): File[] {
+  if (!items || items.length === 0) return []
+  const pastedFiles: File[] = []
+  for (const item of Array.from(items)) {
+    const file = item.kind === "file" ? item.getAsFile() : null
+    if (!file) continue
+
+    const filename = resolvePastedFilename(file)
+    if (!filename) continue
+    pastedFiles.push(new File([file], filename, { type: file.type }))
+  }
+  return pastedFiles
+}
+
+function resolvePastedFilename(file: File): string | null {
+  let name = file.name
+  if (!name || name === "image.png" || name === "image.jpeg") {
+    const guessed = MIME_TO_EXT[file.type] ?? "png"
+    name = `paste-${Date.now()}.${guessed}`
+  }
+
+  if (ALL_EXTS.has(getFileExt(name))) return name
+
+  const guessedExt = MIME_TO_EXT[file.type]
+  if (guessedExt && ALL_EXTS.has(guessedExt)) {
+    return `paste-${Date.now()}.${guessedExt}`
+  }
+  return null
+}
+
+function getDropZoneClass(dragOver: boolean, focused: boolean): string {
+  if (dragOver) return "border-primary bg-muted/50"
+  if (focused) return "border-primary/60 bg-muted/30"
+  return "border-input hover:border-primary/50"
 }

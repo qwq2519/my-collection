@@ -1,4 +1,4 @@
-import { create } from "zustand"
+import { create, type StateCreator } from "zustand"
 import { NoteService } from "../../bindings/collections/internal/service"
 import type { Note } from "../../bindings/collections/internal/model"
 import { callService } from "../lib/async"
@@ -37,21 +37,53 @@ interface NoteState {
   deleteNote: (id: string) => Promise<string | null>
 }
 
-export const useNoteStore = create<NoteState>((set, get) => ({
+type NoteStoreCreator = StateCreator<NoteState>
+type NoteSet = Parameters<NoteStoreCreator>[0]
+type NoteGet = Parameters<NoteStoreCreator>[1]
+
+const initialNoteState: Pick<
+  NoteState,
+  | "notes"
+  | "notesTotal"
+  | "notesHasMore"
+  | "notesLoading"
+  | "notesPage"
+  | "selectedId"
+  | "currentNote"
+  | "currentLoading"
+  | "searchQuery"
+  | "searchMode"
+> = {
   notes: [],
   notesTotal: 0,
   notesHasMore: false,
   notesLoading: false,
   notesPage: 1,
-
   selectedId: null,
   currentNote: null,
   currentLoading: false,
-
   searchQuery: "",
   searchMode: false,
+}
 
-  loadNotes: async () => {
+function applyNotePage(
+  set: NoteSet,
+  notes: Note[],
+  total: number,
+  hasMore: boolean,
+  page: number,
+) {
+  set({
+    notes,
+    notesTotal: total,
+    notesPage: page,
+    notesHasMore: hasMore,
+    notesLoading: false,
+  })
+}
+
+function createLoadNotes(set: NoteSet): NoteState["loadNotes"] {
+  return async () => {
     const version = ++noteListVersion
     set({ notesLoading: true })
     const [result, err] = await callService(() =>
@@ -64,21 +96,19 @@ export const useNoteStore = create<NoteState>((set, get) => ({
       return
     }
     const { items, total, hasMore } = unpackList(result)
-    set({
-      notes: items,
-      notesTotal: total,
-      notesPage: 1,
-      notesHasMore: hasMore,
-      notesLoading: false,
-    })
-  },
+    applyNotePage(set, items, total, hasMore, 1)
+  }
+}
 
-  loadMoreNotes: async () => {
+function createLoadMoreNotes(set: NoteSet, get: NoteGet): NoteState["loadMoreNotes"] {
+  return async () => {
     const { notesHasMore, notesLoading, notesPage, searchQuery, searchMode } = get()
     if (!notesHasMore || notesLoading) return
+
     const version = noteListVersion
     const nextPage = notesPage + 1
     set({ notesLoading: true })
+
     const [result, err] = await callService(() =>
       NoteService.ListNotes({
         page: nextPage,
@@ -93,16 +123,12 @@ export const useNoteStore = create<NoteState>((set, get) => ({
       return
     }
     const { items, total, hasMore } = unpackList(result)
-    set({
-      notes: [...get().notes, ...items],
-      notesTotal: total,
-      notesPage: nextPage,
-      notesHasMore: hasMore,
-      notesLoading: false,
-    })
-  },
+    applyNotePage(set, [...get().notes, ...items], total, hasMore, nextPage)
+  }
+}
 
-  selectNote: async (id) => {
+function createSelectNote(set: NoteSet, get: NoteGet): NoteState["selectNote"] {
+  return async (id) => {
     set({ selectedId: id, currentNote: null, currentLoading: true })
     const [note, err] = await callService(() => NoteService.GetNote(id))
     if (get().selectedId !== id) {
@@ -115,20 +141,20 @@ export const useNoteStore = create<NoteState>((set, get) => ({
       return
     }
     set({ currentNote: note ?? null, currentLoading: false })
-  },
+  }
+}
 
-  clearSelection: () => {
-    set({ selectedId: null, currentNote: null, currentLoading: false })
-  },
-
-  search: async (query) => {
+function createSearch(set: NoteSet, get: NoteGet): NoteState["search"] {
+  return async (query) => {
     if (!query.trim()) {
       get().clearSearch()
       return
     }
+
     const version = ++searchVersion
     const listVersion = ++noteListVersion
     set({ searchMode: true, searchQuery: query, notesLoading: true })
+
     const [result, err] = await callService(() =>
       NoteService.ListNotes({ page: 1, page_size: PAGE_SIZE, search: query.trim() }),
     )
@@ -139,36 +165,23 @@ export const useNoteStore = create<NoteState>((set, get) => ({
       return
     }
     const { items, total, hasMore } = unpackList(result)
-    set({
-      notes: items,
-      notesTotal: total,
-      notesPage: 1,
-      notesHasMore: hasMore,
-      notesLoading: false,
-    })
-  },
+    applyNotePage(set, items, total, hasMore, 1)
+  }
+}
 
-  clearSearch: () => {
-    ++searchVersion
-    ++noteListVersion
-    set({ searchMode: false, searchQuery: "" })
-    get().loadNotes()
-  },
-
-  refreshList: async () => {
+function createRefreshList(get: NoteGet): NoteState["refreshList"] {
+  return async () => {
     const { searchMode, searchQuery } = get()
     if (searchMode) {
-      get().search(searchQuery)
-    } else {
-      get().loadNotes()
+      await get().search(searchQuery)
+      return
     }
-  },
+    await get().loadNotes()
+  }
+}
 
-  updateCurrentNote: (note) => {
-    set({ currentNote: note })
-  },
-
-  createNote: async () => {
+function createNote(set: NoteSet, get: NoteGet): NoteState["createNote"] {
+  return async () => {
     const [note, err] = await callService(() =>
       NoteService.CreateNote({ title: "无标题笔记" }),
     )
@@ -178,16 +191,41 @@ export const useNoteStore = create<NoteState>((set, get) => ({
       set({ selectedId: note.id, currentNote: note, currentLoading: false })
     }
     return null
-  },
+  }
+}
 
-  deleteNote: async (id) => {
+function createDeleteNote(set: NoteSet, get: NoteGet): NoteState["deleteNote"] {
+  return async (id) => {
     const [, err] = await callService(() => NoteService.DeleteNote(id))
     if (err) return err
-    const { selectedId } = get()
-    if (selectedId === id) {
+
+    if (get().selectedId === id) {
       set({ selectedId: null, currentNote: null, currentLoading: false })
     }
     await get().refreshList()
     return null
+  }
+}
+
+export const useNoteStore = create<NoteState>((set, get) => ({
+  ...initialNoteState,
+  loadNotes: createLoadNotes(set),
+  loadMoreNotes: createLoadMoreNotes(set, get),
+  selectNote: createSelectNote(set, get),
+  clearSelection: () => {
+    set({ selectedId: null, currentNote: null, currentLoading: false })
   },
+  search: createSearch(set, get),
+  clearSearch: () => {
+    ++searchVersion
+    ++noteListVersion
+    set({ searchMode: false, searchQuery: "" })
+    get().loadNotes()
+  },
+  refreshList: createRefreshList(get),
+  updateCurrentNote: (note) => {
+    set({ currentNote: note })
+  },
+  createNote: createNote(set, get),
+  deleteNote: createDeleteNote(set, get),
 }))

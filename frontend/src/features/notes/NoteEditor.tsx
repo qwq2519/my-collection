@@ -1,4 +1,11 @@
-import { useState, useEffect, useRef } from "react"
+import {
+  useState,
+  useEffect,
+  useRef,
+  type Dispatch,
+  type MutableRefObject,
+  type SetStateAction,
+} from "react"
 import MDEditor from "@uiw/react-md-editor"
 import { useNoteStore } from "@/stores/note"
 import { useAppStore } from "@/stores/app"
@@ -24,29 +31,88 @@ interface NoteEditorProps {
   note: Note
 }
 
+interface NoteDraftState {
+  title: string
+  body: string
+  dirty: boolean
+  bodyRef: MutableRefObject<string>
+  dirtyRef: MutableRefObject<boolean>
+  titleRef: MutableRefObject<string>
+  setBody: Dispatch<SetStateAction<string>>
+  setDirty: Dispatch<SetStateAction<boolean>>
+  markDirty: () => void
+  handleTitleChange: (value: string) => void
+  handleBodyChange: (value: string | undefined) => void
+}
+
 export function NoteEditor({ note }: NoteEditorProps) {
-  const [title, setTitle] = useState(note.title)
-  const [body, setBody] = useState(note.body)
-  const [saving, setSaving] = useState(false)
-  const [dirty, setDirty] = useState(false)
-  const dirtyRef = useRef(false)
-  const bodyRef = useRef(body)
-  const [editorHeight, setEditorHeight] = useState<number>(400)
-
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [orphanFiles, setOrphanFiles] = useState<string[]>([])
-  const [showOrphanConfirm, setShowOrphanConfirm] = useState(false)
-
   const refreshList = useNoteStore((s) => s.refreshList)
   const updateCurrentNote = useNoteStore((s) => s.updateCurrentNote)
   const deleteNote = useNoteStore((s) => s.deleteNote)
   const currentPage = useAppStore((s) => s.currentPage)
 
-  const titleRef = useRef(title)
-  titleRef.current = title
+  const draft = useNoteDraft(note)
   const rootRef = useRef<HTMLDivElement>(null)
+  const { editorRef, editorHeight } = useEditorHeight()
+  const { saving, orphanFiles, showOrphanConfirm, setShowOrphanConfirm, save, handleOrphanDelete } =
+    useNoteSave(note.id, draft, updateCurrentNote, refreshList)
+  const { showDeleteConfirm, setShowDeleteConfirm, handleDeleteConfirm } = useNoteDelete(
+    note.id,
+    draft.dirtyRef,
+    deleteNote,
+  )
 
-  // 触发：note 数据变化时同步本地状态；若有未保存草稿则优先恢复
+  const saveRef = useRef(save)
+  saveRef.current = save
+
+  useSaveOnPageLeave(currentPage, saveRef)
+  usePersistDraftOnUnmount(note.id, draft.dirtyRef, draft.titleRef, draft.bodyRef)
+  useWarnBeforeUnload(draft.dirtyRef)
+  useNotePasteUpload(note.id, editorRef, draft.bodyRef, draft.setBody, draft.markDirty)
+
+  return (
+    <div
+      ref={rootRef}
+      className="flex flex-col h-full"
+      onKeyDownCapture={(e) => handleEditorKeyDown(e, saveRef)}
+      onBlurCapture={() => handleEditorBlur(rootRef, saveRef)}
+    >
+      <NoteEditorToolbar
+        title={draft.title}
+        dirty={draft.dirty}
+        saving={saving}
+        onTitleChange={draft.handleTitleChange}
+        onSave={save}
+        onDelete={() => setShowDeleteConfirm(true)}
+      />
+      <NoteEditorDialogs
+        noteTitle={note.title}
+        orphanFiles={orphanFiles}
+        showDeleteConfirm={showDeleteConfirm}
+        showOrphanConfirm={showOrphanConfirm}
+        setShowDeleteConfirm={setShowDeleteConfirm}
+        setShowOrphanConfirm={setShowOrphanConfirm}
+        onDeleteConfirm={handleDeleteConfirm}
+        onOrphanDelete={handleOrphanDelete}
+      />
+      <NoteMarkdownEditor
+        editorRef={editorRef}
+        body={draft.body}
+        editorHeight={editorHeight}
+        onChange={draft.handleBodyChange}
+      />
+    </div>
+  )
+}
+
+function useNoteDraft(note: Note): NoteDraftState {
+  const [title, setTitle] = useState(note.title)
+  const [body, setBody] = useState(note.body)
+  const [dirty, setDirty] = useState(false)
+  const dirtyRef = useRef(false)
+  const bodyRef = useRef(note.body)
+  const titleRef = useRef(note.title)
+
   useEffect(() => {
     const draftKey = `note-draft:${note.id}`
     const draft = localStorage.getItem(draftKey)
@@ -70,264 +136,374 @@ export function NoteEditor({ note }: NoteEditorProps) {
     dirtyRef.current = false
   }, [note.id, note.title, note.body])
 
-  function markDirty() {
+  const markDirty = () => {
     setDirty(true)
     dirtyRef.current = true
   }
 
-  function handleTitleChange(value: string) {
+  const handleTitleChange = (value: string) => {
     setTitle(value)
     titleRef.current = value
     markDirty()
   }
 
-  function handleBodyChange(value: string | undefined) {
-    const v = value ?? ""
-    setBody(v)
-    bodyRef.current = v
+  const handleBodyChange = (value: string | undefined) => {
+    const nextBody = value ?? ""
+    setBody(nextBody)
+    bodyRef.current = nextBody
     markDirty()
   }
 
-  // ── Save ──
+  return {
+    title,
+    body,
+    dirty,
+    bodyRef,
+    dirtyRef,
+    titleRef,
+    setBody,
+    setDirty,
+    markDirty,
+    handleTitleChange,
+    handleBodyChange,
+  }
+}
+
+function useNoteSave(
+  noteId: string,
+  draft: NoteDraftState,
+  updateCurrentNote: (note: Note) => void,
+  refreshList: () => Promise<void>,
+) {
+  const [saving, setSaving] = useState(false)
+  const [orphanFiles, setOrphanFiles] = useState<string[]>([])
+  const [showOrphanConfirm, setShowOrphanConfirm] = useState(false)
 
   async function save() {
-    if (!dirtyRef.current) return
-    const trimmedTitle = titleRef.current.trim()
+    if (!draft.dirtyRef.current) return
+    const trimmedTitle = draft.titleRef.current.trim()
     if (!trimmedTitle) {
       toast.error("标题不能为空")
       return
     }
     setSaving(true)
-    const currentBody = bodyRef.current
+    const currentBody = draft.bodyRef.current
     const [result, err] = await callService(() =>
-      NoteService.UpdateNote({ id: note.id, title: trimmedTitle, body: currentBody }),
+      NoteService.UpdateNote({ id: noteId, title: trimmedTitle, body: currentBody }),
     )
     setSaving(false)
     if (err) {
       toast.error(err)
       return
     }
-    setDirty(false)
-    dirtyRef.current = false
-    if (result) {
-      updateCurrentNote(result)
-    }
-    refreshList()
+    draft.setDirty(false)
+    draft.dirtyRef.current = false
+    if (result) updateCurrentNote(result)
+    await refreshList()
     toast.success("已保存")
-
-    const [orphanResult, orphanErr] = await callService(() =>
-      NoteService.DetectOrphanImages({ note_id: note.id, body: currentBody }),
-    )
-    if (orphanErr) {
-      toast.error("检测未引用图片失败：" + orphanErr)
-      return
-    }
-    if (orphanResult && orphanResult.orphan_files.length > 0) {
-      setOrphanFiles(orphanResult.orphan_files)
-      setShowOrphanConfirm(true)
-    }
+    await detectOrphanImages(noteId, currentBody, setOrphanFiles, setShowOrphanConfirm)
   }
 
-  const saveRef = useRef(save)
-  saveRef.current = save
-
-  function handleEditorKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
-    if ((e.ctrlKey || e.metaKey) && e.key === "s") {
-      e.preventDefault()
-      saveRef.current()
-    }
-  }
-
-  function handleEditorBlur() {
-    requestAnimationFrame(() => {
-      const root = rootRef.current
-      const active = document.activeElement
-      if (!root || !active || root.contains(active)) return
-      saveRef.current()
-    })
-  }
-
-  async function handleDeleteConfirm() {
-    const wasDirty = dirtyRef.current
-    dirtyRef.current = false
-    const err = await deleteNote(note.id)
-    if (err) {
-      dirtyRef.current = wasDirty
-      toast.error(err)
-    }
-  }
-
-  async function handleOrphanDeleteConfirm() {
+  async function handleOrphanDelete() {
     const [, err] = await callService(() =>
-      NoteService.DeleteOrphanImages({ note_id: note.id, files: orphanFiles }),
+      NoteService.DeleteOrphanImages({ note_id: noteId, files: orphanFiles }),
     )
     if (err) toast.error(err)
     else toast.success("已清理孤儿图片")
     setOrphanFiles([])
   }
 
-  // 触发：切换到非 notes 页面时自动保存，避免 ContentArea 隐藏页面后丢草稿
+  return { saving, orphanFiles, showOrphanConfirm, setShowOrphanConfirm, save, handleOrphanDelete }
+}
+
+function useNoteDelete(
+  noteId: string,
+  dirtyRef: MutableRefObject<boolean>,
+  deleteNote: (id: string) => Promise<string | null>,
+) {
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+
+  async function handleDeleteConfirm() {
+    const wasDirty = dirtyRef.current
+    dirtyRef.current = false
+    const err = await deleteNote(noteId)
+    if (err) {
+      dirtyRef.current = wasDirty
+      toast.error(err)
+    }
+  }
+
+  return { showDeleteConfirm, setShowDeleteConfirm, handleDeleteConfirm }
+}
+
+function useSaveOnPageLeave(
+  currentPage: string,
+  saveRef: MutableRefObject<() => Promise<void>>,
+) {
   useEffect(() => {
     if (currentPage !== "notes") {
       saveRef.current()
     }
-  }, [currentPage])
+  }, [currentPage, saveRef])
+}
 
-  // 触发：note.id 变化或组件卸载时，自动保存未提交的修改
+function usePersistDraftOnUnmount(
+  noteId: string,
+  dirtyRef: MutableRefObject<boolean>,
+  titleRef: MutableRefObject<string>,
+  bodyRef: MutableRefObject<string>,
+) {
   useEffect(() => {
-    return () => {
-      if (dirtyRef.current) {
-        const trimmedTitle = titleRef.current.trim()
-        if (trimmedTitle) {
-          const draft = { id: note.id, title: trimmedTitle, body: bodyRef.current }
-          NoteService.UpdateNote(draft).catch(() => {
-            localStorage.setItem(`note-draft:${note.id}`, JSON.stringify(draft))
-          })
-        }
-      }
-    }
-  }, [note.id])
+    return () => persistDraftOnUnmount(noteId, dirtyRef, titleRef, bodyRef)
+  }, [noteId, dirtyRef, titleRef, bodyRef])
+}
 
-  // 触发：窗口关闭/刷新时提醒用户有未保存修改
+function useWarnBeforeUnload(dirtyRef: MutableRefObject<boolean>) {
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (dirtyRef.current) e.preventDefault()
     }
     window.addEventListener("beforeunload", handleBeforeUnload)
     return () => window.removeEventListener("beforeunload", handleBeforeUnload)
-  }, [])
+  }, [dirtyRef])
+}
 
-  // ── Editor Height (ResizeObserver) ──
-
+function useEditorHeight() {
   const editorRef = useRef<HTMLDivElement>(null)
+  const [editorHeight, setEditorHeight] = useState(400)
 
   useEffect(() => {
     const container = editorRef.current
     if (!container) return
     const ro = new ResizeObserver((entries) => {
-      const h = entries[0]?.contentRect.height
-      if (h && h > 0) setEditorHeight(h)
+      const height = entries[0]?.contentRect.height
+      if (height && height > 0) setEditorHeight(height)
     })
     ro.observe(container)
     return () => ro.disconnect()
   }, [])
 
-  // ── Paste Image Upload ──
+  return { editorRef, editorHeight }
+}
 
-  // 触发：note.id 变化时重新绑定 paste 监听（确保上传到正确的 note）
+function useNotePasteUpload(
+  noteId: string,
+  editorRef: MutableRefObject<HTMLDivElement | null>,
+  bodyRef: MutableRefObject<string>,
+  setBody: Dispatch<SetStateAction<string>>,
+  markDirty: () => void,
+) {
   useEffect(() => {
     const container = editorRef.current
     if (!container) return
 
     const handlePaste = async (e: ClipboardEvent) => {
-      const items = e.clipboardData?.items
-      if (!items) return
+      const item = getFirstPasteImage(e.clipboardData?.items)
+      if (!item) return
 
-      for (let i = 0; i < items.length; i++) {
-        const item = items[i]
-        const ext = IMAGE_MIME[item.type]
-        if (!ext) continue
+      e.preventDefault()
+      const file = item.getAsFile()
+      if (!file) return
 
-        e.preventDefault()
-        const file = item.getAsFile()
-        if (!file) continue
-
-        const base64 = await readFileAsBase64(file)
-        const filename = `paste-${Date.now()}${ext}`
-        const [result, err] = await callService(() =>
-          UploadService.UploadFile({
-            scene: "note-image",
-            entity_id: note.id,
-            filename,
-            data: base64,
-          }),
-        )
-        if (err) {
-          toast.error(`图片上传失败：${err}`)
-          return
-        }
-        if (result?.path) {
-          const imageMarkdown = `![image](/persist/${result.path})`
-          const newBody = insertAtCursor(container, imageMarkdown, bodyRef.current)
-          setBody(newBody)
-          bodyRef.current = newBody
-          markDirty()
-        }
+      const [base64, readErr] = await callService(() => readFileAsBase64(file))
+      if (readErr || base64 === null) {
+        toast.error(`图片读取失败：${readErr ?? "unknown error"}`)
         return
+      }
+      const filename = `paste-${Date.now()}${IMAGE_MIME[item.type]}`
+      const [result, err] = await callService(() =>
+        UploadService.UploadFile({
+          scene: "note-image",
+          entity_id: noteId,
+          filename,
+          data: base64,
+        }),
+      )
+      if (err) {
+        toast.error(`图片上传失败：${err}`)
+        return
+      }
+      if (result?.path) {
+        const newBody = insertAtCursor(container, `![image](/persist/${result.path})`, bodyRef.current)
+        setBody(newBody)
+        bodyRef.current = newBody
+        markDirty()
       }
     }
 
     container.addEventListener("paste", handlePaste)
     return () => container.removeEventListener("paste", handlePaste)
-  }, [note.id])
+  }, [noteId, editorRef, bodyRef, setBody, markDirty])
+}
 
+function NoteEditorToolbar({
+  title,
+  dirty,
+  saving,
+  onTitleChange,
+  onSave,
+  onDelete,
+}: {
+  title: string
+  dirty: boolean
+  saving: boolean
+  onTitleChange: (value: string) => void
+  onSave: () => Promise<void>
+  onDelete: () => void
+}) {
   return (
-    <div
-      ref={rootRef}
-      className="flex flex-col h-full"
-      onKeyDownCapture={handleEditorKeyDown}
-      onBlurCapture={handleEditorBlur}
-    >
-      {/* 顶部：标题 + 操作按钮（pt-9 避开 macOS 交通灯区域） */}
-      <div className="flex items-center gap-3 px-6 py-4 pt-9 border-b border-border">
-        <Input
-          value={title}
-          onChange={(e) => handleTitleChange(e.target.value)}
-          placeholder="笔记标题"
-          className="text-lg font-semibold border-none shadow-none px-0 focus-visible:ring-0"
-        />
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={save}
-          disabled={!dirty || saving}
-          className="shrink-0"
-        >
-          {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-          <span className="ml-1.5">保存</span>
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setShowDeleteConfirm(true)}
-          className="shrink-0 text-destructive hover:text-destructive"
-        >
-          <Trash2 size={16} />
-        </Button>
-      </div>
+    <div className="flex items-center gap-3 px-6 py-4 pt-9 border-b border-border">
+      <Input
+        value={title}
+        onChange={(e) => onTitleChange(e.target.value)}
+        placeholder="笔记标题"
+        className="text-lg font-semibold border-none shadow-none px-0 focus-visible:ring-0"
+      />
+      <Button variant="ghost" size="sm" onClick={onSave} disabled={!dirty || saving} className="shrink-0">
+        {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+        <span className="ml-1.5">保存</span>
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={onDelete}
+        className="shrink-0 text-destructive hover:text-destructive"
+      >
+        <Trash2 size={16} />
+      </Button>
+    </div>
+  )
+}
 
+function NoteEditorDialogs({
+  noteTitle,
+  orphanFiles,
+  showDeleteConfirm,
+  showOrphanConfirm,
+  setShowDeleteConfirm,
+  setShowOrphanConfirm,
+  onDeleteConfirm,
+  onOrphanDelete,
+}: {
+  noteTitle: string
+  orphanFiles: string[]
+  showDeleteConfirm: boolean
+  showOrphanConfirm: boolean
+  setShowDeleteConfirm: (open: boolean) => void
+  setShowOrphanConfirm: (open: boolean) => void
+  onDeleteConfirm: () => Promise<void>
+  onOrphanDelete: () => Promise<void>
+}) {
+  return (
+    <>
       <ConfirmDialog
         open={showDeleteConfirm}
         onOpenChange={setShowDeleteConfirm}
         title="删除笔记"
-        description={`确定删除「${note.title}」？此操作不可撤销。`}
-        onConfirm={handleDeleteConfirm}
+        description={`确定删除「${noteTitle}」？此操作不可撤销。`}
+        onConfirm={onDeleteConfirm}
       />
-
       <ConfirmDialog
         open={showOrphanConfirm}
         onOpenChange={setShowOrphanConfirm}
         title="清理未引用图片"
         description={`发现 ${orphanFiles.length} 个未被引用的图片文件，是否删除？`}
         confirmLabel="删除"
-        onConfirm={handleOrphanDeleteConfirm}
+        onConfirm={onOrphanDelete}
       />
+    </>
+  )
+}
 
-      {/* Markdown 编辑器 */}
-      <div ref={editorRef} className="flex-1 overflow-hidden" data-color-mode="light">
-        <MDEditor
-          value={body}
-          onChange={handleBodyChange}
-          height={editorHeight}
-          visibleDragbar={false}
-          preview="live"
-        />
-      </div>
+function NoteMarkdownEditor({
+  editorRef,
+  body,
+  editorHeight,
+  onChange,
+}: {
+  editorRef: MutableRefObject<HTMLDivElement | null>
+  body: string
+  editorHeight: number
+  onChange: (value: string | undefined) => void
+}) {
+  return (
+    <div ref={editorRef} className="flex-1 overflow-hidden" data-color-mode="light">
+      <MDEditor
+        value={body}
+        onChange={onChange}
+        height={editorHeight}
+        visibleDragbar={false}
+        preview="live"
+      />
     </div>
   )
 }
 
-// ── Helpers ──
+async function detectOrphanImages(
+  noteId: string,
+  body: string,
+  setOrphanFiles: Dispatch<SetStateAction<string[]>>,
+  setShowOrphanConfirm: Dispatch<SetStateAction<boolean>>,
+) {
+  const [result, err] = await callService(() =>
+    NoteService.DetectOrphanImages({ note_id: noteId, body }),
+  )
+  if (err) {
+    toast.error("检测未引用图片失败：" + err)
+    return
+  }
+  if (result && result.orphan_files.length > 0) {
+    setOrphanFiles(result.orphan_files)
+    setShowOrphanConfirm(true)
+  }
+}
+
+function persistDraftOnUnmount(
+  noteId: string,
+  dirtyRef: MutableRefObject<boolean>,
+  titleRef: MutableRefObject<string>,
+  bodyRef: MutableRefObject<string>,
+) {
+  if (!dirtyRef.current) return
+  const trimmedTitle = titleRef.current.trim()
+  if (!trimmedTitle) return
+
+  const draft = { id: noteId, title: trimmedTitle, body: bodyRef.current }
+  NoteService.UpdateNote(draft).catch(() => {
+    localStorage.setItem(`note-draft:${noteId}`, JSON.stringify(draft))
+  })
+}
+
+function handleEditorKeyDown(
+  e: React.KeyboardEvent<HTMLDivElement>,
+  saveRef: MutableRefObject<() => Promise<void>>,
+) {
+  if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+    e.preventDefault()
+    saveRef.current()
+  }
+}
+
+function handleEditorBlur(
+  rootRef: MutableRefObject<HTMLDivElement | null>,
+  saveRef: MutableRefObject<() => Promise<void>>,
+) {
+  requestAnimationFrame(() => {
+    const root = rootRef.current
+    const active = document.activeElement
+    if (!root || !active || root.contains(active)) return
+    saveRef.current()
+  })
+}
+
+function getFirstPasteImage(items: DataTransferItemList | null | undefined) {
+  if (!items) return null
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i]
+    if (IMAGE_MIME[item.type]) return item
+  }
+  return null
+}
 
 function readFileAsBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
