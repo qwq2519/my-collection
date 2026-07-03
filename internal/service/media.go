@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"collections/internal/model"
@@ -25,6 +26,26 @@ type MediaService struct {
 
 	scanCh chan scanRequest
 	state  *scanState
+
+	metaLocksMu sync.Mutex
+	metaLocks   map[string]*sync.Mutex
+}
+
+// lockFolderMeta 串行化同一文件夹的 media_meta/tree_hash 读改写，避免并发覆盖。
+func (m *MediaService) lockFolderMeta(folderID string) func() {
+	m.metaLocksMu.Lock()
+	if m.metaLocks == nil {
+		m.metaLocks = make(map[string]*sync.Mutex)
+	}
+	lock, ok := m.metaLocks[folderID]
+	if !ok {
+		lock = &sync.Mutex{}
+		m.metaLocks[folderID] = lock
+	}
+	m.metaLocksMu.Unlock()
+
+	lock.Lock()
+	return lock.Unlock
 }
 
 // ────────────────────── Folder Management ──────────────────────
@@ -242,6 +263,8 @@ func (m *MediaService) scanFolderInternal(id string, folder *model.MediaFolder) 
 			return nil, err
 		}
 	}
+	unlockMeta := m.lockFolderMeta(id)
+	defer unlockMeta()
 
 	var cachedRoot *model.TreeNode
 	if cached, err := m.Store.ReadTreeHash(id); err == nil {
@@ -483,13 +506,13 @@ func (m *MediaService) processRemoved(folderID, thumbDir string, relPaths []stri
 // mediaBleveFields 构建媒体文件的 Bleve 索引字段
 func mediaBleveFields(folderID, relPath string, file model.MediaFile) map[string]interface{} {
 	return map[string]interface{}{
-		"_type":      "media",
-		"folder_id":  folderID,
-		"media_type": file.MediaType,
-		"filename":   filepath.Base(filepath.FromSlash(relPath)),
-		"tags":       file.Tags,
+		"_type":       "media",
+		"folder_id":   folderID,
+		"media_type":  file.MediaType,
+		"filename":    filepath.Base(filepath.FromSlash(relPath)),
+		"tags":        file.Tags,
 		"description": file.Description,
-		"updated_at": file.UpdatedAt,
+		"updated_at":  file.UpdatedAt,
 	}
 }
 
@@ -574,6 +597,8 @@ func (m *MediaService) UpdateMediaFile(req model.UpdateMediaFileReq) (_ *model.M
 		}
 		req.Tags = &tags
 	}
+	unlockMeta := m.lockFolderMeta(req.FolderID)
+	defer unlockMeta()
 
 	meta, err := m.Store.ReadMediaMeta(req.FolderID)
 	if err != nil {
@@ -635,6 +660,8 @@ func (m *MediaService) BatchUpdateMediaTags(req model.BatchUpdateMediaTagsReq) (
 	if err != nil {
 		return err
 	}
+	unlockMeta := m.lockFolderMeta(req.FolderID)
+	defer unlockMeta()
 
 	meta, err := m.Store.ReadMediaMeta(req.FolderID)
 	if err != nil {

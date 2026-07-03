@@ -26,6 +26,46 @@ func TestMediaService_ListFoldersEmpty(t *testing.T) {
 	}
 }
 
+func TestMediaService_LockFolderMetaSerializesSameFolderOnly(t *testing.T) {
+	svc := newMediaService(t)
+
+	unlockA := svc.lockFolderMeta("folder-a")
+
+	sameFolderAcquired := make(chan struct{})
+	go func() {
+		unlock := svc.lockFolderMeta("folder-a")
+		close(sameFolderAcquired)
+		unlock()
+	}()
+
+	select {
+	case <-sameFolderAcquired:
+		t.Fatal("same folder meta lock should block until first lock releases")
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	otherFolderAcquired := make(chan struct{})
+	go func() {
+		unlock := svc.lockFolderMeta("folder-b")
+		close(otherFolderAcquired)
+		unlock()
+	}()
+
+	select {
+	case <-otherFolderAcquired:
+	case <-time.After(time.Second):
+		t.Fatal("different folder meta lock should not block")
+	}
+
+	unlockA()
+
+	select {
+	case <-sameFolderAcquired:
+	case <-time.After(time.Second):
+		t.Fatal("same folder meta lock should acquire after release")
+	}
+}
+
 func TestMediaService_ListFoldersAfterAdd(t *testing.T) {
 	svc := newMediaService(t)
 	dir := t.TempDir()
