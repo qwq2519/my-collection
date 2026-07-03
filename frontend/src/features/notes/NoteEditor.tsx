@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react"
 import MDEditor from "@uiw/react-md-editor"
 import { useNoteStore } from "@/stores/note"
+import { useAppStore } from "@/stores/app"
 import { NoteService } from "../../../bindings/collections/internal/service"
 import { UploadService } from "../../../bindings/collections/internal/service"
 import type { Note } from "../../../bindings/collections/internal/model"
@@ -39,9 +40,11 @@ export function NoteEditor({ note }: NoteEditorProps) {
   const refreshList = useNoteStore((s) => s.refreshList)
   const updateCurrentNote = useNoteStore((s) => s.updateCurrentNote)
   const deleteNote = useNoteStore((s) => s.deleteNote)
+  const currentPage = useAppStore((s) => s.currentPage)
 
   const titleRef = useRef(title)
   titleRef.current = title
+  const rootRef = useRef<HTMLDivElement>(null)
 
   // 触发：note 数据变化时同步本地状态；若有未保存草稿则优先恢复
   useEffect(() => {
@@ -124,17 +127,28 @@ export function NoteEditor({ note }: NoteEditorProps) {
   const saveRef = useRef(save)
   saveRef.current = save
 
-  // 触发：组件挂载时注册 Ctrl+S 快捷键，卸载时清理
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
-        e.preventDefault()
-        saveRef.current()
-      }
+  function handleEditorKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+      e.preventDefault()
+      saveRef.current()
     }
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [])
+  }
+
+  function handleEditorBlur() {
+    requestAnimationFrame(() => {
+      const root = rootRef.current
+      const active = document.activeElement
+      if (!root || !active || root.contains(active)) return
+      saveRef.current()
+    })
+  }
+
+  // 触发：切换到非 notes 页面时自动保存，避免 ContentArea 隐藏页面后丢草稿
+  useEffect(() => {
+    if (currentPage !== "notes") {
+      saveRef.current()
+    }
+  }, [currentPage])
 
   // 触发：note.id 变化或组件卸载时，自动保存未提交的修改
   useEffect(() => {
@@ -225,7 +239,12 @@ export function NoteEditor({ note }: NoteEditorProps) {
   }, [note.id])
 
   return (
-    <div className="flex flex-col h-full">
+    <div
+      ref={rootRef}
+      className="flex flex-col h-full"
+      onKeyDownCapture={handleEditorKeyDown}
+      onBlurCapture={handleEditorBlur}
+    >
       {/* 顶部：标题 + 操作按钮（pt-9 避开 macOS 交通灯区域） */}
       <div className="flex items-center gap-3 px-6 py-4 pt-9 border-b border-border">
         <Input
