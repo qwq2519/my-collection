@@ -63,6 +63,8 @@ export type BookmarkViewMode = "grid" | "list"
 
 const PAGE_SIZE = 50
 
+let siteListVersion = 0
+let bookmarkListVersion = 0
 let searchVersion = 0
 
 // ─── State 接口 ──────────────────────────────────────────────
@@ -153,10 +155,12 @@ export const useURLStore = create<URLState>((set, get) => ({
 
   /** 加载第一页站点（页面初始化 或 数据变更后刷新） */
   loadSites: async () => {
+    const version = ++siteListVersion
     set({ sitesLoading: true })
     const [result] = await callService(() =>
       URLService.ListSites({ page: 1, page_size: PAGE_SIZE }),
     )
+    if (siteListVersion !== version) return
     const { items, total, hasMore } = unpackList(result)
     set({
       sites: items,
@@ -171,11 +175,13 @@ export const useURLStore = create<URLState>((set, get) => ({
   loadMoreSites: async () => {
     const { sitesHasMore, sitesLoading, sitesPage } = get()
     if (!sitesHasMore || sitesLoading) return
+    const version = siteListVersion
     const nextPage = sitesPage + 1
     set({ sitesLoading: true })
     const [result] = await callService(() =>
       URLService.ListSites({ page: nextPage, page_size: PAGE_SIZE }),
     )
+    if (siteListVersion !== version) return
     const { items, total, hasMore } = unpackList(result)
     set({
       sites: [...get().sites, ...items],
@@ -193,6 +199,7 @@ export const useURLStore = create<URLState>((set, get) => ({
    * 先 set 空态让 UI 立即切换到 loading 状态，再异步填充数据。
    */
   selectSite: async (siteId) => {
+    const version = ++bookmarkListVersion
     set({
       detailView: { type: "site", siteId },
       currentSite: null,
@@ -208,10 +215,7 @@ export const useURLStore = create<URLState>((set, get) => ({
         URLService.ListBookmarks({ site_id: siteId, page: 1, page_size: PAGE_SIZE }),
       ]),
     )
-    if (getActiveSiteId(get().detailView) !== siteId) {
-      set({ bookmarksLoading: false })
-      return
-    }
+    if (bookmarkListVersion !== version || getActiveSiteId(get().detailView) !== siteId) return
     if (err) {
       toast.error("加载站点失败：" + err)
       set({ detailView: { type: "none" }, bookmarksLoading: false })
@@ -233,15 +237,18 @@ export const useURLStore = create<URLState>((set, get) => ({
   loadMoreBookmarks: async () => {
     const { detailView, bookmarksHasMore, bookmarksLoading, bookmarksPage } = get()
     if (detailView.type !== "site" || !bookmarksHasMore || bookmarksLoading) return
+    const version = bookmarkListVersion
+    const siteId = detailView.siteId
     const nextPage = bookmarksPage + 1
     set({ bookmarksLoading: true })
     const [result] = await callService(() =>
       URLService.ListBookmarks({
-        site_id: detailView.siteId,
+        site_id: siteId,
         page: nextPage,
         page_size: PAGE_SIZE,
       }),
     )
+    if (bookmarkListVersion !== version || getActiveSiteId(get().detailView) !== siteId) return
     const { items, total, hasMore } = unpackList(result)
     set({
       bookmarks: [...get().bookmarks, ...items],
@@ -287,6 +294,7 @@ export const useURLStore = create<URLState>((set, get) => ({
     const siteId = getActiveSiteId(get().detailView)
     if (!siteId) return
     if (get().searchMode) {
+      ++bookmarkListVersion
       const match = get().searchResults.find((item) => item.site.id === siteId)
       if (match) {
         set({
@@ -302,12 +310,14 @@ export const useURLStore = create<URLState>((set, get) => ({
       }
     }
 
+    const version = ++bookmarkListVersion
     const [result] = await callService(() =>
       Promise.all([
         URLService.GetSite(siteId),
         URLService.ListBookmarks({ site_id: siteId, page: 1, page_size: PAGE_SIZE }),
       ]),
     )
+    if (bookmarkListVersion !== version || getActiveSiteId(get().detailView) !== siteId) return
     if (result) {
       const [site, bmResult] = result
       const { items, total, hasMore } = unpackList(bmResult)
@@ -407,6 +417,7 @@ export const useURLStore = create<URLState>((set, get) => ({
    */
   selectSearchResult: async (item) => {
     const siteId = item.site.id
+    ++bookmarkListVersion
     set({
       detailView: { type: "site", siteId },
       currentSite: item.site,

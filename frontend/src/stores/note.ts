@@ -6,6 +6,9 @@ import { unpackList } from "../lib/safe"
 
 const PAGE_SIZE = 50
 
+let noteListVersion = 0
+let searchVersion = 0
+
 interface NoteState {
   notes: Note[]
   notesTotal: number
@@ -33,8 +36,6 @@ interface NoteState {
   deleteNote: (id: string) => Promise<string | null>
 }
 
-let searchVersion = 0
-
 export const useNoteStore = create<NoteState>((set, get) => ({
   notes: [],
   notesTotal: 0,
@@ -50,10 +51,12 @@ export const useNoteStore = create<NoteState>((set, get) => ({
   searchMode: false,
 
   loadNotes: async () => {
+    const version = ++noteListVersion
     set({ notesLoading: true })
     const [result] = await callService(() =>
       NoteService.ListNotes({ page: 1, page_size: PAGE_SIZE }),
     )
+    if (noteListVersion !== version) return
     const { items, total, hasMore } = unpackList(result)
     set({
       notes: items,
@@ -67,6 +70,7 @@ export const useNoteStore = create<NoteState>((set, get) => ({
   loadMoreNotes: async () => {
     const { notesHasMore, notesLoading, notesPage, searchQuery, searchMode } = get()
     if (!notesHasMore || notesLoading) return
+    const version = noteListVersion
     const nextPage = notesPage + 1
     set({ notesLoading: true })
     const [result] = await callService(() =>
@@ -76,6 +80,7 @@ export const useNoteStore = create<NoteState>((set, get) => ({
         search: searchMode ? searchQuery.trim() : undefined,
       }),
     )
+    if (noteListVersion !== version) return
     const { items, total, hasMore } = unpackList(result)
     set({
       notes: [...get().notes, ...items],
@@ -106,14 +111,12 @@ export const useNoteStore = create<NoteState>((set, get) => ({
       return
     }
     const version = ++searchVersion
+    const listVersion = ++noteListVersion
     set({ searchMode: true, searchQuery: query, notesLoading: true })
     const [result] = await callService(() =>
       NoteService.ListNotes({ page: 1, page_size: PAGE_SIZE, search: query.trim() }),
     )
-    if (searchVersion !== version) {
-      set({ notesLoading: false })
-      return
-    }
+    if (searchVersion !== version || noteListVersion !== listVersion) return
     const { items, total, hasMore } = unpackList(result)
     set({
       notes: items,
@@ -126,6 +129,7 @@ export const useNoteStore = create<NoteState>((set, get) => ({
 
   clearSearch: () => {
     ++searchVersion
+    ++noteListVersion
     set({ searchMode: false, searchQuery: "" })
     get().loadNotes()
   },
