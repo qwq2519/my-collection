@@ -26,7 +26,7 @@ type BookmarkFormValues = z.infer<typeof bookmarkSchema>
 interface BookmarkFormProps {
   /** 编辑模式传入已有书签，创建模式不传 */
   bookmark?: Bookmark | null
-  onSave: () => void
+  onSave: (bookmark: Bookmark | null) => void | Promise<void>
   onCancel: () => void
   /** 当域名无对应站点时，提供快速切换到创建站点的入口 */
   onCreateSite?: () => void
@@ -89,7 +89,7 @@ export function BookmarkForm({ bookmark, onSave, onCancel, onCreateSite }: Bookm
               description: values.description || undefined,
               tags: tags.length > 0 ? tags : undefined,
             })
-    const [, err] = await callService(serviceFn)
+    const [result, err] = await callService(serviceFn)
     setSaving(false)
     if (err) {
       setError(err)
@@ -97,7 +97,7 @@ export function BookmarkForm({ bookmark, onSave, onCancel, onCreateSite }: Bookm
       return
     }
     toast.success(isEdit ? "书签已更新" : "书签已创建")
-    onSave()
+    await onSave(result)
   }
 
   return (

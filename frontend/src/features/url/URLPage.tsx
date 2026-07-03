@@ -6,13 +6,14 @@ import { BookmarkDetail } from "./BookmarkDetail"
 import { SiteForm } from "./SiteForm"
 import { BookmarkForm } from "./BookmarkForm"
 import { useURLStore } from "@/stores/url"
-import type { DetailView } from "@/stores/url"
+import { getActiveSiteId, type DetailView } from "@/stores/url"
 import { EmptyState } from "@/components/EmptyState"
 import { SearchBar } from "@/components/SearchBar"
 import { TagTreeFilter } from "@/components/TagTreeFilter"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Globe, Plus, Bookmark } from "lucide-react"
+import type { Bookmark as BookmarkModel } from "../../../bindings/collections/internal/model"
 
 
 type CreateMode = null | "site" | "bookmark"
@@ -25,6 +26,8 @@ export function URLPage() {
   const detailView = useURLStore((s) => s.detailView)
   const searchMode = useURLStore((s) => s.searchMode)
   const loadSites = useURLStore((s) => s.loadSites)
+  const refreshCurrentSite = useURLStore((s) => s.refreshCurrentSite)
+  const selectSite = useURLStore((s) => s.selectSite)
   const [createMode, setCreateMode] = useState<CreateMode>(null)
 
   useKeyboardNav()
@@ -32,6 +35,19 @@ export function URLPage() {
   const handleCreated = () => {
     setCreateMode(null)
     loadSites()
+  }
+
+  const handleBookmarkCreated = async (bookmark: BookmarkModel | null) => {
+    setCreateMode(null)
+    loadSites()
+    if (!bookmark) return
+
+    const activeSiteId = getActiveSiteId(detailView)
+    if (activeSiteId === bookmark.site_id) {
+      await refreshCurrentSite()
+      return
+    }
+    await selectSite(bookmark.site_id)
   }
 
   return (
@@ -65,6 +81,7 @@ export function URLPage() {
         mode={createMode}
         onClose={() => setCreateMode(null)}
         onCreated={handleCreated}
+        onBookmarkCreated={handleBookmarkCreated}
         onSwitchToSite={() => setCreateMode("site")}
       />
     </div>
@@ -89,11 +106,13 @@ function CreateFormDialog({
   mode,
   onClose,
   onCreated,
+  onBookmarkCreated,
   onSwitchToSite,
 }: {
   mode: CreateMode
   onClose: () => void
   onCreated: () => void
+  onBookmarkCreated: (bookmark: BookmarkModel | null) => void | Promise<void>
   onSwitchToSite: () => void
 }) {
   return (
@@ -109,7 +128,11 @@ function CreateFormDialog({
         </DialogTitle>
         {mode === "site" && <SiteForm onSave={onCreated} onCancel={onClose} />}
         {mode === "bookmark" && (
-          <BookmarkForm onSave={onCreated} onCancel={onClose} onCreateSite={onSwitchToSite} />
+          <BookmarkForm
+            onSave={onBookmarkCreated}
+            onCancel={onClose}
+            onCreateSite={onSwitchToSite}
+          />
         )}
       </DialogContent>
     </Dialog>

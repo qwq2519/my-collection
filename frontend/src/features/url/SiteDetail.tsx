@@ -79,9 +79,13 @@ export function SiteDetail() {
     return (
       <div className="h-full overflow-y-auto">
         <BookmarkForm
-          onSave={() => {
+          onSave={async (bookmark) => {
             setMode("view")
-            refreshCurrentSite()
+            if (!bookmark || bookmark.site_id === site.id) {
+              await refreshCurrentSite()
+              return
+            }
+            await useURLStore.getState().selectSite(bookmark.site_id)
           }}
           onCancel={() => setMode("view")}
         />
