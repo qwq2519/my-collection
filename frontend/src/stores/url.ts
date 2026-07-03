@@ -286,6 +286,21 @@ export const useURLStore = create<URLState>((set, get) => ({
   refreshCurrentSite: async () => {
     const siteId = getActiveSiteId(get().detailView)
     if (!siteId) return
+    if (get().searchMode) {
+      const match = get().searchResults.find((item) => item.site.id === siteId)
+      if (match) {
+        set({
+          currentSite: match.site,
+          bookmarks: match.bookmarks,
+          bookmarksTotal: match.bookmarks.length,
+          bookmarksPage: 1,
+          bookmarksHasMore: false,
+          bookmarksLoading: false,
+        })
+        get().loadSites()
+        return
+      }
+    }
 
     const [result] = await callService(() =>
       Promise.all([
@@ -387,8 +402,8 @@ export const useURLStore = create<URLState>((set, get) => ({
   },
 
   /**
-   * 选中搜索结果中的一条：先用搜索数据填充站点信息（避免白屏），
-   * 再异步加载完整书签列表以确保数据完整可翻页。
+   * 选中搜索结果中的一条：右栏只展示当前搜索命中的书签子集，
+   * 不再额外拉取整站书签，避免搜索态被全量列表覆盖。
    */
   selectSearchResult: async (item) => {
     const siteId = item.site.id
@@ -399,20 +414,8 @@ export const useURLStore = create<URLState>((set, get) => ({
       bookmarksTotal: item.bookmarks.length,
       bookmarksPage: 1,
       bookmarksHasMore: false,
-      bookmarksLoading: true,
-      currentBookmark: null,
-    })
-    const [result] = await callService(() =>
-      URLService.ListBookmarks({ site_id: siteId, page: 1, page_size: PAGE_SIZE }),
-    )
-    if (getActiveSiteId(get().detailView) !== siteId) return
-    const { items, total, hasMore } = unpackList(result)
-    set({
-      bookmarks: items,
-      bookmarksTotal: total,
-      bookmarksPage: 1,
-      bookmarksHasMore: hasMore,
       bookmarksLoading: false,
+      currentBookmark: null,
     })
   },
 
