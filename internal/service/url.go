@@ -241,6 +241,9 @@ func (u *URLService) DeleteBookmark(id string) (err error) {
 // url_tag 注册表 count，并逐个清理文件资源。不存在的 ID 跳过并记录日志。
 func (u *URLService) BatchDeleteBookmarks(siteID string, ids []string) (err error) {
 	defer logError(&err)
+	if siteID == "" {
+		return fmt.Errorf("site ID required")
+	}
 	if len(ids) == 0 {
 		return nil
 	}

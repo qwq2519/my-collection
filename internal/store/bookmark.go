@@ -259,6 +259,9 @@ func (s *Store) BatchDeleteBookmarks(siteID string, ids []string) ([]*model.Book
 				slog.Warn("skip missing bookmark in batch delete", "id", id)
 				continue
 			}
+			if bm.SiteID != siteID {
+				return fmt.Errorf("bookmark %s does not belong to site %s", id, siteID)
+			}
 			if _, err := tx.Delete("bm:" + id); err != nil {
 				return fmt.Errorf("delete bookmark %s: %w", id, err)
 			}

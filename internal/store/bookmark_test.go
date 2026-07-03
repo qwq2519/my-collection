@@ -144,6 +144,34 @@ func TestBookmarkBatchDelete(t *testing.T) {
 	}
 }
 
+func TestBookmarkBatchDeleteRejectsCrossSiteIDs(t *testing.T) {
+	s := newTestStore(t)
+	siteA := createTestSite(t, s, "example.com")
+	siteB := createTestSite(t, s, "another.com")
+	bmA := createTestBookmark(t, s, siteA.ID, "https://example.com/1", "One")
+	bmB := createTestBookmark(t, s, siteB.ID, "https://another.com/1", "Two")
+
+	if _, err := s.BatchDeleteBookmarks(siteA.ID, []string{bmA.ID, bmB.ID}); err == nil {
+		t.Fatal("BatchDeleteBookmarks should reject bookmarks from another site")
+	}
+
+	if _, err := s.GetBookmark(bmA.ID); err != nil {
+		t.Fatalf("bookmark A should remain after rollback: %v", err)
+	}
+	if _, err := s.GetBookmark(bmB.ID); err != nil {
+		t.Fatalf("bookmark B should remain after rollback: %v", err)
+	}
+
+	siteAAfter, _ := s.GetSite(siteA.ID)
+	if siteAAfter.BookmarkCount != 1 {
+		t.Errorf("site A BookmarkCount = %d, want 1", siteAAfter.BookmarkCount)
+	}
+	siteBAfter, _ := s.GetSite(siteB.ID)
+	if siteBAfter.BookmarkCount != 1 {
+		t.Errorf("site B BookmarkCount = %d, want 1", siteBAfter.BookmarkCount)
+	}
+}
+
 func TestBookmarkList(t *testing.T) {
 	s := newTestStore(t)
 	site := createTestSite(t, s, "example.com")

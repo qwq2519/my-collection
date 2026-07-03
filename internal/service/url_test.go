@@ -513,6 +513,13 @@ func TestURLService_BatchDeleteBookmarks(t *testing.T) {
 	}
 }
 
+func TestURLService_BatchDeleteBookmarksValidation(t *testing.T) {
+	svc := newURLService(t)
+	if err := svc.BatchDeleteBookmarks("", []string{"bm-1"}); err == nil {
+		t.Fatal("BatchDeleteBookmarks should reject empty site ID")
+	}
+}
+
 // ────────────────────── BatchTagBookmarks ──────────────────────
 
 func TestURLService_BatchTagBookmarks(t *testing.T) {
