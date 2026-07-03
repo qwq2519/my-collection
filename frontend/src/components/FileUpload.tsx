@@ -111,7 +111,11 @@ function useFileUpload(
     const { scene: s, entityId: eid } = stateRef.current
     const newFiles: UploadedFile[] = []
     for (const file of validFiles) {
-      const base64 = await readFileAsBase64(file)
+      const [base64, readErr] = await callService(() => readFileAsBase64(file))
+      if (readErr) {
+        setError(`读取文件失败：${readErr}`)
+        break
+      }
       const [result, err] = await callService(() =>
         UploadService.UploadFile({
           scene: s,

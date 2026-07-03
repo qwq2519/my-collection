@@ -157,10 +157,15 @@ export const useURLStore = create<URLState>((set, get) => ({
   loadSites: async () => {
     const version = ++siteListVersion
     set({ sitesLoading: true })
-    const [result] = await callService(() =>
+    const [result, err] = await callService(() =>
       URLService.ListSites({ page: 1, page_size: PAGE_SIZE }),
     )
     if (siteListVersion !== version) return
+    if (err) {
+      toast.error("加载站点列表失败：" + err)
+      set({ sitesLoading: false })
+      return
+    }
     const { items, total, hasMore } = unpackList(result)
     set({
       sites: items,
@@ -178,10 +183,15 @@ export const useURLStore = create<URLState>((set, get) => ({
     const version = siteListVersion
     const nextPage = sitesPage + 1
     set({ sitesLoading: true })
-    const [result] = await callService(() =>
+    const [result, err] = await callService(() =>
       URLService.ListSites({ page: nextPage, page_size: PAGE_SIZE }),
     )
     if (siteListVersion !== version) return
+    if (err) {
+      toast.error("加载更多站点失败：" + err)
+      set({ sitesLoading: false })
+      return
+    }
     const { items, total, hasMore } = unpackList(result)
     set({
       sites: [...get().sites, ...items],
@@ -241,7 +251,7 @@ export const useURLStore = create<URLState>((set, get) => ({
     const siteId = detailView.siteId
     const nextPage = bookmarksPage + 1
     set({ bookmarksLoading: true })
-    const [result] = await callService(() =>
+    const [result, err] = await callService(() =>
       URLService.ListBookmarks({
         site_id: siteId,
         page: nextPage,
@@ -249,6 +259,11 @@ export const useURLStore = create<URLState>((set, get) => ({
       }),
     )
     if (bookmarkListVersion !== version || getActiveSiteId(get().detailView) !== siteId) return
+    if (err) {
+      toast.error("加载更多书签失败：" + err)
+      set({ bookmarksLoading: false })
+      return
+    }
     const { items, total, hasMore } = unpackList(result)
     set({
       bookmarks: [...get().bookmarks, ...items],
@@ -311,13 +326,17 @@ export const useURLStore = create<URLState>((set, get) => ({
     }
 
     const version = ++bookmarkListVersion
-    const [result] = await callService(() =>
+    const [result, err] = await callService(() =>
       Promise.all([
         URLService.GetSite(siteId),
         URLService.ListBookmarks({ site_id: siteId, page: 1, page_size: PAGE_SIZE }),
       ]),
     )
     if (bookmarkListVersion !== version || getActiveSiteId(get().detailView) !== siteId) return
+    if (err) {
+      toast.error("刷新站点失败：" + err)
+      return
+    }
     if (result) {
       const [site, bmResult] = result
       const { items, total, hasMore } = unpackList(bmResult)
@@ -343,7 +362,7 @@ export const useURLStore = create<URLState>((set, get) => ({
     }
     const version = ++searchVersion
     set({ searchMode: true, searchQuery: query, searchLoading: true })
-    const [result] = await callService(() =>
+    const [result, err] = await callService(() =>
       URLService.SearchURL({
         search: query.trim() || undefined,
         tags: selectedTags.length > 0 ? selectedTags : undefined,
@@ -352,6 +371,11 @@ export const useURLStore = create<URLState>((set, get) => ({
       }),
     )
     if (searchVersion !== version) {
+      set({ searchLoading: false })
+      return
+    }
+    if (err) {
+      toast.error("搜索书签失败：" + err)
       set({ searchLoading: false })
       return
     }
@@ -372,7 +396,7 @@ export const useURLStore = create<URLState>((set, get) => ({
     const version = searchVersion
     const nextPage = searchPage + 1
     set({ searchLoading: true })
-    const [result] = await callService(() =>
+    const [result, err] = await callService(() =>
       URLService.SearchURL({
         search: searchQuery.trim() || undefined,
         tags: selectedTags.length > 0 ? selectedTags : undefined,
@@ -381,6 +405,11 @@ export const useURLStore = create<URLState>((set, get) => ({
       }),
     )
     if (searchVersion !== version) {
+      set({ searchLoading: false })
+      return
+    }
+    if (err) {
+      toast.error("加载更多搜索结果失败：" + err)
       set({ searchLoading: false })
       return
     }

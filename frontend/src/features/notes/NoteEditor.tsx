@@ -115,9 +115,13 @@ export function NoteEditor({ note }: NoteEditorProps) {
     refreshList()
     toast.success("已保存")
 
-    const [orphanResult] = await callService(() =>
+    const [orphanResult, orphanErr] = await callService(() =>
       NoteService.DetectOrphanImages({ note_id: note.id, body: currentBody }),
     )
+    if (orphanErr) {
+      toast.error("检测未引用图片失败：" + orphanErr)
+      return
+    }
     if (orphanResult && orphanResult.orphan_files.length > 0) {
       setOrphanFiles(orphanResult.orphan_files)
       setShowOrphanConfirm(true)
@@ -141,6 +145,25 @@ export function NoteEditor({ note }: NoteEditorProps) {
       if (!root || !active || root.contains(active)) return
       saveRef.current()
     })
+  }
+
+  async function handleDeleteConfirm() {
+    const wasDirty = dirtyRef.current
+    dirtyRef.current = false
+    const err = await deleteNote(note.id)
+    if (err) {
+      dirtyRef.current = wasDirty
+      toast.error(err)
+    }
+  }
+
+  async function handleOrphanDeleteConfirm() {
+    const [, err] = await callService(() =>
+      NoteService.DeleteOrphanImages({ note_id: note.id, files: orphanFiles }),
+    )
+    if (err) toast.error(err)
+    else toast.success("已清理孤儿图片")
+    setOrphanFiles([])
   }
 
   // 触发：切换到非 notes 页面时自动保存，避免 ContentArea 隐藏页面后丢草稿
@@ -278,15 +301,7 @@ export function NoteEditor({ note }: NoteEditorProps) {
         onOpenChange={setShowDeleteConfirm}
         title="删除笔记"
         description={`确定删除「${note.title}」？此操作不可撤销。`}
-        onConfirm={async () => {
-          const wasDirty = dirtyRef.current
-          dirtyRef.current = false
-          const err = await deleteNote(note.id)
-          if (err) {
-            dirtyRef.current = wasDirty
-            toast.error(err)
-          }
-        }}
+        onConfirm={handleDeleteConfirm}
       />
 
       <ConfirmDialog
@@ -295,14 +310,7 @@ export function NoteEditor({ note }: NoteEditorProps) {
         title="清理未引用图片"
         description={`发现 ${orphanFiles.length} 个未被引用的图片文件，是否删除？`}
         confirmLabel="删除"
-        onConfirm={async () => {
-          const [, err] = await callService(() =>
-            NoteService.DeleteOrphanImages({ note_id: note.id, files: orphanFiles }),
-          )
-          if (err) toast.error(err)
-          else toast.success("已清理孤儿图片")
-          setOrphanFiles([])
-        }}
+        onConfirm={handleOrphanDeleteConfirm}
       />
 
       {/* Markdown 编辑器 */}

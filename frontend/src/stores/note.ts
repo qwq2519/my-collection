@@ -3,6 +3,7 @@ import { NoteService } from "../../bindings/collections/internal/service"
 import type { Note } from "../../bindings/collections/internal/model"
 import { callService } from "../lib/async"
 import { unpackList } from "../lib/safe"
+import { toast } from "sonner"
 
 const PAGE_SIZE = 50
 
@@ -53,10 +54,15 @@ export const useNoteStore = create<NoteState>((set, get) => ({
   loadNotes: async () => {
     const version = ++noteListVersion
     set({ notesLoading: true })
-    const [result] = await callService(() =>
+    const [result, err] = await callService(() =>
       NoteService.ListNotes({ page: 1, page_size: PAGE_SIZE }),
     )
     if (noteListVersion !== version) return
+    if (err) {
+      toast.error("加载笔记列表失败：" + err)
+      set({ notesLoading: false })
+      return
+    }
     const { items, total, hasMore } = unpackList(result)
     set({
       notes: items,
@@ -73,7 +79,7 @@ export const useNoteStore = create<NoteState>((set, get) => ({
     const version = noteListVersion
     const nextPage = notesPage + 1
     set({ notesLoading: true })
-    const [result] = await callService(() =>
+    const [result, err] = await callService(() =>
       NoteService.ListNotes({
         page: nextPage,
         page_size: PAGE_SIZE,
@@ -81,6 +87,11 @@ export const useNoteStore = create<NoteState>((set, get) => ({
       }),
     )
     if (noteListVersion !== version) return
+    if (err) {
+      toast.error("加载更多笔记失败：" + err)
+      set({ notesLoading: false })
+      return
+    }
     const { items, total, hasMore } = unpackList(result)
     set({
       notes: [...get().notes, ...items],
@@ -93,9 +104,14 @@ export const useNoteStore = create<NoteState>((set, get) => ({
 
   selectNote: async (id) => {
     set({ selectedId: id, currentNote: null, currentLoading: true })
-    const [note] = await callService(() => NoteService.GetNote(id))
+    const [note, err] = await callService(() => NoteService.GetNote(id))
     if (get().selectedId !== id) {
       set({ currentLoading: false })
+      return
+    }
+    if (err) {
+      toast.error("加载笔记失败：" + err)
+      set({ currentNote: null, currentLoading: false })
       return
     }
     set({ currentNote: note ?? null, currentLoading: false })
@@ -113,10 +129,15 @@ export const useNoteStore = create<NoteState>((set, get) => ({
     const version = ++searchVersion
     const listVersion = ++noteListVersion
     set({ searchMode: true, searchQuery: query, notesLoading: true })
-    const [result] = await callService(() =>
+    const [result, err] = await callService(() =>
       NoteService.ListNotes({ page: 1, page_size: PAGE_SIZE, search: query.trim() }),
     )
     if (searchVersion !== version || noteListVersion !== listVersion) return
+    if (err) {
+      toast.error("搜索笔记失败：" + err)
+      set({ notesLoading: false })
+      return
+    }
     const { items, total, hasMore } = unpackList(result)
     set({
       notes: items,
