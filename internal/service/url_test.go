@@ -1,6 +1,8 @@
 package service
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"collections/internal/model"
@@ -71,6 +73,18 @@ func TestURLService_CreateSiteInvalidTag(t *testing.T) {
 	}
 }
 
+func TestURLService_CreateSiteRejectsUnsafeIconFilename(t *testing.T) {
+	svc := newURLService(t)
+	_, err := svc.CreateSite(model.CreateSiteReq{
+		Title: "Test",
+		URL:   "https://test.com",
+		Icon:  "../../main.db",
+	})
+	if err == nil {
+		t.Fatal("CreateSite should reject unsafe icon filename")
+	}
+}
+
 func TestURLService_UpdateSiteValidation(t *testing.T) {
 	svc := newURLService(t)
 	if _, err := svc.CreateSite(model.CreateSiteReq{Title: "Test", URL: "https://test.com"}); err != nil {
@@ -87,6 +101,20 @@ func TestURLService_UpdateSiteValidation(t *testing.T) {
 	_, err = svc.UpdateSite(model.UpdateSiteReq{ID: "some-id", Title: &emptyTitle})
 	if err == nil {
 		t.Error("UpdateSite should reject empty title")
+	}
+}
+
+func TestURLService_UpdateSiteRejectsUnsafeIconFilename(t *testing.T) {
+	svc := newURLService(t)
+	site, err := svc.CreateSite(model.CreateSiteReq{Title: "Test", URL: "https://test.com"})
+	if err != nil {
+		t.Fatalf("setup CreateSite: %v", err)
+	}
+
+	icon := "../bad.png"
+	_, err = svc.UpdateSite(model.UpdateSiteReq{ID: site.ID, Icon: &icon})
+	if err == nil {
+		t.Fatal("UpdateSite should reject unsafe icon filename")
 	}
 }
 
@@ -138,6 +166,32 @@ func TestURLService_DeleteSiteTagCountDecrease(t *testing.T) {
 	}
 	if tag != nil && tag.Count > 0 {
 		t.Errorf("tag count after delete = %d, want 0", tag.Count)
+	}
+}
+
+func TestURLService_DeleteSiteSkipsUnsafeHistoricIconPath(t *testing.T) {
+	svc := newURLService(t)
+	site, err := svc.Store.CreateSite(model.CreateSiteReq{
+		Title:  "Test",
+		URL:    "https://test.com",
+		Domain: "test.com",
+		Icon:   "../../keep.txt",
+	})
+	if err != nil {
+		t.Fatalf("setup Store.CreateSite: %v", err)
+	}
+
+	keepPath := filepath.Join(svc.Store.PersistDir(), "keep.txt")
+	if err := os.WriteFile(keepPath, []byte("keep"), 0644); err != nil {
+		t.Fatalf("write keep file: %v", err)
+	}
+
+	if err := svc.DeleteSite(site.ID); err != nil {
+		t.Fatalf("DeleteSite: %v", err)
+	}
+
+	if _, err := os.Stat(keepPath); err != nil {
+		t.Fatalf("keep file should remain after DeleteSite, got: %v", err)
 	}
 }
 

@@ -30,6 +30,11 @@ func (u *URLService) CreateSite(req model.CreateSiteReq) (_ *model.Site, err err
 	if strings.TrimSpace(req.URL) == "" {
 		return nil, fmt.Errorf("site URL required")
 	}
+	icon, err := normalizeSiteIconFilename(req.Icon)
+	if err != nil {
+		return nil, err
+	}
+	req.Icon = icon
 
 	domain, err := util.ExtractDomain(req.URL)
 	if err != nil {
@@ -71,6 +76,13 @@ func (u *URLService) UpdateSite(req model.UpdateSiteReq) (_ *model.Site, err err
 	}
 	if req.Title != nil && strings.TrimSpace(*req.Title) == "" {
 		return nil, fmt.Errorf("site title required")
+	}
+	if req.Icon != nil {
+		icon, err := normalizeSiteIconFilename(*req.Icon)
+		if err != nil {
+			return nil, err
+		}
+		req.Icon = &icon
 	}
 
 	if req.Tags != nil {
@@ -339,13 +351,41 @@ func (u *URLService) cleanSiteAssets(site *model.Site) {
 	assetsDir := filepath.Join(persistDir, "url-assets")
 
 	if site.Icon != "" {
-		iconPath := filepath.Join(assetsDir, "icons", site.Icon)
-		if err := os.Remove(iconPath); err != nil && !os.IsNotExist(err) {
-			slog.Warn("failed to remove site icon", "path", iconPath, "err", err)
+		iconName, err := normalizeSiteIconFilename(site.Icon)
+		if err != nil {
+			slog.Warn("skip unsafe site icon cleanup", "icon", site.Icon, "err", err)
+		} else {
+			iconPath, err := util.SafePath(filepath.Join(assetsDir, "icons"), iconName)
+			if err != nil {
+				slog.Warn("skip unsafe site icon cleanup", "icon", site.Icon, "err", err)
+			} else if err := os.Remove(iconPath); err != nil && !os.IsNotExist(err) {
+				slog.Warn("failed to remove site icon", "path", iconPath, "err", err)
+			}
 		}
 	}
 
 	u.cleanEntityAttachments(assetsDir, site.ID)
+}
+
+// normalizeSiteIconFilename 限制站点图标为 icons/ 目录下的单个图片文件名。
+func normalizeSiteIconFilename(raw string) (string, error) {
+	name := strings.TrimSpace(raw)
+	if name == "" {
+		return "", nil
+	}
+	if name == "." || name == ".." {
+		return "", fmt.Errorf("invalid site icon filename")
+	}
+	if strings.Contains(name, "/") || strings.Contains(name, "\\") {
+		return "", fmt.Errorf("invalid site icon filename")
+	}
+	if filepath.Base(name) != name {
+		return "", fmt.Errorf("invalid site icon filename")
+	}
+	if !model.IsImageExt(strings.ToLower(filepath.Ext(name))) {
+		return "", fmt.Errorf("invalid site icon filename")
+	}
+	return name, nil
 }
 
 // cleanEntityAttachments 删除 attachments/{entity_id}/ 整个目录
